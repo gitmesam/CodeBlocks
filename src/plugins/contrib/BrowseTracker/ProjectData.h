@@ -14,9 +14,9 @@
 
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
-	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+	Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
-// RCS-ID: $Id$
+// RCS-ID: $Id: ProjectData.h 24 2008-01-02 15:19:04Z Pecan $
 #ifndef PROJECTDATA_H
 #define PROJECTDATA_H
 
@@ -36,6 +36,7 @@ class ProjectData
 
         void            AddEditor( wxString filePath );
         BrowseMarks*    GetBrowse_MarksFromHash( wxString filePath);
+        BrowseMarks*    GetBook_MarksFromHash( wxString filePath);
         BrowseMarks*    GetPointerToBrowse_MarksArray(FileBrowse_MarksHash& hash ,wxString filePath);
         bool            FindFilename( const wxString filePath);
         void            IncrementActivationCount();
@@ -44,6 +45,8 @@ class ProjectData
         BrowseMarks*    HashAddBrowse_Marks( const wxString filePath );
 
 
+        BrowseMarks*    HashAddBook_Marks( wxString filePath);
+        BrowseMarks*    HashAddBook_Marks( EditorBase* eb);
         void            SaveLayout();
         void            LoadLayout();
         bool            IsLayoutLoaded(){return m_bLayoutLoaded;}
@@ -59,6 +62,7 @@ class ProjectData
         cbProject*      m_pCBProject;
 
         // Hash: filePath, BrowseMarks* array
+        FileBrowse_MarksHash m_FileBook_MarksArchive;
         FileBrowse_MarksHash m_FileBrowse_MarksArchive;
 
         int     m_CurrIndexEntry;

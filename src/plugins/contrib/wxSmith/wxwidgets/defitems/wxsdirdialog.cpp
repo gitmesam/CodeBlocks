@@ -1,5 +1,4 @@
-/** \file wxsdirdialog.cpp
-*
+/*
 * This file is part of wxSmith plugin for Code::Blocks Studio
 * Copyright (C) 2007  Bartlomiej Swiecki
 *
@@ -16,9 +15,9 @@
 * You should have received a copy of the GNU General Public License
 * along with wxSmith. If not, see <http://www.gnu.org/licenses/>.
 *
-* $Revision$
-* $Id$
-* $HeadURL$
+* $Revision: 4504 $
+* $Id: wxsDirDialog.cpp 4504 2007-10-02 21:52:30Z byo $
+* $HeadURL: svn+ssh://byo@svn.berlios.de/svnroot/repos/codeblocks/trunk/src/plugins/contrib/wxSmith/wxwidgets/defitems/wxsDirDialog.cpp $
 */
 
 #include "wxsdirdialog.h"
@@ -27,7 +26,7 @@
 
 namespace
 {
-    wxsRegisterItem<wxsDirDialog> Reg(_T("DirDialog"),wxsTTool,_T("Dialogs"),190,false);
+    wxsRegisterItem<wxsDirDialog> Reg(_T("DirDialog"),wxsTTool,_T("Dialogs"),50,false);
 
     WXS_ST_BEGIN(wxsDirDialogStyles,_T("wxDD_DEFAULT_STYLE"))
         WXS_ST_CATEGORY("wxDirDialog")
@@ -51,12 +50,11 @@ void wxsDirDialog::OnBuildCreatingCode()
         case wxsCPP:
         {
             AddHeader(_T("<wx/dirdlg.h>"),GetInfo().ClassName,hfInPCH);
-            Codef(_T("%C(%W, %t, %t, %T, %P, %S, %N);\n"),m_Message.wx_str(),m_DefaultPath.wx_str());
+            Codef(_T("%C(%W, %t, %t, %T, %P, %S, %N);\n"),m_Message.c_str(),m_DefaultPath.c_str());
             BuildSetupWindowCode();
             return;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsDirDialog::OnBuildCreatingCode"),GetLanguage());
@@ -64,7 +62,7 @@ void wxsDirDialog::OnBuildCreatingCode()
     }
 }
 
-void wxsDirDialog::OnEnumToolProperties(cb_unused long Flags)
+void wxsDirDialog::OnEnumToolProperties(long Flags)
 {
     WXS_SHORT_STRING(wxsDirDialog,m_Message,_("Message"),_T("message"),_T(""),false);
     WXS_SHORT_STRING(wxsDirDialog,m_DefaultPath,_("Default path"),_T("default_path"),_T(""),false);

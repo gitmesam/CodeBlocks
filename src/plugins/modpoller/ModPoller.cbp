@@ -7,13 +7,13 @@
 		<Option compiler="gcc" />
 		<Build>
 			<Target title="default">
-				<Option output="..\..\devel\share\codeblocks\plugins\ModPoller" prefix_auto="1" extension_auto="1" />
-				<Option object_output="..\..\.objs\plugins\ModPoller" />
+				<Option output="$(#cb)\devel\share\codeblocks\plugins\ModPoller" prefix_auto="1" extension_auto="1" />
+				<Option object_output="$(#cb)\.objs\plugins\contrib\ModPoller" />
 				<Option type="3" />
 				<Option compiler="gcc" />
-				<Option host_application="..\..\devel\codeblocks.exe" />
+				<Option host_application="$(#cb)\devel\codeblocks.exe" />
 				<Compiler>
-					<Add option="$(#CB_RELEASE_TYPE)" />
+					<Add option="-g" />
 					<Add option="-pipe" />
 					<Add option="-mthreads" />
 					<Add option="-fmessage-length=0" />
@@ -27,21 +27,19 @@
 					<Add option="-DCB_PRECOMP" />
 					<Add option="-DWX_PRECOMP" />
 					<Add option="-DwxUSE_UNICODE" />
-					<Add directory="..\..\include" />
-					<Add directory="..\..\include\tinyxml" />
-					<Add directory="..\..\sdk\wxscintilla\include" />
+					<Add directory="$(#CB.include)" />
+					<Add directory="$(#CB.include)\wxscintilla\include" />
 					<Add directory="$(#WX.include)" />
 					<Add directory="$(#WX.lib)\gcc_dll$(WX_CFG)\msw$(WX_SUFFIX)" />
 				</Compiler>
 				<Linker>
-					<Add option="-Wl,--enable-auto-import" />
 					<Add library="wxmsw28$(WX_SUFFIX)" />
 					<Add library="codeblocks" />
-					<Add directory="..\..\devel" />
+					<Add directory="$(#CB)\devel" />
 					<Add directory="$(#WX.lib)\gcc_dll$(WX_CFG)" />
 				</Linker>
 				<ExtraCommands>
-					<Add after="zip -j9 ..\..\devel\share\CodeBlocks\ModPoller.zip manifest.xml" />
+					<Add after="zip -j9 $(#cb)\devel\share\CodeBlocks\ModPoller.zip manifest.xml" />
 					<Mode after="always" />
 				</ExtraCommands>
 			</Target>
@@ -53,9 +51,6 @@
 		<VirtualTargets>
 			<Add alias="All" targets="default;" />
 		</VirtualTargets>
-		<Linker>
-			<Add option="-Wl,--enable-auto-image-base" />
-		</Linker>
 		<Unit filename="ModPoller.cpp" />
 		<Unit filename="ModPoller.h" />
 		<Unit filename="manifest.xml" />

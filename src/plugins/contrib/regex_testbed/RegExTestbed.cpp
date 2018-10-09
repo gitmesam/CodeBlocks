@@ -38,7 +38,6 @@ RegExTestbed::RegExTestbed()
 // destructor
 RegExTestbed::~RegExTestbed()
 {
-    RegExDlg::ReleaseAll();
 }
 
 void RegExTestbed::OnAttach()
@@ -51,23 +50,22 @@ void RegExTestbed::OnAttach()
 	// (see: does not need) this plugin...
 }
 
-void RegExTestbed::OnRelease(bool /*appShutDown*/)
+void RegExTestbed::OnRelease(bool appShutDown)
 {
 	// do de-initialization for your plugin
 	// if appShutDown is false, the plugin is unloaded because Code::Blocks is being shut down,
 	// which means you must not use any of the SDK Managers
 	// NOTE: after this function, the inherited member variable
 	// m_IsAttached will be FALSE...
-	RegExDlg::ReleaseAll();
 }
 
 int RegExTestbed::Execute()
 {
     try
     {
-        RegExDlg *dlg = new RegExDlg(0, -1);
-        PlaceWindow(dlg);
-        dlg->Show();
+        RegExDlg dlg(0, -1);
+        PlaceWindow(&dlg);
+        dlg.ShowModal();
     }
     catch (...)
     {

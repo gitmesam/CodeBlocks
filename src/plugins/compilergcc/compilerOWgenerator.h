@@ -3,12 +3,14 @@
  * http://www.gnu.org/licenses/gpl-3.0.html
  */
 
+#ifdef __WXMSW__ // For Windows Only
+
 #ifndef COMPILEROWGENERATOR_H
 #define COMPILEROWGENERATOR_H
 
 #include <compilercommandgenerator.h>
 
-//Overridden to fix OpenWatcom Linking Problem (@Biplab)
+//Overriden to fix OpenWatcom Linking Problem (@Biplab)
 
 class CompilerOWGenerator : public CompilerCommandGenerator
 {
@@ -24,14 +26,10 @@ class CompilerOWGenerator : public CompilerCommandGenerator
         wxString MapTargetType(const wxString& Opt, int target_type);
         // This maps debug related compiler options to wlink.exe options
         wxString MapDebugOptions(const wxString& Opt);
-        // Open Watcom supports: Watcom debugger, Dwarf (default), CodeView
-        void MapDebuggerOptions(const wxString& Opt);
-
-    private:
-        // Debugger name which will later be used in MapDebugOptions
-        wxString m_DebuggerType;
 };
 
 
 
 #endif // COMPILEROWGENERATOR_H
+
+#endif // __WXMSW__

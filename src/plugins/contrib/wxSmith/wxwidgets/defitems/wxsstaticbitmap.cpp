@@ -27,10 +27,9 @@
 
 namespace
 {
-    wxsRegisterItem<wxsStaticBitmap> Reg(_T("StaticBitmap"),wxsTWidget,_T("Standard"),80);
+    wxsRegisterItem<wxsStaticBitmap> Reg(_T("StaticBitmap"),wxsTWidget,_T("Standard"),70);
 
-    // Cryogen 25/3/10 Bug #15354. Default to wxSIMPLE_BORDER.
-    WXS_ST_BEGIN(wxsStaticBitmapStyles,_T("wxSIMPLE_BORDER"))
+    WXS_ST_BEGIN(wxsStaticBitmapStyles,_T(""))
         WXS_ST_CATEGORY("wxStaticBitmap")
         WXS_ST_DEFAULTS()
     WXS_ST_END()
@@ -39,7 +38,29 @@ namespace
     WXS_EV_BEGIN(wxsStaticBitmapEvents)
     WXS_EV_END()
 
-// Cryogen 24/3/10 Bug #15354. Removed class Background.
+
+    class Background: public wxPanel
+    {
+        public:
+
+            Background(wxWindow* Parent): wxPanel(Parent)
+            {
+            }
+
+            void OnPaint(wxPaintEvent& event)
+            {
+                wxPaintDC dc(this);
+                dc.SetPen(wxColour(0x80,0x80,0x80));
+                dc.SetBrush(*wxTRANSPARENT_BRUSH);
+                dc.DrawRectangle(0,0,GetSize().GetWidth(),GetSize().GetHeight());
+            }
+
+            DECLARE_EVENT_TABLE()
+    };
+
+    BEGIN_EVENT_TABLE(Background,wxPanel)
+        EVT_PAINT(Background::OnPaint)
+    END_EVENT_TABLE()
 }
 
 wxsStaticBitmap::wxsStaticBitmap(wxsItemResData* Data):
@@ -64,12 +85,11 @@ void wxsStaticBitmap::OnBuildCreatingCode()
             wxString SizeCodeStr = SizeData.GetSizeCode(GetCoderContext());
             wxString BmpCode = Bitmap.IsEmpty() ? _T("wxNullBitmap") : Bitmap.BuildCode(DontResize,SizeCodeStr,GetCoderContext(),_T("wxART_OTHER"));
 
-            Codef(_T("%C(%W, %I, %s, %P, %S, %T, %N);\n"),BmpCode.wx_str());
+            Codef(_T("%C(%W, %I, %s, %P, %S, %T, %N);\n"),BmpCode.c_str());
             BuildSetupWindowCode();
             return;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsStaticBitmap::OnBuildCreatingCode"),GetLanguage());
@@ -80,13 +100,27 @@ void wxsStaticBitmap::OnBuildCreatingCode()
 
 wxObject* wxsStaticBitmap::OnBuildPreview(wxWindow* Parent,long Flags)
 {
-    // Cryogen 24/3/10 Bug #15354. Since we're no longer using the Background class we don't need to differentiate between cases where
-    // the user has assigned a bitmap and those where he hasn't and we're using the fake background. Just return the preview.
-    wxStaticBitmap* Preview = new wxStaticBitmap(Parent,GetId(),Bitmap.GetPreview(Size(Parent)),Pos(Parent),Size(Parent),Style());
-    return SetupWindow(Preview,Flags);
+    if ( Flags & wxsFlags::pfExact )
+    {
+        wxStaticBitmap* Preview = new wxStaticBitmap(Parent,GetId(),Bitmap.GetPreview(Size(Parent)),Pos(Parent),Size(Parent),Style());
+        return SetupWindow(Preview,Flags);
+    }
+
+    // We do fake background under the bitmap - that's because bitmaps tend to be
+    // invisible when not selected
+
+    Background* Back = new Background(Parent);
+    wxStaticBitmap* Preview = new wxStaticBitmap(Back,GetId(),Bitmap.GetPreview(Size(Parent)),Pos(Parent),Size(Parent),Style());
+    SetupWindow(Preview,Flags);
+    wxBoxSizer* Sizer = new wxBoxSizer(wxHORIZONTAL);
+    Sizer->Add(Preview,1,wxEXPAND,0);
+    Back->SetSizer(Sizer);
+    Sizer->SetSizeHints(Back);
+    Sizer->Fit(Back);
+    return Back;
 }
 
-void wxsStaticBitmap::OnEnumWidgetProperties(cb_unused long Flags)
+void wxsStaticBitmap::OnEnumWidgetProperties(long Flags)
 {
    WXS_BITMAP(wxsStaticBitmap,Bitmap,_("Bitmap"),_T("bitmap"),_T("wxART_OTHER"))
 }

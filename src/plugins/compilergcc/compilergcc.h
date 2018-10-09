@@ -6,24 +6,24 @@
 #ifndef COMPILERGCC_H
 #define COMPILERGCC_H
 
-#include <wx/choice.h>
-#include <wx/dynarray.h>
-#include <wx/process.h>
-#include <wx/timer.h>
-
 #include <queue>
 
+#include <settings.h> // SDK
+#include <sdk_events.h>
+#include <compileoptionsbase.h>
 #include <cbplugin.h>
 #include <cbproject.h>
-#include <compileoptionsbase.h>
-#include <compilerfactory.h>
 #include <logger.h>
-#include <sdk_events.h>
-#include <settings.h> // SDK
-
 #include "compilermessages.h"
+#include <wx/process.h>
+#include <wx/dynarray.h>
 #include "compilererrors.h"
 #include "compiler_defs.h"
+#include <compilerfactory.h>
+#include <wx/timer.h>
+#include <wx/choice.h>
+
+#define MAX_TARGETS 128
 
 enum CompilerOptionsType
 {
@@ -52,11 +52,9 @@ enum BuildState
 {
     bsNone = 0,
     bsProjectPreBuild,
-    bsTargetClean,
     bsTargetPreBuild,
     bsTargetBuild,
     bsTargetPostBuild,
-    bsTargetDone,
     bsProjectPostBuild,
     bsProjectDone
 };
@@ -69,20 +67,11 @@ enum LogTarget
     ltAll       = 0xff
 };
 
-enum BuildAction
-{
-    baClean = 0,
-    baBuild,
-    baRun,
-    baBuildFile
-};
-
+class wxTimerEvent;
 class wxComboBox;
-class wxGauge;
 class wxStaticText;
-
+class wxGauge;
 class BuildLogger;
-class PipedProcess;
 
 class CompilerGCC : public cbCompilerPlugin
 {
@@ -95,7 +84,6 @@ class CompilerGCC : public cbCompilerPlugin
         virtual void BuildMenu(wxMenuBar* menuBar); // offer for menu space by host
         virtual void BuildModuleMenu(const ModuleType type, wxMenu* menu, const FileTreeData* data = 0); // offer for menu space by a module
         virtual bool BuildToolBar(wxToolBar* toolBar);
-        virtual int GetToolBarPriority() { return 1; }
 
         virtual int Run(ProjectBuildTarget* target = 0L);
         virtual int Run(const wxString& target);
@@ -112,18 +100,14 @@ class CompilerGCC : public cbCompilerPlugin
         virtual int BuildWorkspace(const wxString& target = wxEmptyString);
         virtual int RebuildWorkspace(const wxString& target = wxEmptyString);
         virtual int CompileFile(const wxString& file);
-        virtual int CompileFileWithoutProject(const wxString& file);
-        virtual int CompileFileDefault(cbProject* project, ProjectFile* pf, ProjectBuildTarget* bt);
         virtual int KillProcess();
         virtual bool IsRunning() const;
         virtual int GetExitCode() const { return m_LastExitCode; }
-        virtual int Configure(cbProject* project, ProjectBuildTarget* target = 0L); // this is NOT the obsolete cbPlugin::Configure! Do not remove!!!
+        virtual int Configure(cbProject* project, ProjectBuildTarget* target = 0L);
 
         int GetConfigurationPriority() const { return 0; }
         int GetConfigurationGroup() const { return cgCompiler; }
         cbConfigurationPanel* GetConfigurationPanel(wxWindow* parent);
-
-        bool IsValidTarget(const wxString& target) const;
 
         void SwitchCompiler(const wxString& id);
         const wxString& GetCurrentCompilerID();
@@ -134,11 +118,11 @@ class CompilerGCC : public cbCompilerPlugin
 
         void OnCompile(wxCommandEvent& event);
         void OnCompileFile(wxCommandEvent& event);
-        void OnCleanFile(wxCommandEvent& event);
         void OnRebuild(wxCommandEvent& event);
         void OnCompileAll(wxCommandEvent& event);
         void OnRebuildAll(wxCommandEvent& event);
         void OnCleanAll(wxCommandEvent& event);
+//        void OnDistClean(wxCommandEvent& event);
         void OnClean(wxCommandEvent& event);
         void OnRun(wxCommandEvent& event);
         void OnProjectCompilerOptions(wxCommandEvent& event);
@@ -149,6 +133,8 @@ class CompilerGCC : public cbCompilerPlugin
         void OnNextError(wxCommandEvent& event);
         void OnPreviousError(wxCommandEvent& event);
         void OnClearErrors(wxCommandEvent& event);
+//        void OnCreateDist(wxCommandEvent& event);
+        void OnExportMakefile(wxCommandEvent& event);
         void OnUpdateUI(wxUpdateUIEvent& event);
         void OnConfig(wxCommandEvent& event);
     private:
@@ -167,11 +153,11 @@ class CompilerGCC : public cbCompilerPlugin
         int GetActiveProcessCount() const;
 
         void SetupEnvironment();
+        void SetEnvironmentForCompiler(const wxString& id, wxString& envPath);
         void OnProjectActivated(CodeBlocksEvent& event);
         void OnProjectLoaded(CodeBlocksEvent& event);
         void OnProjectUnloaded(CodeBlocksEvent& event);
-        void OnWorkspaceClosed(CodeBlocksEvent& event);
-        void OnCompileFileRequest(CodeBlocksEvent& event);
+        /*void OnProjectPopupMenu(wxNotifyEvent& event);*/
         void OnGCCOutput(CodeBlocksEvent& event);
         void OnGCCError(CodeBlocksEvent& event);
         void OnGCCTerminated(CodeBlocksEvent& event);
@@ -179,23 +165,19 @@ class CompilerGCC : public cbCompilerPlugin
 
         void SaveOptions();
         void LoadOptions();
-        void DoRegisterCompilers();
-        void DoPrepareQueue(bool clearLog);
-        void NotifyCleanProject(const wxString& target);
-        void NotifyCleanWorkspace();
+        void DoPrepareQueue();
         int DoRunQueue();
+        bool DoCreateMakefile(bool temporary = true, const wxString& makefile = _T(""));
+        void DoDeleteTempMakefile();
         void DoClearTargetMenu();
         void DoRecreateTargetMenu();
         void DoUpdateTargetMenu(int targetIndex);
         FileTreeData* DoSwitchProjectTemporarily();
         ProjectBuildTarget* DoAskForTarget();
         int DoGUIAskForTarget();
-        void ClearLog(bool switchToLog);
-        void PrepareCompileFile(wxFileName& file);
-        void PrepareCompileFilePM(wxFileName& file);
+        void ClearLog();
         bool CheckProject();
         void AskForActiveProject();
-        void StartCompileFile(wxFileName file);
         void DoGotoNextError();
         void DoGotoPreviousError();
         void DoClearErrors();
@@ -205,21 +187,13 @@ class CompilerGCC : public cbCompilerPlugin
         void LogMessage(const wxString& message, CompilerLineType lt = cltNormal, LogTarget log = ltAll, bool forceErrorColour = false, bool isTitle = false, bool updateProgress = false);
         void SaveBuildLog();
         void InitBuildLog(bool workspaceBuild);
-        void PrintBanner(BuildAction action, cbProject* prj = 0, ProjectBuildTarget* target = 0);
-        bool UseMake(cbProject* project = 0);
-
-        struct CompilerValidResult
-        {
-            Compiler *compiler = nullptr;
-            bool isValid = false;
-        };
-        CompilerValidResult CompilerValid(ProjectBuildTarget* target = 0);
-        void PrintInvalidCompiler(ProjectBuildTarget *target, Compiler *compiler, const wxString &finalMessage);
+        void PrintBanner(cbProject* prj = 0, ProjectBuildTarget* target = 0);
+        bool UseMake(ProjectBuildTarget* target = 0);
+        bool CompilerValid(ProjectBuildTarget* target = 0);
         ProjectBuildTarget* GetBuildTargetForFile(ProjectFile* pf);
+        ProjectBuildTarget* GetBuildTargetForFile(const wxString& file);
         wxString GetMakeCommandFor(MakeCommand cmd, cbProject* project, ProjectBuildTarget* target);
-        int DoBuild(bool clean, bool build);
-        int DoBuild(const wxString& target, bool clean, bool build, bool clearLog=true);
-        int DoWorkspaceBuild(const wxString& target, bool clean, bool build, bool clearLog=true);
+        int DoBuild();
         void CalculateWorkspaceDependencies(wxArrayInt& deps);
         void CalculateProjectDependencies(cbProject* prj, wxArrayInt& deps);
         void InitBuildState(BuildJob job, const wxString& target);
@@ -235,13 +209,9 @@ class CompilerGCC : public cbCompilerPlugin
         void UpdateProjectTargets(cbProject* project);
         wxString GetTargetString(int index = -1);
         void DoClean(const wxArrayString& commands);
-        bool DoCleanWithMake(ProjectBuildTarget* bt);
 
         // active target, currently building project or active project
         wxString GetCurrentCompilerID(ProjectBuildTarget* target);
-
-        wxString GetErrWarnStr();
-        wxString GetMinSecStr();
 
         // when a build is about to start, a preprocessing step runs
         // in PreprocessJob(), that fills m_BuildJobTargetsList with
@@ -259,73 +229,69 @@ class CompilerGCC : public cbCompilerPlugin
         void ExpandTargets(cbProject* project, const wxString& targetName, wxArrayString& result);
         void PreprocessJob(cbProject* project, const wxString& targetName);
         BuildJobTarget GetNextJob();
-        const BuildJobTarget& PeekNextJob();
+        BuildJobTarget& PeekNextJob();
 
-        struct CompilerProcess
-        {
-            PipedProcess* pProcess;
-            wxString      OutputFile;
-            long int      PID;
-        };
-        typedef std::vector<CompilerProcess> CompilerProcessList;
-        CompilerProcessList m_CompilerProcessList;
+        wxArrayString m_Targets; // list of targets contained in the active project
+        int m_RealTargetsStartIndex;
+        int m_RealTargetIndex;
 
-        wxArrayString       m_Targets; // list of targets contained in the active project
-        int                 m_RealTargetsStartIndex;
-        int                 m_RealTargetIndex;
+        CompilerQueue m_CommandQueue;
 
-        CompilerQueue       m_CommandQueue;
-        wxString            m_CompilerId;
-        int                 m_PageIndex;
-        int                 m_ListPageIndex;
-        wxMenu*             m_Menu;
-        wxMenu*             m_TargetMenu;
-        int                 m_TargetIndex;
-        wxMenu*             m_pErrorsMenu;
-        cbProject*          m_pProject;
-        wxToolBar*          m_pTbar;
-        wxTimer             m_timerIdleWakeUp;
-        BuildLogger*        m_pLog;
-        CompilerMessages*   m_pListLog;
-        wxChoice*           m_pToolTarget;
-        bool                m_RunAfterCompile;
-        wxString            m_CdRun;
-        wxString            m_RunCmd;
-        int                 m_LastExitCode;
-        CompilerErrors      m_Errors;
-        wxString            m_LastTargetName;
-        bool                m_NotifiedMaxErrors;
-        wxLongLong          m_StartTime;
+        wxString m_CompilerId;
+
+        wxString m_EnvironmentMsg;
+        int m_PageIndex;
+        int m_ListPageIndex;
+        wxMenu* m_Menu;
+        wxMenu* m_TargetMenu;
+        int m_TargetIndex;
+        wxMenu* m_ErrorsMenu;
+        cbProject* m_Project;
+        wxProcess** m_Processes;
+        size_t m_ParallelProcessCount;
+        wxToolBar* m_pTbar;
+        long int* m_Pid;
+        wxString* m_ProcessOutputFiles;
+        wxTimer m_timerIdleWakeUp;
+        BuildLogger* m_Log;
+        CompilerMessages* m_pListLog;
+        wxChoice* m_ToolTarget;
+        bool m_RunAfterCompile;
+        wxString m_CdRun;
+        wxString m_RunCmd;
+        int m_LastExitCode;
+        CompilerErrors m_Errors;
+        wxString m_LastTargetName;
+        bool m_NotifiedMaxErrors;
+        wxLongLong m_StartTimer;
 
         // build state management
-        cbProject*          m_pBuildingProject; // +
-        wxString            m_BuildingTargetName; // +
-        BuildJob            m_BuildJob;
-        BuildState          m_BuildState;
-        BuildState          m_NextBuildState;
-        cbProject*          m_pLastBuildingProject;
+        cbProject* m_pBuildingProject; // +
+        wxString m_BuildingTargetName; // +
+        BuildJob m_BuildJob;
+        BuildState m_BuildState;
+        BuildState m_NextBuildState;
+        cbProject* m_pLastBuildingProject;
         ProjectBuildTarget* m_pLastBuildingTarget;
-        // Clean and Build
-        bool m_Clean;
-        bool m_Build;
-        // if set and we are reaching NotifyJobDone, we know that we have finished the
-        // last step in a clean/build (aka rebuild)-process and send the cbEVT_COMPILER_FINISHED
-        bool m_LastBuildStep;
         // to decide if post-build steps should run
         bool m_RunTargetPostBuild;
         bool m_RunProjectPostBuild;
 
+        wxString m_OriginalPath;
+        wxString m_LastTempMakefile;
+        bool m_DeleteTempMakefile;
+
         bool m_IsWorkspaceOperation; // true for workspace commands
 
-        wxString   m_BuildLogFilename;
-        wxString   m_BuildLogTitle;
-        wxString   m_BuildLogContents;
+        wxString m_BuildLogFilename;
+        wxString m_BuildLogTitle;
+        wxString m_BuildLogContents;
         wxDateTime m_BuildStartTime;
 
         // build progress
         size_t m_MaxProgress;
         size_t m_CurrentProgress;
-        bool   m_LogBuildProgressPercentage;
+        bool m_LogBuildProgressPercentage;
 
         DECLARE_EVENT_TABLE()
 };

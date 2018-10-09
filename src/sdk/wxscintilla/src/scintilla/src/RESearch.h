@@ -9,10 +9,6 @@
 #ifndef RESEARCH_H
 #define RESEARCH_H
 
-#ifdef SCI_NAMESPACE
-namespace Scintilla {
-#endif
-
 /*
  * The following defines are not meant to be changeable.
  * They are for readability only.
@@ -22,8 +18,8 @@ namespace Scintilla {
 #define BITBLK	MAXCHR/CHRBIT
 
 class CharacterIndexer {
-public:
-	virtual char CharAt(Sci::Position index)=0;
+public: 
+	virtual char CharAt(int index)=0;
 	virtual ~CharacterIndexer() {
 	}
 };
@@ -31,44 +27,36 @@ public:
 class RESearch {
 
 public:
-	explicit RESearch(CharClassify *charClassTable);
-	// No dynamic allocation so default copy constructor and assignment operator are OK.
+	RESearch();
 	~RESearch();
+	void Init();
 	void Clear();
-	void GrabMatches(CharacterIndexer &ci);
-	const char *Compile(const char *pattern, Sci::Position length, bool caseSensitive, bool posix);
-	int Execute(CharacterIndexer &ci, Sci::Position lp, Sci::Position endp);
+	bool GrabMatches(CharacterIndexer &ci);
+	void ChSet(char c);
+	void ChSetWithCase(char c, bool caseSensitive);
+	const char *Compile(const char *pat, int length, bool caseSensitive, bool posix);
+	int Execute(CharacterIndexer &ci, int lp, int endp);
+	void ModifyWord(char *s);
+	int Substitute(CharacterIndexer &ci, char *src, char *dst);
 
-	enum { MAXTAG=10 };
-	enum { MAXNFA=4096 };
-	enum { NOTFOUND=-1 };
+	enum {MAXTAG=10};
+	enum {MAXNFA=2048};
+	enum {NOTFOUND=-1};
 
-	Sci::Position bopat[MAXTAG];
-	Sci::Position eopat[MAXTAG];
-	std::string pat[MAXTAG];
+	int bopat[MAXTAG];
+	int eopat[MAXTAG];
+	char *pat[MAXTAG];
 
 private:
-	void ChSet(unsigned char c);
-	void ChSetWithCase(unsigned char c, bool caseSensitive);
-	int GetBackslashExpression(const char *pattern, int &incr);
+	int PMatch(CharacterIndexer &ci, int lp, int endp, char *ap);
 
-	Sci::Position PMatch(CharacterIndexer &ci, Sci::Position lp, Sci::Position endp, char *ap);
-
-	Sci::Position bol;
-	Sci::Position tagstk[MAXTAG];  /* subpat tag stack */
-	char nfa[MAXNFA];    /* automaton */
+	int bol;
+	int  tagstk[MAXTAG];             /* subpat tag stack..*/
+	char nfa[MAXNFA];		/* automaton..       */
 	int sta;
-	unsigned char bittab[BITBLK]; /* bit table for CCL pre-set bits */
+	char bittab[BITBLK];		/* bit table for CCL */
+						/* pre-set bits...   */
 	int failure;
-	CharClassify *charClass;
-	bool iswordc(unsigned char x) const {
-		return charClass->IsWord(x);
-	}
 };
 
-#ifdef SCI_NAMESPACE
-}
 #endif
-
-#endif
-

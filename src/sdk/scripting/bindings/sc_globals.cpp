@@ -10,7 +10,6 @@
 #include <sdk_precomp.h>
 #ifndef CB_PRECOMP
     #include <wx/string.h>
-    #include <wx/textdlg.h>
     #include <globals.h>
     #include <settings.h>
     #include <manager.h>
@@ -25,6 +24,7 @@
 
 #include <wx/colordlg.h>
 #include <wx/numdlg.h>
+#include <wx/textdlg.h>
 #include <infowindow.h>
 
 namespace ScriptBindings
@@ -35,18 +35,18 @@ namespace ScriptBindings
     void gWarningLog(const wxString& msg){ Manager::Get()->GetLogManager()->LogWarning(msg); }
     void gLog(const wxString& msg){ Manager::Get()->GetLogManager()->Log(msg); }
     int gMessage(const wxString& msg, const wxString& caption, int buttons){ return cbMessageBox(msg, caption, buttons); }
-    void gShowMessage(const wxString& msg){ cbMessageBox(msg, _("Script message"), wxICON_INFORMATION | wxOK); }
-    void gShowMessageWarn(const wxString& msg){ cbMessageBox(msg, _("Script warning"), wxICON_WARNING | wxOK); }
-    void gShowMessageError(const wxString& msg){ cbMessageBox(msg, _("Script error"), wxICON_ERROR | wxOK); }
-    void gShowMessageInfo(const wxString& msg){ cbMessageBox(msg, _("Script information"), wxICON_INFORMATION | wxOK); }
+    void gShowMessage(const wxString& msg){ cbMessageBox(msg, _("Script message")); }
+    void gShowMessageWarn(const wxString& msg){ cbMessageBox(msg, _("Script warning"), wxICON_WARNING); }
+    void gShowMessageError(const wxString& msg){ cbMessageBox(msg, _("Script error"), wxICON_ERROR); }
+    void gShowMessageInfo(const wxString& msg){ cbMessageBox(msg, _("Script information"), wxICON_INFORMATION); }
     wxString gReplaceMacros(const wxString& buffer){ return Manager::Get()->GetMacrosManager()->ReplaceMacros(buffer); }
 
     SQInteger IsNull(HSQUIRRELVM v)
     {
         StackHandler sa(v);
-        SQUserPointer up = nullptr;
-        sq_getinstanceup(v, 2, &up, nullptr);
-        return sa.Return(up == nullptr);
+        SQUserPointer up = 0;
+        sq_getinstanceup(v, 2, &up, 0);
+        return sa.Return(up == 0L);
     }
 
     ProjectManager* getPM()
@@ -84,76 +84,6 @@ namespace ScriptBindings
         }
         return Manager::Get()->GetPluginManager()->InstallPlugin(pluginName, allUsers, confirm);
     }
-    int ExecutePlugin(const wxString& pluginName)
-    {
-        return Manager::Get()->GetPluginManager()->ExecutePlugin(pluginName);
-    }
-    int ConfigurePlugin(const wxString& pluginName)
-    {
-        return 0; /* leaving script binding intact for compatibility, but this is factually not implemented at all */
-    }
-    // locate and call a menu from string (e.g. "/Valgrind/Run Valgrind::MemCheck")
-    void CallMenu(const wxString& menuPath)
-    {
-        // this code is partially based on MenuItemsManager::CreateFromString()
-        wxMenuBar* mbar = Manager::Get()->GetAppFrame()->GetMenuBar();
-        wxMenu* menu = nullptr;
-        size_t pos = 0;
-        while (true)
-        {
-            // ignore consecutive slashes
-            while (pos < menuPath.Length() && menuPath.GetChar(pos) == _T('/'))
-                ++pos;
-
-            // find next slash
-            size_t nextPos = pos;
-            while (nextPos < menuPath.Length() && menuPath.GetChar(++nextPos) != _T('/'))
-                ;
-
-            wxString current = menuPath.Mid(pos, nextPos - pos);
-            if (current.IsEmpty())
-                break;
-            bool isLast = nextPos >= menuPath.Length();
-            // current holds the current search string
-
-            if (!menu) // no menu yet? look in menubar
-            {
-                int menuPos = mbar->FindMenu(current);
-                if (menuPos == wxNOT_FOUND)
-                    break; // failed
-                else
-                    menu = mbar->GetMenu(menuPos);
-            }
-            else
-            {
-                if (isLast)
-                {
-                    int id = menu->FindItem(current);
-                    if (id != wxNOT_FOUND)
-                    {
-                        wxCommandEvent evt(wxEVT_COMMAND_MENU_SELECTED, id);
-                        #if wxCHECK_VERSION(3, 0, 0)
-                        mbar->GetEventHandler()->ProcessEvent(evt);
-                        #else
-                        if ( !mbar->ProcessEvent(evt) )
-                        {
-                            wxString msg; msg.Printf(_("Calling the menu '%s' with ID %d failed."), menuPath.wx_str(), id);
-                            cbMessageBox(msg, _("Script error"), wxICON_WARNING);
-                        }
-                        #endif
-                        // done
-                    }
-                    break;
-                }
-                int existing = menu->FindItem(current);
-                if (existing != wxNOT_FOUND)
-                    menu = menu->GetMenuItems()[existing]->GetSubMenu();
-                else
-                    break; // failed
-            }
-            pos = nextPos; // prepare for next loop
-        }
-    }
     void Include(const wxString& filename)
     {
         getSM()->LoadScript(filename);
@@ -185,17 +115,8 @@ namespace ScriptBindings
     }
     wxString wx_GetTextFromUser(const wxString& message, const wxString& caption, const wxString& default_value)
     {
-        return cbGetTextFromUser(message, caption, default_value);
+        return wxGetTextFromUser(message, caption, default_value);
     }
-
-    long wxString_ToLong(wxString const &str)
-    {
-        long value;
-        if(!str.ToLong(&value))
-            return -1;
-        return value;
-    }
-
 
     void Register_Globals()
     {
@@ -232,12 +153,7 @@ namespace ScriptBindings
 
         SqPlus::RegisterGlobal(ConfigManager::GetFolder, "GetFolder");
         SqPlus::RegisterGlobal(ConfigManager::LocateDataFile, "LocateDataFile");
-
-        SqPlus::RegisterGlobal(ExecutePlugin, "ExecuteToolPlugin");
-        SqPlus::RegisterGlobal(ConfigurePlugin, "ConfigureToolPlugin");
         SqPlus::RegisterGlobal(InstallPlugin, "InstallPlugin");
-
-        SqPlus::RegisterGlobal(CallMenu, "CallMenu");
 
         SqPlus::RegisterGlobal(Include, "Include");
         SquirrelVM::CreateFunctionGlobal(Require, "Require", "*");
@@ -252,7 +168,5 @@ namespace ScriptBindings
         SqPlus::RegisterGlobal(wx_GetNumberFromUser, "wxGetNumberFromUser");
         SqPlus::RegisterGlobal(wx_GetPasswordFromUser, "wxGetPasswordFromUser");
         SqPlus::RegisterGlobal(wx_GetTextFromUser, "wxGetTextFromUser");
-
-        SqPlus::RegisterGlobal(wxString_ToLong, "wxString_ToLong");
     }
 }

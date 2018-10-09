@@ -7,7 +7,7 @@
 #include <ctype.h>
 #include <assert.h>
 
-#ifdef SQUNICODE
+#ifdef _UNICODE
 #define scstrchr wcschr
 #define scsnprintf wsnprintf
 #define scatoi _wtoi
@@ -44,7 +44,7 @@ static SQInteger validate_format(HSQUIRRELVM v, SQChar *fmt, const SQChar *src, 
 		width = 0;
 	if (src[n] == '.') {
 	    n++;
-
+    	
 		wc = 0;
 		while (scisdigit(src[n])) {
 			swidth[wc] = src[n];
@@ -65,16 +65,15 @@ static SQInteger validate_format(HSQUIRRELVM v, SQChar *fmt, const SQChar *src, 
 	return n;
 }
 
-
-SQRESULT sqstd_format(HSQUIRRELVM v,SQInteger nformatstringidx,SQInteger *outlen,SQChar **output)
+static SQInteger _string_format(HSQUIRRELVM v)
 {
 	const SQChar *format;
 	SQChar *dest;
 	SQChar fmt[MAX_FORMAT_LEN];
-	sq_getstring(v,nformatstringidx,&format);
-	SQInteger allocated = (sq_getsize(v,nformatstringidx)+2)*sizeof(SQChar);
+	sq_getstring(v,2,&format);
+	SQInteger allocated = (sq_getsize(v,2)+1)*sizeof(SQChar);
 	dest = sq_getscratchpad(v,allocated);
-	SQInteger n = 0,i = 0, nparam = nformatstringidx+1, w = 0;
+	SQInteger n = 0,i = 0, nparam = 3, w = 0;
 	while(format[n] != '\0') {
 		if(format[n] != '%') {
 			assert(i < allocated);
@@ -83,13 +82,12 @@ SQRESULT sqstd_format(HSQUIRRELVM v,SQInteger nformatstringidx,SQInteger *outlen
 		}
 		else if(format[n+1] == '%') { //handles %%
 				dest[i++] = '%';
-				n += 2;
+				n += 2; 
 		}
 		else {
 			n++;
 			if( nparam > sq_gettop(v) )
-                // C::B patch: Correct misspelled "parameters"
-				return sq_throwerror(v,_SC("not enough parameters for the given format string"));
+				return sq_throwerror(v,_SC("not enough paramters for the given format string"));
 			n = validate_format(v,fmt,format,n,w);
 			if(n < 0) return -1;
 			SQInteger addlen = 0;
@@ -99,19 +97,19 @@ SQRESULT sqstd_format(HSQUIRRELVM v,SQInteger nformatstringidx,SQInteger *outlen
 			SQFloat tf;
 			switch(format[n]) {
 			case 's':
-				if(SQ_FAILED(sq_getstring(v,nparam,&ts)))
+				if(SQ_FAILED(sq_getstring(v,nparam,&ts))) 
 					return sq_throwerror(v,_SC("string expected for the specified format"));
 				addlen = (sq_getsize(v,nparam)*sizeof(SQChar))+((w+1)*sizeof(SQChar));
 				valtype = 's';
 				break;
 			case 'i': case 'd': case 'c':case 'o':  case 'u':  case 'x':  case 'X':
-				if(SQ_FAILED(sq_getinteger(v,nparam,&ti)))
+				if(SQ_FAILED(sq_getinteger(v,nparam,&ti))) 
 					return sq_throwerror(v,_SC("integer expected for the specified format"));
 				addlen = (ADDITIONAL_FORMAT_SPACE)+((w+1)*sizeof(SQChar));
 				valtype = 'i';
 				break;
 			case 'f': case 'g': case 'G': case 'e':  case 'E':
-				if(SQ_FAILED(sq_getfloat(v,nparam,&tf)))
+				if(SQ_FAILED(sq_getfloat(v,nparam,&tf))) 
 					return sq_throwerror(v,_SC("float expected for the specified format"));
 				addlen = (ADDITIONAL_FORMAT_SPACE)+((w+1)*sizeof(SQChar));
 				valtype = 'f';
@@ -120,7 +118,7 @@ SQRESULT sqstd_format(HSQUIRRELVM v,SQInteger nformatstringidx,SQInteger *outlen
 				return sq_throwerror(v,_SC("invalid format"));
 			}
 			n++;
-			allocated += addlen + sizeof(SQChar);
+			allocated += addlen;
 			dest = sq_getscratchpad(v,allocated);
 			switch(valtype) {
 			case 's': i += scsprintf(&dest[i],fmt,ts); break;
@@ -130,19 +128,7 @@ SQRESULT sqstd_format(HSQUIRRELVM v,SQInteger nformatstringidx,SQInteger *outlen
 			nparam ++;
 		}
 	}
-	*outlen = i;
-	dest[i] = '\0';
-	*output = dest;
-	return SQ_OK;
-}
-
-static SQInteger _string_format(HSQUIRRELVM v)
-{
-	SQChar *dest = NULL;
-	SQInteger length = 0;
-	if(SQ_FAILED(sqstd_format(v,2,&length,&dest)))
-		return -1;
-	sq_pushstring(v,dest,length);
+	sq_pushstring(v,dest,i);
 	return 1;
 }
 
@@ -216,10 +202,9 @@ static SQInteger _string_split(HSQUIRRELVM v)
 
 #define SETUP_REX(v) \
 	SQRex *self = NULL; \
-	sq_getinstanceup(v,1,(SQUserPointer *)&self,0);
+	sq_getinstanceup(v,1,(SQUserPointer *)&self,0); 
 
-// C::B patch: Make the compiler happy by commenting unused variables
-static SQInteger _rexobj_releasehook(SQUserPointer p, SQInteger /*size*/)
+static SQInteger _rexobj_releasehook(SQUserPointer p, SQInteger size)
 {
 	SQRex *self = ((SQRex *)p);
 	sqstd_rex_free(self);

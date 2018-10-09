@@ -9,16 +9,15 @@
 
 #include "sdk.h"
 #ifndef CB_PRECOMP
-    #include <wx/button.h>
-    #include <wx/intl.h>
-    #include <wx/checkbox.h>
-    #include <wx/radiobox.h>
-    #include <wx/string.h>
-    #include <wx/xrc/xmlres.h>
-    #include "cbeditor.h"
-    #include "configmanager.h"
-    #include "editormanager.h"
-    #include "manager.h"
+#include <wx/intl.h>
+#include <wx/checkbox.h>
+#include <wx/radiobox.h>
+#include <wx/string.h>
+#include <wx/xrc/xmlres.h>
+#include "cbeditor.h"
+#include "configmanager.h"
+#include "editormanager.h"
+#include "manager.h"
 #endif
 #include "cbstyledtextctrl.h"
 
@@ -27,8 +26,7 @@
 PrintDialog::PrintDialog(wxWindow* parent)
 {
 	//ctor
-	wxXmlResource::Get()->LoadObject(this, parent, _T("dlgPrint"),_T("wxScrollingDialog"));
-	XRCCTRL(*this, "wxID_OK", wxButton)->SetDefault();
+	wxXmlResource::Get()->LoadDialog(this, parent, _T("dlgPrint"));
 
 	cbEditor* ed = Manager::Get()->GetEditorManager()->GetBuiltinActiveEditor();
 	if (ed)
@@ -73,5 +71,5 @@ void PrintDialog::EndModal(int retCode)
         Manager::Get()->GetConfigManager(_T("app"))->Write(_T("/print_mode"), (int)mode);
         Manager::Get()->GetConfigManager(_T("app"))->Write(_T("/print_line_numbers"), GetPrintLineNumbers());
     }
-    return wxScrollingDialog::EndModal(retCode);
+    return wxDialog::EndModal(retCode);
 }

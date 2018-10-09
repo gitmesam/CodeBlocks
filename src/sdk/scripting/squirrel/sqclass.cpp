@@ -12,7 +12,6 @@ SQClass::SQClass(SQSharedState *ss,SQClass *base)
 	_base = base;
 	_typetag = 0;
 	_hook = NULL;
-	_udsize = 0;
 	_metamethods.resize(MT_LAST); //size it to max size
 	if(_base) {
 		_defaultvalues.copy(base->_defaultvalues);
@@ -27,7 +26,7 @@ SQClass::SQClass(SQSharedState *ss,SQClass *base)
 	ADD_TO_CHAIN(&_sharedstate->_gc_chain, this);
 }
 
-void SQClass::Finalize() {
+void SQClass::Finalize() { 
 	_attributes = _null_;
 	_defaultvalues.resize(0);
 	_methods.resize(0);
@@ -47,7 +46,7 @@ SQClass::~SQClass()
 bool SQClass::NewSlot(SQSharedState *ss,const SQObjectPtr &key,const SQObjectPtr &val,bool bstatic)
 {
 	SQObjectPtr temp;
-	if(_locked)
+	if(_locked) 
 		return false; //the class already has an instance so cannot be modified
 	if(_members->Get(key,temp) && _isfield(temp)) //overrides the default value
 	{
@@ -56,13 +55,13 @@ bool SQClass::NewSlot(SQSharedState *ss,const SQObjectPtr &key,const SQObjectPtr
 	}
 	if(type(val) == OT_CLOSURE || type(val) == OT_NATIVECLOSURE || bstatic) {
 		SQInteger mmidx;
-		if((type(val) == OT_CLOSURE || type(val) == OT_NATIVECLOSURE) &&
+		if((type(val) == OT_CLOSURE || type(val) == OT_NATIVECLOSURE) && 
 			(mmidx = ss->GetMetaMethodIdxByName(key)) != -1) {
 			_metamethods[mmidx] = val;
-		}
+		} 
 		else {
 			if(type(temp) == OT_NULL) {
-				SQClassMember m;
+				SQClassMemeber m;
 				m.val = val;
 				_members->NewSlot(key,SQObjectPtr(_make_method_idx(_methods.size())));
 				_methods.push_back(m);
@@ -73,7 +72,7 @@ bool SQClass::NewSlot(SQSharedState *ss,const SQObjectPtr &key,const SQObjectPtr
 		}
 		return true;
 	}
-	SQClassMember m;
+	SQClassMemeber m;
 	m.val = val;
 	_members->NewSlot(key,SQObjectPtr(_make_field_idx(_defaultvalues.size())));
 	_defaultvalues.push_back(m);
@@ -140,8 +139,8 @@ SQInstance::SQInstance(SQSharedState *ss, SQClass *c, SQInteger memsize)
 {
 	_memsize = memsize;
 	_class = c;
-	SQUnsignedInteger nvalues = _class->_defaultvalues.size();
-	for(SQUnsignedInteger n = 0; n < nvalues; n++) {
+	_nvalues = _class->_defaultvalues.size();
+	for(SQUnsignedInteger n = 0; n < _nvalues; n++) {
 		new (&_values[n]) SQObjectPtr(_class->_defaultvalues[n].val);
 	}
 	Init(ss);
@@ -151,18 +150,17 @@ SQInstance::SQInstance(SQSharedState *ss, SQInstance *i, SQInteger memsize)
 {
 	_memsize = memsize;
 	_class = i->_class;
-	SQUnsignedInteger nvalues = _class->_defaultvalues.size();
-	for(SQUnsignedInteger n = 0; n < nvalues; n++) {
+	_nvalues = _class->_defaultvalues.size();
+	for(SQUnsignedInteger n = 0; n < _nvalues; n++) {
 		new (&_values[n]) SQObjectPtr(i->_values[n]);
 	}
 	Init(ss);
 }
 
-void SQInstance::Finalize()
+void SQInstance::Finalize() 
 {
-	SQUnsignedInteger nvalues = _class->_defaultvalues.size();
 	__ObjRelease(_class);
-	for(SQUnsignedInteger i = 0; i < nvalues; i++) {
+	for(SQUnsignedInteger i = 0; i < _nvalues; i++) {
 		_values[i] = _null_;
 	}
 }
@@ -170,11 +168,10 @@ void SQInstance::Finalize()
 SQInstance::~SQInstance()
 {
 	REMOVE_FROM_CHAIN(&_sharedstate->_gc_chain, this);
-	if(_class){ Finalize(); } //if _class is null it was already finalized by the GC
+	Finalize();
 }
 
-// C::B patch: Make the compiler happy by commenting unused variables
-bool SQInstance::GetMetaMethod(SQVM * /*v*/,SQMetaMethod mm,SQObjectPtr &res)
+bool SQInstance::GetMetaMethod(SQVM *v,SQMetaMethod mm,SQObjectPtr &res)
 {
 	if(type(_class->_metamethods[mm]) != OT_NULL) {
 		res = _class->_metamethods[mm];

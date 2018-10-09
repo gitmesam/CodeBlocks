@@ -31,59 +31,64 @@
 #include <wx/textctrl.h>
 #include <wx/statline.h>
 #include <wx/button.h>
-#include "scrollingdialog.h"
+#include <wx/dialog.h>
 //*)
 
-
-class wxsSimpleFontEditorDlg: public wxScrollingDialog
+class wxsSimpleFontEditorDlg: public wxDialog
 {
-    public:
+	public:
 
-        wxsSimpleFontEditorDlg(wxWindow* parent,wxsFontData& Data,wxWindowID id = -1);
-        virtual ~wxsSimpleFontEditorDlg();
+		wxsSimpleFontEditorDlg(wxWindow* parent,wxsFontData& Data,wxWindowID id = -1);
+		virtual ~wxsSimpleFontEditorDlg();
 
-        //(*Identifiers(wxsSimpleFontEditorDlg)
-        static const long ID_STATICTEXT1;
-        static const long ID_STATICLINE2;
-        static const long ID_BUTTON1;
-        static const long ID_BUTTON3;
-        static const long ID_STATICLINE1;
-        static const long ID_BUTTON2;
-        static const long ID_TEXTCTRL1;
-        static const long ID_STATICTEXT2;
-        static const long ID_STATICTEXT3;
-        //*)
+		//(*Identifiers(wxsSimpleFontEditorDlg)
+		static const long ID_STATICTEXT1;
+		static const long ID_STATICLINE2;
+		static const long ID_BUTTON1;
+		static const long ID_BUTTON3;
+		static const long ID_STATICLINE1;
+		static const long ID_BUTTON2;
+		static const long ID_TEXTCTRL1;
+		static const long ID_STATICTEXT2;
+		static const long ID_STATICTEXT3;
+		//*)
 
-    private:
+	private:
 
-        //(*Handlers(wxsSimpleFontEditorDlg)
-        void OnOK(wxCommandEvent& event);
-        void OnButton1Click(wxCommandEvent& event);
-        void OnButton2Click(wxCommandEvent& event);
-        void OnButton3Click(wxCommandEvent& event);
-        //*)
+		//(*Handlers(wxsSimpleFontEditorDlg)
+		void OnOK(wxCommandEvent& event);
+		void OnButton1Click(wxCommandEvent& event);
+		void OnButton2Click(wxCommandEvent& event);
+		void OnButton3Click(wxCommandEvent& event);
+		//*)
 
-        //(*Declarations(wxsSimpleFontEditorDlg)
-        wxStaticText* StaticText2;
-        wxButton* Button1;
-        wxTextCtrl* TestArea;
-        wxFlexGridSizer* FlexGridSizer2;
-        wxBoxSizer* BoxSizer2;
-        wxStaticText* StaticText3;
-        wxButton* Button2;
-        wxStaticLine* StaticLine2;
-        wxStaticText* FontDescription;
-        wxButton* Button3;
-        wxStaticLine* StaticLine1;
-        wxStaticBoxSizer* StaticBoxSizer1;
-        //*)
+		//(*Declarations(wxsSimpleFontEditorDlg)
+		wxBoxSizer* BoxSizer4;
+		wxStaticBoxSizer* StaticBoxSizer2;
+		wxStaticText* StaticText2;
+		wxButton* Button1;
+		wxTextCtrl* TestArea;
+		wxFlexGridSizer* FlexGridSizer2;
+		wxBoxSizer* BoxSizer2;
+		wxStaticText* StaticText3;
+		wxButton* Button2;
+		wxStaticLine* StaticLine2;
+		wxStaticText* FontDescription;
+		wxButton* Button3;
+		wxStaticLine* StaticLine1;
+		wxBoxSizer* BoxSizer1;
+		wxStaticBoxSizer* StaticBoxSizer1;
+		wxFlexGridSizer* FlexGridSizer1;
+		wxBoxSizer* BoxSizer3;
+		wxStdDialogButtonSizer* StdDialogButtonSizer1;
+		//*)
 
-        wxsFontData& m_Data;
-        wxsFontData  m_WorkingCopy;
+		wxsFontData& m_Data;
+		wxsFontData  m_WorkingCopy;
 
-        void UpdateFontDescription();
+		void UpdateFontDescription();
 
-        DECLARE_EVENT_TABLE()
+		DECLARE_EVENT_TABLE()
 };
 
 #endif

@@ -26,17 +26,17 @@ class DLLIMPORT ProjectLoader : public IBaseLoader
           * @param project The project to handle (load/save). */
         ProjectLoader(cbProject* project);
         /// Destructor.
-        ~ProjectLoader() override;
+        virtual ~ProjectLoader();
 
         /** Open a file.
           * @param filename The file to open.
           * @return True on success, false on failure. */
-        bool Open(const wxString& filename) override;
+        bool Open(const wxString& filename);
 
         /** Save a file.
           * @param filename The file to save.
           * @return True on success, false on failure. */
-        bool Save(const wxString& filename) override;
+        bool Save(const wxString& filename);
 
         /** Open a file.
           * This version of Open, will return a copy of the \<Extensions\> element (if found).
@@ -70,12 +70,12 @@ class DLLIMPORT ProjectLoader : public IBaseLoader
         bool FileModified(){ return m_OpenDirty; }
     protected:
         void DoProjectOptions(TiXmlElement* parentNode);
-        void DoCompilerOptions(TiXmlElement* parentNode, ProjectBuildTarget* target = nullptr);
-        void DoResourceCompilerOptions(TiXmlElement* parentNode, ProjectBuildTarget* target = nullptr);
-        void DoLinkerOptions(TiXmlElement* parentNode, ProjectBuildTarget* target = nullptr);
-        void DoIncludesOptions(TiXmlElement* parentNode, ProjectBuildTarget* target = nullptr);
-        void DoLibsOptions(TiXmlElement* parentNode, ProjectBuildTarget* target = nullptr);
-        void DoExtraCommands(TiXmlElement* parentNode, ProjectBuildTarget* target = nullptr);
+        void DoCompilerOptions(TiXmlElement* parentNode, ProjectBuildTarget* target = 0L);
+        void DoResourceCompilerOptions(TiXmlElement* parentNode, ProjectBuildTarget* target = 0L);
+        void DoLinkerOptions(TiXmlElement* parentNode, ProjectBuildTarget* target = 0L);
+        void DoIncludesOptions(TiXmlElement* parentNode, ProjectBuildTarget* target = 0L);
+        void DoLibsOptions(TiXmlElement* parentNode, ProjectBuildTarget* target = 0L);
+        void DoExtraCommands(TiXmlElement* parentNode, ProjectBuildTarget* target = 0L);
         void DoMakeCommands(TiXmlElement* parentNode, CompileTargetBase* target);
         void DoVirtualTargets(TiXmlElement* parentNode);
 
@@ -85,16 +85,16 @@ class DLLIMPORT ProjectLoader : public IBaseLoader
 
         void DoEnvironment(TiXmlElement* parentNode, CompileOptionsBase* base);
 
-        void DoUnits(const TiXmlElement* parentNode);
-        void DoUnitOptions(const TiXmlElement* parentNode, ProjectFile* file);
+        void DoUnits(TiXmlElement* parentNode);
+        void DoUnitOptions(TiXmlElement* parentNode, ProjectFile* file);
     private:
         void ConvertVersion_Pre_1_1();
         void ConvertLibraries(CompileTargetBase* object);
 
         // convenience functions, used in Save()
-        TiXmlElement* AddElement(TiXmlElement* parent, const char* name, const char* attr = nullptr, const wxString& attribute = wxEmptyString);
+        TiXmlElement* AddElement(TiXmlElement* parent, const char* name, const char* attr = 0, const wxString& attribute = wxEmptyString);
         TiXmlElement* AddElement(TiXmlElement* parent, const char* name, const char* attr, int attribute);
-        void AddArrayOfElements(TiXmlElement* parent, const char* name, const char* attr, const wxArrayString& array, bool isPath = false);
+        void AddArrayOfElements(TiXmlElement* parent, const char* name, const char* attr, const wxArrayString& array);
         void SaveEnvironment(TiXmlElement* parent, CompileOptionsBase* base);
 
         // accepts a questionable compiler index and returns a valid compiler index

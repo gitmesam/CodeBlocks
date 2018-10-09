@@ -26,8 +26,6 @@
 #include <wx/string.h>
 #include <wx/menu.h>
 
-#include "prep.h"
-
 class wxsResource;
 class wxsProject;
 
@@ -48,7 +46,7 @@ class wxsResourceFactory
         /** \brief Building external resource object */
         static wxsResource* BuildExternal(const wxString& FileName);
 
-        /** \brief Building wxSmith menu entries */
+        /** \brief Building wxSmith menu enteries */
         static void BuildSmithMenu(wxMenu* menu);
 
         /** \brief Processing menu event for creating new resources
@@ -82,7 +80,7 @@ class wxsResourceFactory
         /** \brief Called when plugin is being released */
         virtual void OnRelease() {}
 
-        /** \brief Getting number of resource types inside this factory */
+        /** \brief Getting number of resouce types inside this factory */
         virtual int OnGetCount() = 0;
 
         /** \brief Checking if given resource can be main in application */
@@ -92,10 +90,10 @@ class wxsResourceFactory
         virtual wxsResource* OnCreate(int Number,wxsProject* Project) = 0;
 
         /** \brief Checking if factory can handle given file as external resource */
-        virtual bool OnCanHandleExternal(cb_unused const wxString& FileName) { return false; }
+        virtual bool OnCanHandleExternal(const wxString& FileName) { return false; }
 
         /** \brief Building external resource object */
-        virtual wxsResource* OnBuildExternal(cb_unused const wxString& FileName) { return 0; }
+        virtual wxsResource* OnBuildExternal(const wxString& FileName) { return 0; }
 
         /** \brief Function creating new resource object
          *
@@ -104,10 +102,10 @@ class wxsResourceFactory
          * data. Usually it will require some dialog box before creating resource
          * to get needed params.
          */
-        virtual bool OnNewWizard(cb_unused int Number,wxsProject* Project) = 0;
+        virtual bool OnNewWizard(int Number,wxsProject* Project) = 0;
 
         /** \brief Function getting icon in resource browser for this resource entry */
-        virtual int OnResourceTreeIcon(cb_unused int Number) { return -1; }
+        virtual int OnResourceTreeIcon(int Number) { return -1; }
 
     private:
 

@@ -43,7 +43,7 @@ const char *search(const char *source, const char *_header, time_t *time)
 	int system = (_header[0] == '<');
 	LIST *list = searchdirs->next;
 	
-	/* D support */
+	//D support
 	int dMode=0;
 	int fnlen=strlen(source);
 	if(source[fnlen-2]=='.' && source[fnlen-1]=='d')
@@ -57,13 +57,6 @@ const char *search(const char *source, const char *_header, time_t *time)
 	path_parse(source, f);
 	path_parent(f);
 	path_build(f, buf3, 1);
-
-	/* C::B patch: Fix bug with usage of root folder */
-# if PATH_DELIM == '\\'
-	/* Special case for D:/ - dirname is D:/, not "D:" */
-	if ((strlen(buf3)==3) && (buf3[1]==':') && ((buf3[2]=='\\') || (buf3[2]=='/')))
-		buf3[2] = 0;
-# endif
 
 	if (DEBUG_SEARCH)
 		printf( "search %s\n  included by %s\n", _header, source);
@@ -150,7 +143,7 @@ strcpy(buf, buf2);
 	if(!dMode)
 	{
 #ifdef SEARCH_OPTIM
-		/* remember that this file could not be found */
+		// remember that this file could not be found
 		{
 			char key[MAXJPATH] = "";
 			SEARCH search, *s = &search;
@@ -171,7 +164,7 @@ strcpy(buf, buf2);
 		*time = 0;
 		return NULL;
 	}
-	/* D support (look in current directory) */
+	//D support (look in current directory)
 	else
 	{
 		f->f_root.ptr = 0;
@@ -216,7 +209,7 @@ strcpy(buf, buf2);
 			return newstr(buf);
 		
 #ifdef SEARCH_OPTIM
-		/* remember that this file could not be found */
+		// remember that this file could not be found
 		{
 			char key[MAXJPATH] = "";
 			SEARCH search, *s = &search;
@@ -244,7 +237,7 @@ void search_adddir(const char *path)
 	char buf[MAXJPATH];
 
 	path_split(path, &f);
-	path_normalize(&f, NULL); /* path_setcwd() should have been called */
+	path_normalize(&f, NULL); // path_setcwd() should have been called
 	path_tostring(&f, buf);
 	searchdirs = list_new(searchdirs, buf, 0);
 

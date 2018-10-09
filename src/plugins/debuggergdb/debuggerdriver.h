@@ -16,13 +16,15 @@
 #include <wx/regex.h>
 #include <globals.h>
 
-#define NOT_IMPLEMENTED()   \
-    do {                    \
-        DebugLog(wxString(cbC2U(__PRETTY_FUNCTION__)) + _T(": Not implemented in driver"));     \
-        Log(wxString(cbC2U(__PRETTY_FUNCTION__)) + _T(": Not implemented in driver"));           \
-    } while(0)
+#define NOT_IMPLEMENTED() DebugLog(wxString(cbC2U(__PRETTY_FUNCTION__)) + _T(": Not implemented in driver"))
 
 class DebuggerGDB;
+class DebuggerTree;
+class BacktraceDlg;
+class DisassemblyDlg;
+class CPURegistersDlg;
+class ExamineMemoryDlg;
+class ThreadsDlg;
 class Compiler;
 class ProjectBuildTarget;
 
@@ -40,8 +42,6 @@ class DebuggerDriver
             Low = 0,
             High
         };
-        typedef std::vector<cb::shared_ptr<cbStackFrame> > StackFrameContainer;
-        typedef std::vector<cb::shared_ptr<cbThread> > ThreadsContainer;
 
         DebuggerDriver(DebuggerGDB* plugin);
         virtual ~DebuggerDriver();
@@ -49,11 +49,16 @@ class DebuggerDriver
         void Log(const wxString& msg);
         void DebugLog(const wxString& msg);
 
-        DebuggerGDB* GetDebugger() { return m_pDBG; }
-
         ////////////////////////////////
         // BEFORE PROCESS STARTS - BEGIN
         ////////////////////////////////
+
+        /** Inform the driver about the plugin's available (not necessarily visible) debugging windows. */
+        virtual void SetDebugWindows(BacktraceDlg* b,
+                                    DisassemblyDlg* d,
+                                    CPURegistersDlg* r,
+                                    ExamineMemoryDlg* m,
+                                    ThreadsDlg* t);
 
         /** Add a directory in search list. */
         virtual void AddDirectory(const wxString& dir);
@@ -68,20 +73,16 @@ class DebuggerDriver
         virtual void SetArguments(const wxString& args);
 
         /** Get the command-line to launch the debugger. */
-        virtual wxString GetCommandLine(const wxString& debugger,
-                                        const wxString& debuggee,
-                                        const wxString &userArguments) = 0;
+        virtual wxString GetCommandLine(const wxString& debugger, const wxString& debuggee) = 0;
 
         /** Get the command-line to launch the debugger. */
-        virtual wxString GetCommandLine(const wxString& debugger, int pid, const wxString &userArguments) = 0;
-
-        /** Sets the target */
-        virtual void SetTarget(ProjectBuildTarget* target) = 0;
+        virtual wxString GetCommandLine(const wxString& debugger, int pid) = 0;
 
         /** Prepares the debugging process by setting up search dirs etc.
+            @param target The build target to debug.
             @param isConsole If true, the debuggee is a console executable.
         */
-        virtual void Prepare(bool isConsole, int printElements) = 0;
+        virtual void Prepare(ProjectBuildTarget* target, bool isConsole) = 0;
 
         /** Begin the debugging process by launching a program. */
         virtual void Start(bool breakOnEntry) = 0;
@@ -96,10 +97,8 @@ class DebuggerDriver
         virtual void Continue() = 0;
         virtual void Step() = 0;
         virtual void StepInstruction() = 0;
-        virtual void StepIntoInstruction() = 0;
         virtual void StepIn() = 0;
         virtual void StepOut() = 0;
-        virtual void SetNextStatement(const wxString& filename, int line) = 0;
         virtual void Backtrace() = 0;
         virtual void Disassemble() = 0;
         virtual void CPURegisters() = 0;
@@ -114,18 +113,16 @@ class DebuggerDriver
         virtual void InfoFPU() = 0;
         virtual void InfoSignals() = 0;
 
-        virtual void EnableCatchingThrow(bool enable) = 0;
-
         /** Add a breakpoint.
             @param bp The breakpoint to add.
             @param editor The editor this breakpoint is set (might be NULL).
         */
-        virtual void AddBreakpoint(cb::shared_ptr<DebuggerBreakpoint> bp) = 0;
+        virtual void AddBreakpoint(DebuggerBreakpoint* bp) = 0;
 
         /** Remove a breakpoint.
             @param bp The breakpoint to remove. If NULL, all reakpoints are removed.
         */
-        virtual void RemoveBreakpoint(cb::shared_ptr<DebuggerBreakpoint> bp) = 0;
+        virtual void RemoveBreakpoint(DebuggerBreakpoint* bp) = 0;
 
         /** Evaluate a symbol.
             @param symbol The symbol to evaluate.
@@ -138,73 +135,36 @@ class DebuggerDriver
             @param doArgs Display values of function arguments.
             @param tree The watches tree control.
         */
-        virtual void UpdateWatches(cb::shared_ptr<GDBWatch> localsWatch, cb::shared_ptr<GDBWatch> funcArgsWatch,
-                                   WatchesContainer &watches) = 0;
-        virtual void UpdateWatch(cb::shared_ptr<GDBWatch> const &watch) = 0;
-        virtual void UpdateWatchLocalsArgs(cb::shared_ptr<GDBWatch> const &watch, bool locals) = 0;
+        virtual void UpdateWatches(bool doLocals, bool doArgs, DebuggerTree* tree) = 0;
 
-        /** Attach to process */
-        virtual void Attach(int pid) = 0;
         /** Detach from running process. */
         virtual void Detach() = 0;
 
         /** Parse debugger's output. */
         virtual void ParseOutput(const wxString& output) = 0;
 
-        /** Is debugging started */
-        virtual bool IsDebuggingStarted() const = 0;
         /** Is the program stopped? */
-        bool IsProgramStopped() const { return m_ProgramIsStopped; }
-        void MarkProgramStopped(bool stopped) { m_ProgramIsStopped = stopped; }
-        /** Is the driver processing some commands? */
-        bool IsQueueBusy() const { return m_QueueBusy; }
+        virtual bool IsStopped(){ return m_ProgramIsStopped; }
+        /** Get debugger cursor. */
+        virtual const Cursor& GetCursor() const { return m_Cursor; }
         /** Set child PID (debuggee's). Usually set by debugger commands. */
-        void SetChildPID(long pid) { m_ChildPID = pid; }
+        virtual void SetChildPID(long pid) { m_ChildPID = pid; }
         /** Get the child's (debuggee's) PID. */
-        long GetChildPID() const { return m_ChildPID; }
+        virtual long GetChildPID() const { return m_ChildPID; }
         /** Request to switch to another thread. */
         virtual void SwitchThread(size_t threadIndex) = 0;
-
-#ifdef __WXMSW__
-        /** Ask the driver if the debugger should be interrupted with DebugBreakProcess or Ctrl+C event */
-        virtual bool UseDebugBreakProcess() = 0;
-#endif
-        wxString GetDebuggersWorkingDirectory() const;
-
-        /** Show a file/line without changing the cursor */
-        void ShowFile(const wxString& file, int line);
 
         void QueueCommand(DebuggerCmd* dcmd, QueuePriority prio = Low); ///< add a command in the queue. The DebuggerCmd will be deleted automatically when finished.
         DebuggerCmd* CurrentCommand(); ///< returns the currently executing command
         void RunQueue(); ///< runs the next command in the queue, if it is idle
         void RemoveTopCommand(bool deleteIt = true); ///< removes the top command (it has finished)
-
-        const StackFrameContainer & GetStackFrames() const; ///< returns the container with the current backtrace
-        StackFrameContainer & GetStackFrames(); ///< returns the container with the current backtrace
-
-        const ThreadsContainer & GetThreads() const; ///< returns the thread container with the current list of threads
-        ThreadsContainer & GetThreads(); ///< returns the thread container with the current list of threads
-
-        /** Get debugger's cursor. */
-        const Cursor& GetCursor() const { return m_Cursor; }
-        /** Set debugger's cursor. */
-        void SetCursor(const Cursor& cursor) { m_Cursor = cursor; }
-
-        void ResetCurrentFrame();
-        int GetCurrentFrame() const { return m_currentFrameNo; }
-        int GetUserSelectedFrame() const { return m_userSelectedFrameNo; }
-        void SetCurrentFrame(int number, bool user_selected);
-
-        void NotifyDebuggeeContinued();
-        /** Called by implementations to notify cursor changes. */
-        void NotifyCursorChanged();
-
-        /** Determine language is debugged. */
-        virtual void DetermineLanguage() {};
+        void ClearQueue(); ///< clears the queue
     protected:
         /** Called by implementations to reset the cursor. */
-        void ResetCursor();
-    protected:
+        virtual void ResetCursor();
+        /** Called by implementations to notify cursor changes. */
+        virtual void NotifyCursorChanged();
+
         // the debugger plugin
         DebuggerGDB* m_pDBG;
 
@@ -220,16 +180,17 @@ class DebuggerDriver
 
         long m_ChildPID;
 
+        // debugging windows pointers
+        BacktraceDlg* m_pBacktrace;
+        DisassemblyDlg* m_pDisassembly;
+        CPURegistersDlg* m_pCPURegisters;
+        ExamineMemoryDlg* m_pExamineMemory;
+        ThreadsDlg* m_pThreads;
+
         // commands
         DebuggerCommands m_DCmds;
         bool m_QueueBusy;
-
-        StackFrameContainer m_backtrace;
-        ThreadsContainer m_threads;
-        int m_currentFrameNo;
-        int m_userSelectedFrameNo;
-
-        wxString m_FileName;
+    private:
 };
 
 #endif // DEBUGGERDRIVER_H

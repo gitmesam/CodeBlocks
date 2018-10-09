@@ -6,17 +6,17 @@
 #ifndef EDITARRAYSTRINGDLG_H
 #define EDITARRAYSTRINGDLG_H
 
-#include "scrollingdialog.h"
+#include <wx/dialog.h>
 #include <wx/arrstr.h>
 #include "settings.h"
 
-class DLLIMPORT EditArrayStringDlg : public wxScrollingDialog
+class DLLIMPORT EditArrayStringDlg : public wxDialog
 {
 	public:
 		EditArrayStringDlg(wxWindow* parent, wxArrayString& array);
-		~EditArrayStringDlg() override;
+		virtual ~EditArrayStringDlg();
 		EditArrayStringDlg& operator=(const EditArrayStringDlg&){ return *this; } // just to satisfy script bindings (never used)
-		void EndModal(int retCode) override;
+		virtual void EndModal(int retCode);
 	protected:
 		void OnAdd(wxCommandEvent& event);
 		void OnEdit(wxCommandEvent& event);

@@ -8,141 +8,198 @@
  */
 
 #include "dlgformattersettings.h"
-#include "astylepredefinedstyles.h"
 #include <wx/radiobut.h>
 #include <wx/checkbox.h>
 #include <wx/combobox.h>
 #include <wx/spinctrl.h>
 #include <wx/xrc/xmlres.h>
 
-DlgFormatterSettings::DlgFormatterSettings(wxWindow *dlg) :
-  m_dlg(dlg)
+dlgFormatterSettings::dlgFormatterSettings(wxWindow *dlg)
+    : m_dlg(dlg)
 {
+  //ctor
 }
 
-DlgFormatterSettings::~DlgFormatterSettings()
+dlgFormatterSettings::~dlgFormatterSettings()
 {
+  //dtor
 }
 
-void DlgFormatterSettings::ApplyTo(astyle::ASFormatter& formatter)
+void dlgFormatterSettings::ApplyTo(astyle::ASFormatter& formatter)
 {
-  // NOTE: Keep this in sync with FormatterSettings::ApplyTo
-  if (XRCCTRL(*m_dlg, "rbAllman", wxRadioButton)->GetValue())
-    formatter.setFormattingStyle(astyle::STYLE_ALLMAN);
-  else if (XRCCTRL(*m_dlg, "rbJava", wxRadioButton)->GetValue())
-    formatter.setFormattingStyle(astyle::STYLE_JAVA);
+  int style = 0;
+
+  if (XRCCTRL(*m_dlg, "rbAnsi", wxRadioButton)->GetValue())
+    style = 0;
   else if (XRCCTRL(*m_dlg, "rbKr", wxRadioButton)->GetValue())
-    formatter.setFormattingStyle(astyle::STYLE_KR);
-  else if (XRCCTRL(*m_dlg, "rbStroustrup", wxRadioButton)->GetValue())
-    formatter.setFormattingStyle(astyle::STYLE_STROUSTRUP);
-  else if (XRCCTRL(*m_dlg, "rbWhitesmith", wxRadioButton)->GetValue())
-    formatter.setFormattingStyle(astyle::STYLE_WHITESMITH);
-  else if (XRCCTRL(*m_dlg, "rbVTK", wxRadioButton)->GetValue())
-    formatter.setFormattingStyle(astyle::STYLE_VTK);
-  else if (XRCCTRL(*m_dlg, "rbRatliff", wxRadioButton)->GetValue())
-    formatter.setFormattingStyle(astyle::STYLE_RATLIFF);
-  else if (XRCCTRL(*m_dlg, "rbGNU", wxRadioButton)->GetValue())
-    formatter.setFormattingStyle(astyle::STYLE_GNU);
+    style = 1;
   else if (XRCCTRL(*m_dlg, "rbLinux", wxRadioButton)->GetValue())
-    formatter.setFormattingStyle(astyle::STYLE_LINUX);
-  else if (XRCCTRL(*m_dlg, "rbHorstmann", wxRadioButton)->GetValue())
-    formatter.setFormattingStyle(astyle::STYLE_HORSTMANN);
-  else if (XRCCTRL(*m_dlg, "rb1TBS", wxRadioButton)->GetValue())
-    formatter.setFormattingStyle(astyle::STYLE_1TBS);
-  else if (XRCCTRL(*m_dlg, "rbGoogle", wxRadioButton)->GetValue())
-    formatter.setFormattingStyle(astyle::STYLE_GOOGLE);
-  else if (XRCCTRL(*m_dlg, "rbMozilla", wxRadioButton)->GetValue())
-    formatter.setFormattingStyle(astyle::STYLE_MOZILLA);
-  else if (XRCCTRL(*m_dlg, "rbPico", wxRadioButton)->GetValue())
-    formatter.setFormattingStyle(astyle::STYLE_PICO);
-  else if (XRCCTRL(*m_dlg, "rbLisp", wxRadioButton)->GetValue())
-    formatter.setFormattingStyle(astyle::STYLE_LISP);
+    style = 2;
+  else if (XRCCTRL(*m_dlg, "rbGNU", wxRadioButton)->GetValue())
+    style = 3;
+  else if (XRCCTRL(*m_dlg, "rbJava", wxRadioButton)->GetValue())
+    style = 4;
+  else if (XRCCTRL(*m_dlg, "rbCustom", wxRadioButton)->GetValue())
+    style = 5;
 
-  formatter.setAttachClass(XRCCTRL(*m_dlg,        "chkAttachClasses",       wxCheckBox)->GetValue());
-  formatter.setAttachExternC(XRCCTRL(*m_dlg,      "chkAttachExternC",       wxCheckBox)->GetValue());
-  formatter.setAttachNamespace(XRCCTRL(*m_dlg,    "chkAttachNamespaces",    wxCheckBox)->GetValue());
-  formatter.setAttachInline(XRCCTRL(*m_dlg,       "chkAttachInlines",       wxCheckBox)->GetValue());
-  formatter.setAttachClosingWhile(XRCCTRL(*m_dlg, "chkAttachClosingWhiles", wxCheckBox)->GetValue());
-
-  bool value = XRCCTRL(*m_dlg, "chkForceUseTabs", wxCheckBox)->GetValue();
-  int spaceNum = XRCCTRL(*m_dlg, "spnIndentation", wxSpinCtrl)->GetValue();
-  if (XRCCTRL(*m_dlg, "chkUseTab", wxCheckBox)->GetValue())
-    formatter.setTabIndentation(spaceNum, value);
-  else
-    formatter.setSpaceIndentation(spaceNum);
-
-  int contNum = XRCCTRL(*m_dlg, "spnContinuation", wxSpinCtrl)->GetValue();
-  if (contNum>0 && contNum<=4)
-    formatter.setContinuationIndentation(contNum);
-
-  formatter.setCaseIndent(XRCCTRL(*m_dlg,               "chkIndentCase",          wxCheckBox)->GetValue());
-  formatter.setClassIndent(XRCCTRL(*m_dlg,              "chkIndentClasses",       wxCheckBox)->GetValue());
-  formatter.setLabelIndent(XRCCTRL(*m_dlg,              "chkIndentLabels",        wxCheckBox)->GetValue());
-  formatter.setModifierIndent(XRCCTRL(*m_dlg,           "chkIndentModifiers",     wxCheckBox)->GetValue());
-  formatter.setNamespaceIndent(XRCCTRL(*m_dlg,          "chkIndentNamespaces",    wxCheckBox)->GetValue());
-  formatter.setAfterParenIndent(XRCCTRL(*m_dlg,         "chkIndentAfterParens",   wxCheckBox)->GetValue());
-  formatter.setSwitchIndent(XRCCTRL(*m_dlg,             "chkIndentSwitches",      wxCheckBox)->GetValue());
-  formatter.setPreprocBlockIndent(XRCCTRL(*m_dlg,       "chkIndentPreprocBlock",  wxCheckBox)->GetValue());
-  formatter.setPreprocDefineIndent(XRCCTRL(*m_dlg,      "chkIndentPreprocDefine", wxCheckBox)->GetValue());
-  formatter.setPreprocConditionalIndent(XRCCTRL(*m_dlg, "chkIndentPreprocCond",   wxCheckBox)->GetValue());
-  formatter.setIndentCol1CommentsMode(XRCCTRL(*m_dlg,   "chkIndentCol1Comments",  wxCheckBox)->GetValue());
-  int minConditionalEvent = XRCCTRL(*m_dlg, "spnMinConditionalEvent", wxSpinCtrl)->GetValue();
-  formatter.setMinConditionalIndentOption(minConditionalEvent);
-  formatter.setMaxInStatementIndentLength( wxAtoi(XRCCTRL(*m_dlg, "txtMaxInStatementIndent", wxTextCtrl)->GetValue()) );
-
-  formatter.setBreakClosingHeaderBracesMode(XRCCTRL(*m_dlg, "chkBreakClosing",   wxCheckBox)->GetValue());
-  formatter.setBreakElseIfsMode(XRCCTRL(*m_dlg, "chkBreakElseIfs",               wxCheckBox)->GetValue());
-  formatter.setAddBracesMode(XRCCTRL(*m_dlg, "chkAddBrackets",                   wxCheckBox)->GetValue());
-  formatter.setAddOneLineBracesMode(XRCCTRL(*m_dlg, "chkAddOneLineBrackets",     wxCheckBox)->GetValue());
-  formatter.setRemoveBracesMode(XRCCTRL(*m_dlg, "chkRemoveBrackets",             wxCheckBox)->GetValue());
-  formatter.setBreakReturnType(XRCCTRL(*m_dlg, "chkBreakReturnType",             wxCheckBox)->GetValue());
-  formatter.setBreakReturnTypeDecl(XRCCTRL(*m_dlg, "chkBreakReturnTypeDecl",     wxCheckBox)->GetValue());
-  formatter.setAttachReturnType(XRCCTRL(*m_dlg, "chkAttachReturnType",           wxCheckBox)->GetValue());
-  formatter.setAttachReturnTypeDecl(XRCCTRL(*m_dlg, "chkAttachReturnTypeDecl",   wxCheckBox)->GetValue());
-  formatter.setBreakOneLineBlocksMode(!XRCCTRL(*m_dlg, "chkKeepBlocks",          wxCheckBox)->GetValue());
-  formatter.setBreakOneLineHeadersMode(!XRCCTRL(*m_dlg, "chkKeepHeaders",        wxCheckBox)->GetValue());
-  formatter.setBreakOneLineStatementsMode(!XRCCTRL(*m_dlg, "chkKeepStatements",  wxCheckBox)->GetValue());
-  formatter.setTabSpaceConversionMode(XRCCTRL(*m_dlg, "chkConvertTabs",          wxCheckBox)->GetValue());
-  formatter.setCloseTemplatesMode(XRCCTRL(*m_dlg, "chkCloseTemplates",           wxCheckBox)->GetValue());
-  formatter.setStripCommentPrefix(XRCCTRL(*m_dlg, "chkRemoveCommentPrefix",      wxCheckBox)->GetValue());
-
-  if (XRCCTRL(*m_dlg, "chkBreakLines", wxCheckBox)->GetValue())
+  switch (style)
   {
-    formatter.setMaxCodeLength( wxAtoi(XRCCTRL(*m_dlg, "txtMaxLineLength", wxTextCtrl)->GetValue()) );
-    formatter.setBreakAfterMode(XRCCTRL(*m_dlg, "chkBreakAfterLogical", wxCheckBox)->GetValue());
+    case 0: // ansi
+      formatter.setBracketIndent(false);
+      formatter.setTabIndentation(4);
+      formatter.setSpaceIndentation(4);
+      formatter.setBracketFormatMode(astyle::BREAK_MODE);
+      formatter.setClassIndent(false);
+      formatter.setSwitchIndent(false);
+      formatter.setNamespaceIndent(true);
+      formatter.setBlockIndent(false);
+      formatter.setBreakClosingHeaderBracketsMode(false);
+      formatter.setBreakBlocksMode(false);
+      formatter.setBreakElseIfsMode(false);
+      formatter.setOperatorPaddingMode(false);
+      formatter.setParensOutsidePaddingMode(false);
+      formatter.setParensInsidePaddingMode(false);
+      formatter.setParensUnPaddingMode(false);
+      formatter.setSingleStatementsMode(true);
+      formatter.setBreakOneLineBlocksMode(true);
+      break;
+
+    case 1: // K&R
+      formatter.setBracketIndent(false);
+      formatter.setTabIndentation(4);
+      formatter.setSpaceIndentation(4);
+      formatter.setBracketFormatMode(astyle::ATTACH_MODE);
+      formatter.setClassIndent(false);
+      formatter.setSwitchIndent(false);
+      formatter.setNamespaceIndent(true);
+      formatter.setBlockIndent(false);
+      formatter.setBreakClosingHeaderBracketsMode(false);
+      formatter.setBreakBlocksMode(false);
+      formatter.setBreakElseIfsMode(false);
+      formatter.setOperatorPaddingMode(false);
+      formatter.setParensOutsidePaddingMode(false);
+      formatter.setParensInsidePaddingMode(false);
+      formatter.setParensUnPaddingMode(false);
+      formatter.setSingleStatementsMode(true);
+      formatter.setBreakOneLineBlocksMode(true);
+      break;
+
+    case 2: // Linux
+      formatter.setBracketIndent(false);
+      formatter.setTabIndentation(8);
+      formatter.setSpaceIndentation(8);
+      formatter.setBracketFormatMode(astyle::BDAC_MODE);
+      formatter.setClassIndent(false);
+      formatter.setSwitchIndent(false);
+      formatter.setNamespaceIndent(true);
+      formatter.setBlockIndent(false);
+      formatter.setBreakClosingHeaderBracketsMode(false);
+      formatter.setBreakBlocksMode(false);
+      formatter.setBreakElseIfsMode(false);
+      formatter.setOperatorPaddingMode(false);
+      formatter.setParensOutsidePaddingMode(false);
+      formatter.setParensInsidePaddingMode(false);
+      formatter.setParensUnPaddingMode(false);
+      formatter.setSingleStatementsMode(true);
+      formatter.setBreakOneLineBlocksMode(true);
+      break;
+
+    case 3: // GNU
+      formatter.setBracketIndent(false);
+      formatter.setTabIndentation(2);
+      formatter.setSpaceIndentation(2);
+      formatter.setBracketFormatMode(astyle::BREAK_MODE);
+      formatter.setClassIndent(false);
+      formatter.setSwitchIndent(false);
+      formatter.setNamespaceIndent(true);
+      formatter.setBlockIndent(true);
+      formatter.setBreakClosingHeaderBracketsMode(false);
+      formatter.setBreakBlocksMode(false);
+      formatter.setBreakElseIfsMode(false);
+      formatter.setOperatorPaddingMode(false);
+      formatter.setParensOutsidePaddingMode(false);
+      formatter.setParensInsidePaddingMode(false);
+      formatter.setParensUnPaddingMode(false);
+      formatter.setSingleStatementsMode(true);
+      formatter.setBreakOneLineBlocksMode(true);
+      break;
+
+    case 4: // Java
+      formatter.setJavaStyle();
+      //formatter.modeSetManually = true;
+      formatter.setBracketIndent(false);
+      formatter.setTabIndentation(4);
+      formatter.setSpaceIndentation(4);
+      formatter.setBracketFormatMode(astyle::ATTACH_MODE);
+      //formatter.setClassIndent(false);
+      formatter.setSwitchIndent(false);
+      //formatter.setNamespaceIndent(true);
+      formatter.setBlockIndent(false);
+      formatter.setBreakClosingHeaderBracketsMode(false);
+      formatter.setBreakBlocksMode(false);
+      formatter.setBreakElseIfsMode(false);
+      formatter.setOperatorPaddingMode(false);
+      formatter.setParensInsidePaddingMode(false);
+      formatter.setParensOutsidePaddingMode(false);
+      formatter.setParensUnPaddingMode(false);
+      formatter.setSingleStatementsMode(true);
+      formatter.setBreakOneLineBlocksMode(true);
+      break;
+
+    default: // Custom
+    {
+      bool value = XRCCTRL(*m_dlg, "chkForceUseTabs", wxCheckBox)->GetValue();
+      int spaceNum = XRCCTRL(*m_dlg, "spnIndentation", wxSpinCtrl)->GetValue();
+
+      if (XRCCTRL(*m_dlg, "chkUseTab", wxCheckBox)->GetValue())
+      {
+        formatter.setTabIndentation(spaceNum, value);
+      }
+      else
+      {
+        formatter.setSpaceIndentation(spaceNum);
+      }
+
+      formatter.setClassIndent(XRCCTRL(*m_dlg, "chkIndentClasses", wxCheckBox)->GetValue());
+      formatter.setSwitchIndent(XRCCTRL(*m_dlg, "chkIndentSwitches", wxCheckBox)->GetValue());
+      formatter.setCaseIndent(XRCCTRL(*m_dlg, "chkIndentCase", wxCheckBox)->GetValue());
+      formatter.setBracketIndent(XRCCTRL(*m_dlg, "chkIndentBrackets", wxCheckBox)->GetValue());
+      formatter.setBlockIndent(XRCCTRL(*m_dlg, "chkIndentBlocks", wxCheckBox)->GetValue());
+      formatter.setNamespaceIndent(XRCCTRL(*m_dlg, "chkIndentNamespaces", wxCheckBox)->GetValue());
+      formatter.setLabelIndent(XRCCTRL(*m_dlg, "chkIndentLabels", wxCheckBox)->GetValue());
+      formatter.setPreprocessorIndent(XRCCTRL(*m_dlg, "chkIndentPreprocessor", wxCheckBox)->GetValue());
+
+      wxString breakType = XRCCTRL(*m_dlg, "cmbBreakType", wxComboBox)->GetValue();
+
+      if (breakType == _T("Break"))
+      {
+        formatter.setBracketFormatMode(astyle::BREAK_MODE);
+      }
+      else if (breakType == _T("Attach"))
+      {
+        formatter.setBracketFormatMode(astyle::ATTACH_MODE);
+      }
+      else if (breakType == _T("Linux"))
+      {
+        formatter.setBracketFormatMode(astyle::BDAC_MODE);
+      }
+      else
+      {
+        formatter.setBracketFormatMode(astyle::NONE_MODE);
+      }
+
+      formatter.setBreakBlocksMode(XRCCTRL(*m_dlg, "chkBreakClosing", wxCheckBox)->GetValue());
+      formatter.setBreakBlocksMode(XRCCTRL(*m_dlg, "chkBreakBlocks", wxCheckBox)->GetValue());
+      formatter.setBreakElseIfsMode(XRCCTRL(*m_dlg, "chkBreakElseIfs", wxCheckBox)->GetValue());
+      formatter.setOperatorPaddingMode(XRCCTRL(*m_dlg, "chkPadOperators", wxCheckBox)->GetValue());
+      formatter.setParensOutsidePaddingMode(XRCCTRL(*m_dlg, "chkPadParensOut", wxCheckBox)->GetValue());
+      formatter.setParensInsidePaddingMode(XRCCTRL(*m_dlg, "chkPadParensIn", wxCheckBox)->GetValue());
+      formatter.setParensUnPaddingMode(XRCCTRL(*m_dlg, "chkUnpadParens", wxCheckBox)->GetValue());
+      formatter.setSingleStatementsMode(!XRCCTRL(*m_dlg, "chkKeepComplex", wxCheckBox)->GetValue());
+      formatter.setBreakOneLineBlocksMode(!XRCCTRL(*m_dlg, "chkKeepBlocks", wxCheckBox)->GetValue());
+      formatter.setTabSpaceConversionMode(XRCCTRL(*m_dlg, "chkConvertTabs", wxCheckBox)->GetValue());
+      formatter.setEmptyLineFill(XRCCTRL(*m_dlg, "chkFillEmptyLines", wxCheckBox)->GetValue());
+      break;
+    }
   }
-  else
-    formatter.setMaxCodeLength(INT_MAX);
-
-  formatter.setBreakBlocksMode(XRCCTRL(*m_dlg, "chkBreakBlocks",                 wxCheckBox)->GetValue());
-  formatter.setBreakClosingHeaderBlocksMode(XRCCTRL(*m_dlg, "chkBreakBlocksAll", wxCheckBox)->GetValue());
-  formatter.setOperatorPaddingMode(XRCCTRL(*m_dlg, "chkPadOperators",            wxCheckBox)->GetValue());
-  formatter.setParensOutsidePaddingMode(XRCCTRL(*m_dlg, "chkPadParenOut",        wxCheckBox)->GetValue());
-  formatter.setParensInsidePaddingMode(XRCCTRL(*m_dlg, "chkPadParenIn",          wxCheckBox)->GetValue());
-  formatter.setParensFirstPaddingMode(XRCCTRL(*m_dlg, "chkPadFirstParenOut",     wxCheckBox)->GetValue());
-  formatter.setParensHeaderPaddingMode(XRCCTRL(*m_dlg, "chkPadHeader",           wxCheckBox)->GetValue());
-  formatter.setParensUnPaddingMode(XRCCTRL(*m_dlg, "chkUnpadParens",             wxCheckBox)->GetValue());
-  formatter.setCommaPaddingMode(XRCCTRL(*m_dlg, "chkPadComma",                   wxCheckBox)->GetValue());
-  formatter.setDeleteEmptyLinesMode(XRCCTRL(*m_dlg, "chkDelEmptyLine",           wxCheckBox)->GetValue());
-  formatter.setEmptyLineFill(XRCCTRL(*m_dlg, "chkFillEmptyLines",                wxCheckBox)->GetValue());
-
-  wxString pointerAlign = XRCCTRL(*m_dlg, "cmbPointerAlign", wxComboBox)->GetValue();
-  if      (pointerAlign == _T("Type"))
-    formatter.setPointerAlignment(astyle::PTR_ALIGN_TYPE);
-  else if (pointerAlign == _T("Middle"))
-    formatter.setPointerAlignment(astyle::PTR_ALIGN_MIDDLE);
-  else if (pointerAlign == _T("Name"))
-    formatter.setPointerAlignment(astyle::PTR_ALIGN_NAME);
-  else
-    formatter.setPointerAlignment(astyle::PTR_ALIGN_NONE);
-
-  wxString referenceAlign = XRCCTRL(*m_dlg, "cmbReferenceAlign", wxComboBox)->GetValue();
-  if      (referenceAlign == _T("Type"))
-    formatter.setReferenceAlignment(astyle::REF_ALIGN_TYPE);
-  else if (referenceAlign == _T("Middle"))
-    formatter.setReferenceAlignment(astyle::REF_ALIGN_MIDDLE);
-  else if (referenceAlign == _T("Name"))
-    formatter.setReferenceAlignment(astyle::REF_ALIGN_NAME);
-  else
-    formatter.setReferenceAlignment(astyle::REF_ALIGN_NONE);
 }

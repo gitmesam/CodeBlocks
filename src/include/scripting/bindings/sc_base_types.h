@@ -8,7 +8,6 @@
 
 #include <wx/string.h>
 #include <wx/arrstr.h>
-
 #include <globals.h>
 #include <settings.h>
 #include <manager.h>
@@ -26,15 +25,10 @@
 #include <cbeditor.h>
 #include <sqplus.h>
 
-// wx primitives and types
-DECLARE_INSTANCE_TYPE(wxArrayString);
-DECLARE_INSTANCE_TYPE(wxColour);
-DECLARE_INSTANCE_TYPE(wxFileName);
-DECLARE_INSTANCE_TYPE(wxPoint);
-DECLARE_INSTANCE_TYPE(wxSize);
 DECLARE_INSTANCE_TYPE(wxString);
-
-// C::B primitives and types
+DECLARE_INSTANCE_TYPE(wxArrayString);
+DECLARE_INSTANCE_TYPE(wxFileName);
+DECLARE_INSTANCE_TYPE(wxColour);
 DECLARE_INSTANCE_TYPE(ConfigManager);
 DECLARE_INSTANCE_TYPE(EditorManager);
 DECLARE_INSTANCE_TYPE(UserVariableManager);
@@ -50,7 +44,6 @@ DECLARE_INSTANCE_TYPE(ProjectManager);
 DECLARE_INSTANCE_TYPE(CompilerFactory);
 DECLARE_INSTANCE_TYPE(PluginInfo);
 DECLARE_INSTANCE_TYPE(FileTreeData);
-using SqPlus::GetTypeName;
 
 // make SqPlus aware of enum-type arguments
 #define DECLARE_ENUM_TYPE(T) \
@@ -74,7 +67,6 @@ DECLARE_ENUM_TYPE(SearchDirs);
 DECLARE_ENUM_TYPE(ModuleType);
 DECLARE_ENUM_TYPE(FileTreeData::FileTreeDataKind);
 DECLARE_ENUM_TYPE(TargetFilenameGenerationPolicy);
-using SqPlus::Push;
 
 namespace SqPlus
 {
@@ -92,16 +84,6 @@ namespace SqPlus
         enum {TypeID=VAR_TYPE_INT,Size=sizeof(unsigned short)};
         operator ScriptVarType() { return ScriptVarType(TypeID); }
     };
-#ifdef _SQ64
-    template<>
-    struct TypeInfo<SQInt32>
-    {
-        const SQChar * typeName;
-        TypeInfo() : typeName(sqT("int")) {}
-        enum {TypeID=VAR_TYPE_INT,Size=sizeof(SQInt32)};
-        operator ScriptVarType() { return ScriptVarType(TypeID); }
-    };
-#endif
-}
+};
 
 #endif // SC_BASE_TYPES_H

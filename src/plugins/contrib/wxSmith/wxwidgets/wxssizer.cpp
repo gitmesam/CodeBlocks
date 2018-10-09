@@ -43,7 +43,7 @@ namespace
 
         private:
 
-            void OnPaint(cb_unused wxPaintEvent& event)
+            void OnPaint(wxPaintEvent& event)
             {
                 // Drawing additional border around te panel
                 wxPaintDC DC(this);
@@ -56,15 +56,11 @@ namespace
     };
 }
 
-void wxsSizerExtra::OnEnumProperties(long _Flags)
+void wxsSizerExtra::OnEnumProperties(long Flags)
 {
     static const int Priority = 20;
     WXS_SIZERFLAGS_P(wxsSizerExtra,Flags,Priority);
-    WXS_DIMENSION_P(wxsSizerExtra,Border,_("Border width"),_("  Dialog Units"),_T("border"),0,false,Priority);
-    // We only need to add "Default Min Size", if flMinMaxSize is not set.
-    // If it is set, it should already be there.
-    if ( !( _Flags & flMinMaxSize ) )
-        WXS_SIZE_P(wxsSizerExtra,MinSize,_("Default Min size"),_("Min Width"),_("Min Height"),_("Min size in dialog units"), _T("minsize"),Priority);
+    WXS_DIMENSION_P(wxsSizerExtra,Border,_("Border"),_("  Dialog Units"),_T("border"),0,false,Priority);
     WXS_LONG_P(wxsSizerExtra,Proportion,_("Proportion"),_T("option"),0,Priority);
 }
 
@@ -73,11 +69,10 @@ wxString wxsSizerExtra::AllParamsCode(wxsCoderContext* Ctx)
     switch ( Ctx->m_Language )
     {
         case wxsCPP:
-            return wxString::Format(_T("%ld, "),Proportion) +
+            return wxString::Format(_T("%d, "),Proportion) +
                    wxsSizerFlagsProperty::GetString(Flags) +
                    _T(", ") << Border.GetPixelsCode(Ctx);
 
-        case wxsUnknownLanguage: // fall-through
         default:
             wxsCodeMarks::Unknown(_T("wxsSizerExtra::AllParamsCode"),Ctx->m_Language);
     }
@@ -109,7 +104,7 @@ void wxsSizer::OnBuildCreatingCode()
     for ( int i=0; i<Count; i++ )
     {
         wxsItem* Child = GetChild(i);
-        wxsSizerExtra* SizerExtra = (wxsSizerExtra*)GetChildExtra(i);
+        wxsSizerExtra* Extra = (wxsSizerExtra*)GetChildExtra(i);
 
         // Using same parent as we got, sizer is not a parent window
         Child->BuildCode(GetCoderContext());
@@ -123,11 +118,10 @@ void wxsSizer::OnBuildCreatingCode()
                 {
                     case wxsCPP:
                     {
-                        Codef(_T("%AAdd(%o, %s);\n"),i,SizerExtra->AllParamsCode(GetCoderContext()).wx_str());
+                        Codef(_T("%AAdd(%o, %s);\n"),i,Extra->AllParamsCode(GetCoderContext()).c_str());
                         break;
                     }
 
-                    case wxsUnknownLanguage: // fall-through
                     default:
                     {
                         UnknownLang = true;
@@ -139,8 +133,6 @@ void wxsSizer::OnBuildCreatingCode()
                 // Spacer is responsible for adding itself into sizer
                 break;
 
-            case wxsTTool:           // fall-through
-            case wxsTInvalid:        // fall-through
             default:
                 break;
         }
@@ -174,7 +166,7 @@ wxObject* wxsSizer::OnBuildPreview(wxWindow* Parent,long Flags)
     for ( int i=0; i<Count; i++ )
     {
         wxsItem* Child = GetChild(i);
-        wxsSizerExtra* SizerExtra = (wxsSizerExtra*)GetChildExtra(i);
+        wxsSizerExtra* Extra = (wxsSizerExtra*)GetChildExtra(i);
 
         // We pass either Parent passed to current BuildPreview function
         // or pointer to additional parent currently created
@@ -186,21 +178,21 @@ wxObject* wxsSizer::OnBuildPreview(wxWindow* Parent,long Flags)
         wxSizerItem* ChildAsItem = wxDynamicCast(ChildPreview,wxSizerItem);
         if ( ChildAsSizer )
         {
-            Sizer->Add(ChildAsSizer,SizerExtra->Proportion,
-                wxsSizerFlagsProperty::GetWxFlags(SizerExtra->Flags),
-                SizerExtra->Border.GetPixels(Parent));
+            Sizer->Add(ChildAsSizer,Extra->Proportion,
+                wxsSizerFlagsProperty::GetWxFlags(Extra->Flags),
+                Extra->Border.GetPixels(Parent));
         }
         else if ( ChildAsWindow )
         {
-            Sizer->Add(ChildAsWindow,SizerExtra->Proportion,
-                wxsSizerFlagsProperty::GetWxFlags(SizerExtra->Flags),
-                SizerExtra->Border.GetPixels(Parent));
+            Sizer->Add(ChildAsWindow,Extra->Proportion,
+                wxsSizerFlagsProperty::GetWxFlags(Extra->Flags),
+                Extra->Border.GetPixels(Parent));
         }
         else if ( ChildAsItem )
         {
-            ChildAsItem->SetProportion(SizerExtra->Proportion);
-            ChildAsItem->SetFlag(wxsSizerFlagsProperty::GetWxFlags(SizerExtra->Flags));
-            ChildAsItem->SetBorder(SizerExtra->Border.GetPixels(Parent));
+            ChildAsItem->SetProportion(Extra->Proportion);
+            ChildAsItem->SetFlag(wxsSizerFlagsProperty::GetWxFlags(Extra->Flags));
+            ChildAsItem->SetBorder(Extra->Border.GetPixels(Parent));
             Sizer->Add(ChildAsItem);
         }
     }
@@ -212,7 +204,11 @@ wxObject* wxsSizer::OnBuildPreview(wxWindow* Parent,long Flags)
         {
             // Setting custom size for childless sizer to prevent
             // zero-size items
-            NewParent->SetInitialSize(wxSize(20,20));
+            #if wxCHECK_VERSION(2,8,0)
+                NewParent->SetInitialSize(wxSize(20,20));
+            #else
+                NewParent->SetBestFittingSize(wxSize(20,20));
+            #endif
             NewParent->SetSizeHints(20,20);
             NewParent->SetSize(wxSize(20,20));
         }

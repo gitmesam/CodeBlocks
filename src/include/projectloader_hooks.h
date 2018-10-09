@@ -40,13 +40,15 @@ namespace ProjectLoaderHooks
       * The isLoading argument is true if your hook is called when the project is being loaded,
       * and false when the project is saved.
       */
-    template<class T> class HookFunctor : public HookFunctorBase
+    template<class T> class DLLIMPORT HookFunctor : public HookFunctorBase
     {
         public:
             typedef void (T::*Func)(cbProject*, TiXmlElement*, bool);
-            HookFunctor(T* obj, Func func) : m_pObj(obj), m_pFunc(func)
-            { ; }
-            void Call(cbProject* project, TiXmlElement* elem, bool isLoading) const override
+            HookFunctor(T* obj, Func func)
+                : m_pObj(obj),
+                m_pFunc(func)
+            {}
+            virtual void Call(cbProject* project, TiXmlElement* elem, bool isLoading) const
             {
                 if (m_pObj && m_pFunc)
                     (m_pObj->*m_pFunc)(project, elem, isLoading);
@@ -79,6 +81,6 @@ namespace ProjectLoaderHooks
       * @param isLoading True if the project is being loaded, false if being saved.
       */
     extern DLLIMPORT void CallHooks(cbProject* project, TiXmlElement* elem, bool isLoading);
-}
+};
 
 #endif // PROJECTLOADER_HOOKS_H

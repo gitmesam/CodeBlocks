@@ -6,24 +6,24 @@
 #ifndef EDITARRAYORDERDLG_H
 #define EDITARRAYORDERDLG_H
 
-#include "scrollingdialog.h"
+#include <wx/dialog.h>
 #include <wx/arrstr.h>
 #include "settings.h"
 
 /*
  * No description
  */
-class DLLIMPORT EditArrayOrderDlg : public wxScrollingDialog
+class EditArrayOrderDlg : public wxDialog
 {
 	public:
 		// class constructor
-		EditArrayOrderDlg(wxWindow* parent, const wxArrayString& array);
+		EditArrayOrderDlg(wxWindow* parent, const wxArrayString& array = 0L);
 		// class destructor
-		~EditArrayOrderDlg() override;
+		~EditArrayOrderDlg();
 		EditArrayOrderDlg& operator=(const EditArrayOrderDlg&){ return *this; } // just to satisfy script bindings (never used)
 		void SetArray(const wxArrayString& array){ m_Array = array; }
 		const wxArrayString& GetArray(){ return m_Array; }
-		void EndModal(int retCode) override;
+		void EndModal(int retCode);
 		void OnMoveUp(wxCommandEvent& event);
 		void OnMoveDown(wxCommandEvent& event);
 		void OnUpdateUI(wxUpdateUIEvent& event);

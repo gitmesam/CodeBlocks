@@ -21,12 +21,14 @@
 			<Add option="-pipe" />
 			<Add option="-mthreads" />
 			<Add option="-Winvalid-pch" />
+			<Add option='-include &quot;wx_pch.h&quot;' />
 			<Add option="-D__GNUWIN32__" />
 			<Add option="-D__WXMSW__" />
 			<Add option="-DwxUSE_UNICODE" />
 			<Add option="-DUSE_PCH" />
 			<Add directory="$(#WX.include)" />
 			<Add directory="$(#WX.lib)\gcc_lib$(WX_CFG)\mswu" />
+			<Add directory="$(#WX)\contrib\include" />
 		</Compiler>
 		<ResourceCompiler>
 			<Add directory="$(#WX)\include" />

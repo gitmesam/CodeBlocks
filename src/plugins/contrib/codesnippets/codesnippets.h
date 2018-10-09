@@ -14,7 +14,7 @@
 
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
-	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+	Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #ifndef CODESNIPPETS_H_INCLUDED
@@ -28,6 +28,7 @@
 
 
 class CodeSnippetsWindow;
+class wxMemoryMappedFile;
 
 // ----------------------------------------------------------------------------
 class CodeSnippets : public cbPlugin
@@ -62,7 +63,7 @@ class CodeSnippets : public cbPlugin
 		  * @param parent The parent window.
 		  * @return A pointer to the plugin's cbConfigurationPanel. It is deleted by the caller.
 		  */
-		cbConfigurationPanel* GetConfigurationPanel(wxWindow* parent){ return 0; wxUnusedVar(parent);}
+		cbConfigurationPanel* GetConfigurationPanel(wxWindow* parent){ return 0; }
 
 		/** Return plugin's configuration panel for projects.
 		 * The panel returned from this function will be added in the project's
@@ -71,7 +72,7 @@ class CodeSnippets : public cbPlugin
 		 * @param project The project that is being edited.
 		 * @return A pointer to the plugin's cbConfigurationPanel. It is deleted by the caller.
 		*/
-		cbConfigurationPanel* GetProjectConfigurationPanel(wxWindow* parent, cbProject* project){ return 0; wxUnusedVar(parent);wxUnusedVar(project);}
+		cbConfigurationPanel* GetProjectConfigurationPanel(wxWindow* parent, cbProject* project){ return 0; }
 
 		/** This method is called by Code::Blocks and is used by the plugin
 		 * to add any menu items it needs on Code::Blocks's menu bar.\n
@@ -97,7 +98,7 @@ class CodeSnippets : public cbPlugin
 		 * @param menu pointer to the popup menu
 		 * @param data pointer to FileTreeData object (to access/modify the file tree)
 		*/
-		void BuildModuleMenu(const ModuleType type, wxMenu* menu, const FileTreeData* data = 0){wxUnusedVar(type);wxUnusedVar(menu);wxUnusedVar(data);}
+		void BuildModuleMenu(const ModuleType type, wxMenu* menu, const FileTreeData* data = 0){}
 
 		/** This method is called by Code::Blocks and is used by the plugin
 		 * to add any toolbar items it needs on Code::Blocks's toolbar.\n
@@ -107,7 +108,7 @@ class CodeSnippets : public cbPlugin
 		 * @param toolBar the wxToolBar to create items on
 		 * @return The plugin should return true if it needed the toolbar, false if not
 		*/
-		bool BuildToolBar(wxToolBar* toolBar){ return false;wxUnusedVar(toolBar); }
+		bool BuildToolBar(wxToolBar* toolBar){ return false; }
 	protected:
 		/** Any descendent plugin should override this virtual method and
 		 * perform any necessary initialization. This method is called by
@@ -136,20 +137,28 @@ class CodeSnippets : public cbPlugin
 		// ---
 		void SetSnippetsWindow(CodeSnippetsWindow* p);
 		CodeSnippetsWindow*  GetSnippetsWindow(){return GetConfig()->GetSnippetsWindow();}
-        //-void OnTreeDragEvent(wxTreeEvent& event); 2011/01/9
-        //-void OnPrjTreeDragEvent(wxMouseEvent& event);
+        void OnTreeDragEvent(wxTreeEvent& event);
 
 	private:
 
         void CreateSnippetWindow();
         void SetTreeCtrlHandler(wxWindow *p, WXTYPE eventType);
         void RemoveTreeCtrlHandler(wxWindow *p, WXTYPE eventType);
-        bool GetTreeSelectionData(const wxTreeCtrl* pTree, const wxTreeItemId itemID, wxString& selString);
+        bool GetTreeSelectionData(wxTreeCtrl* pTree, wxTreeItemId itemID, wxString& selString);
         wxArrayString* TextToFilenames(const wxString& string);
         bool OnDropFiles(wxCoord x, wxCoord y, const wxArrayString& files);
         wxString FindAppPath(const wxString& argv0, const wxString& cwd, const wxString& appVariableName);
+        int LaunchProcess(const wxString& cmd, const wxString& cwd);
+        long LaunchExternalSnippets();
+        bool ReleaseMemoryMappedFile();
+        void TellExternalSnippetsToTerminate();
         void CloseDockWindow();
         wxWindow* FindOpenFilesListWindow();
+
+
+        #if defined(__WXMSW__)
+            void MSW_MouseMove(int x, int y );
+        #endif
 
 		void OnViewSnippets(wxCommandEvent& event);
 		void OnUpdateUI(wxUpdateUIEvent& event);
@@ -160,36 +169,18 @@ class CodeSnippets : public cbPlugin
 		void OnSwitchedViewLayout(CodeBlocksLayoutEvent& event);
 		void OnDockWindowVisability(CodeBlocksDockEvent& event);
         void OnAppStartupDone(CodeBlocksEvent& event);
-        void OnAppStartShutdown(CodeBlocksEvent& event);
-
-        void OnPrjTreeMouseMotionEvent(wxMouseEvent& event);
-        void OnPrjTreeMouseLeftDownEvent(wxMouseEvent& event);
-        void OnPrjTreeMouseLeftUpEvent(wxMouseEvent& event);
-        void DoPrjTreeExternalDrag(wxTreeCtrl* pTree);
-        void OnPrjTreeMouseLeaveWindowEvent(wxMouseEvent& event);
-        void SendMouseLeftUp(const wxWindow* pWin, const int mouseX, const int mouseY);
-        void MSW_MouseMove(int x, int y );
 
 		wxWindow*       m_pAppWin;
-        ProjectManager* m_pProjectMgr;
+        ProjectManager* m_pPrjMan;
+        wxWindow*       m_pOpenFilesList;
         wxTreeCtrl*     m_pMgtTreeBeginDrag;
-        //-wxPoint         m_TreeMousePosn;
+        wxPoint         m_TreeMousePosn;
         wxTreeItemId    m_TreeItemId;
         wxString        m_TreeText;
         int             m_nOnActivateBusy;
-        wxFile          m_PidTmpFile;
+        long            m_ExternalPid;
+        wxMemoryMappedFile* m_pMappedFile;
 
-        bool            m_bMouseCtrlKeyDown;
-        bool            m_bMouseLeftKeyDown;
-        bool            m_bMouseIsDragging;
-        bool            m_bDragCursorOn;
-        wxCursor*       m_pDragCursor;
-        wxCursor        m_oldCursor;
-        int             m_MouseDownX, m_MouseDownY;
-        int             m_MouseUpX, m_MouseUpY;
-        wxTreeItemId    m_prjTreeItemAtKeyUp, m_prjTreeItemAtKeyDown;
-   		bool            m_bMouseExitedWindow;
-        bool            m_bBeginInternalDrag;
 
 		DECLARE_EVENT_TABLE();
 
@@ -233,7 +224,6 @@ class DropTargets: public wxDropTarget
     wxDragResult OnEnter (wxCoord x, wxCoord y, wxDragResult def);
     virtual bool OnDrop(wxCoord x, wxCoord y)
     {
-        wxUnusedVar(x);wxUnusedVar(y);
         //wxDropTarget::OnDrop
         //virtual bool OnDrop(wxCoord x, wxCoord y)
         //Called when the user drops a data object on the target.
@@ -279,3 +269,31 @@ class DropTargetsComposite: public wxDataObjectComposite
 };
 
 #endif // CODESNIPPETS_H_INCLUDED
+// 2007/08/1
+// The following was an unsuccessful attempt to work-around the drag-n-drop crash
+// on Linux which occurs when the user drags the cursor too fast, giving the message
+// Gtk-CRITICAL ** : gtk_drag_set_icon_widget assert DRAG_CONTEXT (context) failed
+// and then the system freezes up.
+////// ----------------------------------------------------------------------------
+////class DropSource: public wxDropSource
+////// ----------------------------------------------------------------------------
+////{
+////  public:
+////
+////    // constructor
+////    DropSource (wxDataObject& data, wxWindow* win = NULL)
+////        :wxDropSource(data, win)
+////        {  //LOGIT( _T("DropSource ctor") );
+////        }
+////
+////    virtual bool GiveFeedback(wxDragResult WXUNUSED(effect))
+////        {
+////            LOGIT( _T("DropSource GiveFeedBack"));
+////            //asm("int3");
+////            return true;
+////            //return false;
+////        }
+////  private:
+////
+////};
+// ----------------------------------------------------------------------------

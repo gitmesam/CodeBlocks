@@ -6,8 +6,7 @@
 #ifndef SDK_GLOBALS_H
 #define SDK_GLOBALS_H
 
-#include <vector>
-
+#include "settings.h"
 #include <wx/string.h>
 #include <wx/treectrl.h>
 #include <wx/file.h>
@@ -15,8 +14,6 @@
 #include <wx/intl.h>
 #include <wx/msgdlg.h>
 #include <wx/bitmap.h>
-
-#include "settings.h"
 
 class TiXmlDocument;
 
@@ -30,7 +27,6 @@ enum PluginType
     ptDebugger,
     ptCodeCompletion,
     ptWizard,
-    ptSmartIndent,
     ptOther
 };
 
@@ -40,8 +36,7 @@ enum ModuleType
     mtProjectManager = 1,
     mtEditorManager,
     mtLogManager,
-    mtOpenFilesList,
-    mtEditorTab,
+    mtOpenFilesList,                //pecan 2006/03/22
     mtUnknown
 };
 
@@ -53,14 +48,12 @@ enum FileType
     ftDevCppProject,
     ftMSVC6Project,
     ftMSVC7Project,
-    ftMSVC10Project,
     ftMSVC6Workspace,
     ftMSVC7Workspace,
     ftXcode1Project,
     ftXcode2Project,
     ftSource,
     ftHeader,
-    ftTemplateSource,
     ftObject,
     ftXRCResource,
     ftResource,
@@ -110,37 +103,6 @@ enum FileVisualState
     fvsLast
 };
 
-class DLLIMPORT cbProjectTreeImages
-{
-    public:
-        static wxImageList* MakeImageList();
-
-        /** @return The workspace icon index in the image list.
-            @param  read_only Return the read-only icon for a workspace?
-         */
-        static int WorkspaceIconIndex(bool read_only = false);
-        /** @return The project icon index in the image list.
-            @param  read_only Return the read-only icon for a project?
-         */
-        static int ProjectIconIndex(bool read_only = false);
-        /** @return The folder icon index in the image list. */
-        static int FolderIconIndex();
-        /** @return The virtual folder icon index in the image list. */
-        static int VirtualFolderIconIndex();
-};
-
-/** These are valid values for the visual style of the project tree.
-    They can be OR'ed to modify the representation of the project tree.
-*/
-enum ProjectTreeVisualState
-{
-    ptvsNone           = 0x00, //!< The default style: All "off"
-    ptvsCategorize     = 0x01, //!< If true, use virtual folders like "Sources", "Headers", etc.
-    ptvsUseFolders     = 0x02, //!< If true, create folders as needed. If false, the list is flat (not compatible with "hie folder name")
-    ptvsHideFolderName = 0x04, //!< If true, the folder name will be hidden and only the file name will be shown (not compatible with "use folders")
-    ptvsDefault        = 0x03  //!< Just here for convenience, "categorise" + "use folders" ON
-};
-
 /** Template output types. */
 enum TemplateOutputType
 {
@@ -170,7 +132,6 @@ extern DLLIMPORT const wxString DEFAULT_WORKSPACE;
 extern DLLIMPORT const wxString DEFAULT_ARRAY_SEP;
 extern DLLIMPORT const wxString DEFAULT_CONSOLE_TERM;
 extern DLLIMPORT const wxString DEFAULT_CONSOLE_SHELL;
-extern DLLIMPORT const wxString cbDEFAULT_OPEN_FOLDER_CMD;
 
 // global helper funcs
 /// Reads a wxString from a non-unicode file. File must be open. File is closed automatically.
@@ -194,34 +155,24 @@ extern DLLIMPORT const wxWX2MBbuf cbU2C(const wxString& str);
 /// Returns the final encoding detected.
 extern DLLIMPORT wxFontEncoding DetectEncodingAndConvert(const char* strIn, wxString& strOut, wxFontEncoding possibleEncoding = wxFONTENCODING_SYSTEM);
 
-/// Return an integer representation of a platform string
 extern DLLIMPORT int GetPlatformsFromString(const wxString& platforms);
-/// Return a string representation of a platform / multiple platforms
 extern DLLIMPORT wxString GetStringFromPlatforms(int platforms, bool forceSeparate = false);
 
 // see globals.cpp for info on the third argument (bool SeparatorAtEnd)
 extern DLLIMPORT wxString GetStringFromArray(const wxArrayString& array, const wxString& separator = DEFAULT_ARRAY_SEP, bool SeparatorAtEnd = true);
 extern DLLIMPORT wxArrayString GetArrayFromString(const wxString& text, const wxString& separator = DEFAULT_ARRAY_SEP, bool trimSpaces = true);
-typedef std::vector<wxString> wxStringVec;
-extern DLLIMPORT wxStringVec GetVectorFromString(const wxString& text,
-                                                 const wxString& separator = DEFAULT_ARRAY_SEP,
-                                                 bool trimSpaces = true);
-extern DLLIMPORT wxArrayString MakeUniqueArray(const wxArrayString& array, bool caseSens);
-extern DLLIMPORT wxString MakeUniqueString(const wxString& text,  const wxString& separator = DEFAULT_ARRAY_SEP, bool caseSens = true);
 extern DLLIMPORT void AppendArray(const wxArrayString& from, wxArrayString& to);
 
-extern DLLIMPORT wxString UnixFilename(const wxString& filename, wxPathFormat format = wxPATH_NATIVE);
+extern DLLIMPORT wxString UnixFilename(const wxString& filename);
 extern DLLIMPORT void QuoteStringIfNeeded(wxString& str);
-extern DLLIMPORT bool NeedQuotes(const wxString &str);
 
 /// Escapes spaces and tabs (NOT quoting the string)
 extern DLLIMPORT wxString EscapeSpaces(const wxString& str);
 
 extern DLLIMPORT FileType FileTypeOf(const wxString& filename);
-extern DLLIMPORT wxString cbFindFileInPATH(const wxString &filename);
 
-extern DLLIMPORT void SaveTreeState(wxTreeCtrl* tree, const wxTreeItemId& parent, wxArrayString& nodePaths, wxArrayString& selectedItemPaths);
-extern DLLIMPORT void RestoreTreeState(wxTreeCtrl* tree, const wxTreeItemId& parent, wxArrayString& nodePaths, wxArrayString& selectedItemPaths);
+extern DLLIMPORT void SaveTreeState(wxTreeCtrl* tree, const wxTreeItemId& parent, wxArrayString& nodePaths);
+extern DLLIMPORT void RestoreTreeState(wxTreeCtrl* tree, const wxTreeItemId& parent, wxArrayString& nodePaths);
 
 extern DLLIMPORT bool CreateDirRecursively(const wxString& full_path, int perms = 0755);
 extern DLLIMPORT bool CreateDir(const wxString& full_path, int perms = 0755);
@@ -233,40 +184,8 @@ extern DLLIMPORT wxString ChooseDirectory(wxWindow* parent,
                                           bool showCreateDirButton = false); // where supported
 
 extern DLLIMPORT bool NormalizePath(wxFileName& f,const wxString& base);
-extern DLLIMPORT bool IsSuffixOfPath(wxFileName const & suffix, wxFileName const & path);
-
-/// If path is pointing to a symlink then the function will set dirpath parameter to the path
-/// the symlink points to.
-/// @note Does nothing on Windows.
-/// @note Should be used only for paths pointing to directories.
-/// @return true when the symlink is resolved correctly, else false.
-extern DLLIMPORT bool cbResolveSymLinkedDirPath(wxString& dirpath);
-/// Call cbResolveSymLinkedPath until the path is not a symlink.
-/// @note Does nothing on Windows.
-/// @note Should be used only for paths pointing to directories.
-/// @return The resolved path or the same path if not a symlink.
-extern DLLIMPORT wxString cbResolveSymLinkedDirPathRecursive(wxString dirpath);
-
-/** Reads settings if eolMode is -1
-  * Expected input (defined in sdk/wxscintilla/include/wx/wxscintilla.h) is:
-  * wxSCI_EOL_CRLF=0, wxSCI_EOL_CR=1, or wxSCI_EOL_LF=2
-  */
-extern DLLIMPORT wxString GetEOLStr(int eolMode = -1);
 
 extern DLLIMPORT wxString URLEncode(const wxString &str);
-
-extern DLLIMPORT wxString ExpandBackticks(wxString &str);
-
-/** This function creates a new wxMenu object on the heap and recursively
-  * copies a given menu into it.
-  *
-  * It's up to the user to make sure the returned menu is deleted.
-  *
-  * @param mnu The menu to copy
-  * @param with_accelerators If true, also copies the accelerators (defaults to false).
-  * @return The copied menu or a nullptr, if the menu to copy was empty or NULL
-  */
-extern DLLIMPORT wxMenu* CopyMenu(wxMenu* mnu, bool with_accelerators = false);
 
 /// Check if CommonControls version is at least 6 (XP and up)
 extern DLLIMPORT bool UsesCommonControls6();
@@ -275,7 +194,7 @@ extern DLLIMPORT bool UsesCommonControls6();
   * Always use this to load bitmaps because it takes care of various
   * issues with pre-XP windows (actually common controls < 6.00).
   */
-extern DLLIMPORT wxBitmap cbLoadBitmap(const wxString& filename, wxBitmapType bitmapType = wxBITMAP_TYPE_PNG);
+extern DLLIMPORT wxBitmap cbLoadBitmap(const wxString& filename, int bitmapType = wxBITMAP_TYPE_PNG);
 
 // compatibility function
 inline wxBitmap LoadPNGWindows2000Hack(const wxString& filename){ return cbLoadBitmap(filename); }
@@ -297,7 +216,7 @@ extern DLLIMPORT bool IsWindowReallyShown(wxWindow* win);
 enum SettingsIconsStyle
 {
     sisLargeIcons    = 0, ///< Large icons (default)
-    sisNoIcons       = 1  ///< No icons, just text
+    sisNoIcons       = 1, ///< No icons, just text
 };
 
 class wxListCtrl;
@@ -307,15 +226,10 @@ class wxListCtrl;
   * @param style The style to use.
   */
 extern DLLIMPORT void SetSettingsIconsStyle(wxListCtrl* lc, SettingsIconsStyle style);
-/** Get the icons style set in environment-dialog.
-  * This version is left for backwardscompatibility.
+/** Get the icons style for the supplied list control.
   * @return The icons style.
   */
 extern DLLIMPORT SettingsIconsStyle GetSettingsIconsStyle(wxListCtrl* lc);
-/** Get the icons style set in environment-dialog.
-  * @return The icons style.
-  */
-extern DLLIMPORT SettingsIconsStyle GetSettingsIconsStyle();
 
 class wxWindow;
 
@@ -331,48 +245,47 @@ enum cbPlaceDialogMode
 
 extern DLLIMPORT void PlaceWindow(wxTopLevelWindow *w, cbPlaceDialogMode mode = pdlBest, bool enforce = false);
 
-/// @return The client area of the display the window is currently positioned at.
-extern DLLIMPORT wxRect cbGetMonitorRectForWindow(wxWindow *window);
-
 /** wxMessageBox wrapper.
   *
   * Use this instead of wxMessageBox(), as this uses PlaceWindow() to show it in the correct monitor.
   * @note The return value for wxOK would be wxID_OK and so on for other buttons.
   * So, read wxMessageDialog 's documentation, *not* wxMessageBox 's...
   */
-extern DLLIMPORT int cbMessageBox(const wxString& message, const wxString& caption = wxEmptyString, int style = wxOK, wxWindow *parent = NULL, int x = -1, int y = -1);
+inline int cbMessageBox(const wxString& message, const wxString& caption = wxEmptyString, int style = wxOK, wxWindow *parent = NULL, int x = -1, int y = -1)
+{
+    // Cannot create a wxMessageDialog with a NULL as parent
+    if (!parent)
+    {
+      // wxMessage*Box* returns any of: wxYES, wxNO, wxCANCEL, wxOK.
+      int answer = wxMessageBox(message, caption, style, parent, x, y);
+      switch (answer)
+      {
+        // map answer to the one of wxMessage*Dialog* to ensure compatibility
+        case (wxOK):
+          return wxID_OK;
+        case (wxCANCEL):
+          return wxID_CANCEL;
+        case (wxYES):
+          return wxID_YES;
+        case (wxNO):
+          return wxID_NO;
+        default:
+          return -1; // NOTE: Cannot happen unless wxWidgets API changes
+      }
+    }
 
-extern DLLIMPORT int cbGetSingleChoiceIndex(const wxString& message, const wxString& caption,
-                                            const wxArrayString& choices, wxWindow *parent = NULL,
-                                            const wxSize &size = wxSize(300, 300),
-                                            int initialSelection = 0);
-
-/** wxMultiChoiceDialog wrapper.
-  *
-  * Use this instead of wxMessageBox(), as this uses PlaceWindow() to show it in the correct monitor.
-  */
-extern DLLIMPORT wxArrayInt cbGetMultiChoiceDialog(const wxString& message, const wxString& caption,
-                                     const wxArrayString& choices, wxWindow *parent = nullptr,
-                                     const wxSize& size = wxSize(300, 300),
-                                     const wxArrayInt& initialSelection = wxArrayInt());
-
-#if wxCHECK_VERSION(3, 0, 0)
-extern DLLIMPORT const char *cbGetTextFromUserPromptStr;
-#else
-extern DLLIMPORT const wxChar *cbGetTextFromUserPromptStr;
-#endif // wxCHECK_VERSION
-
-extern DLLIMPORT wxString cbGetTextFromUser(const wxString &message,
-                                            const wxString &caption = cbGetTextFromUserPromptStr,
-                                            const wxString &default_value = wxEmptyString, wxWindow *parent = NULL,
-                                            int x = wxDefaultCoord, int y = wxDefaultCoord, bool centre = true);
+    wxMessageDialog dlg(parent, message, caption, style, wxPoint(x,y));
+    PlaceWindow(&dlg);
+    // wxMessage*Dialog* returns any of wxID_OK, wxID_CANCEL, wxID_YES, wxID_NO
+    return dlg.ShowModal();
+};
 
 inline void NotifyMissingFile(const wxString &name)
 {
     wxString msg;
     msg.Printf(_T("The file %s could not be found.\nPlease check your installation."), name.c_str());
     cbMessageBox(msg);
-}
+};
 
 /// Result values of cbDirAccessCheck()
 enum DirAccessCheck
@@ -399,17 +312,10 @@ namespace platform
         winver_Windows9598ME,
         winver_WindowsNT2000,
         winver_WindowsXP,
-        winver_WindowsServer2003,
-        winver_WindowsVista,
-        winver_Windows7
+        winver_Vista, // untested!
     }windows_version_t;
 
     extern DLLIMPORT windows_version_t WindowsVersion();
-}
-
-// returns the real path of a file by resolving symlinks
-// not yet optimal but should do for now
-// one thing that's not checked yet are circular symlinks - watch out!
-extern DLLIMPORT wxString realpath(const wxString& path);
+};
 
 #endif // SDK_GLOBALS_H

@@ -27,9 +27,9 @@
 
 class wxsSplitterWindow: public wxsContainer
 {
-    public:
+	public:
 
-        wxsSplitterWindow(wxsItemResData* Data);
+		wxsSplitterWindow(wxsItemResData* Data);
 
     private:
 
@@ -39,9 +39,8 @@ class wxsSplitterWindow: public wxsContainer
         virtual bool OnCanAddChild(wxsItem* Item,bool ShowMessage);
 
         long SashPos;
-        long MinPaneSize;
+        long MinSize;
         long Orientation;
-        double SashGravity;
 };
 
 

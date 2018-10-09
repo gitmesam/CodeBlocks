@@ -9,12 +9,14 @@
 #include <wx/string.h>
 #include <wx/intl.h>
 
-//#define RELEASE "17.12"
+#define RELEASE "8.02"
 
 #ifndef RELEASE
     #define RELEASE "svn"
     #define SVN_BUILD 1
 #endif
+
+
 
 namespace appglobals
 {
@@ -25,7 +27,6 @@ namespace appglobals
     extern const wxString AppVersion;
     extern const wxString AppActualVersionVerb;
     extern const wxString AppActualVersion;
-    extern const wxString AppSDKVersion;
     extern const wxString AppUrl;
     extern const wxString AppContactEmail;
     extern const wxString AppPlatform;
@@ -33,6 +34,7 @@ namespace appglobals
     extern const wxString AppBuildTimestamp;
 
     extern const wxString DefaultBatchBuildArgs;
-}
+
+};
 
 #endif // APPGLOBALS_H

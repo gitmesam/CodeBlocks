@@ -14,7 +14,7 @@
 #include <wx/sizer.h>
 
 cbConfigurationDialog::cbConfigurationDialog(wxWindow* parent, int id, const wxString& title)
-    : wxScrollingDialog(parent, id, title, wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER | wxMAXIMIZE_BOX),
+    : wxDialog(parent, id, title, wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER | wxMAXIMIZE_BOX),
     m_pPanel(0)
 {
 }
@@ -57,5 +57,5 @@ void cbConfigurationDialog::EndModal(int retCode)
         m_pPanel->OnApply();
     else
         m_pPanel->OnCancel();
-    wxScrollingDialog::EndModal(retCode);
+    wxDialog::EndModal(retCode);
 }

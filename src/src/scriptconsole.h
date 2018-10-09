@@ -13,12 +13,11 @@
 #endif
 
 //(*Headers(ScriptConsole)
-#include <wx/bmpbuttn.h>
-#include <wx/combobox.h>
 #include <wx/sizer.h>
-#include <wx/panel.h>
 #include <wx/stattext.h>
 #include <wx/textctrl.h>
+#include <wx/panel.h>
+#include <wx/button.h>
 //*)
 
 class ScriptConsole: public wxPanel
@@ -33,10 +32,10 @@ class ScriptConsole: public wxPanel
 		//(*Identifiers(ScriptConsole)
 		static const long ID_TEXTCTRL1;
 		static const long ID_STATICTEXT1;
-		static const long ID_COMBOBOX1;
-		static const long ID_BITMAPBUTTON1;
-		static const long ID_BITMAPBUTTON2;
-		static const long ID_BITMAPBUTTON3;
+		static const long ID_TEXTCTRL2;
+		static const long ID_BUTTON1;
+		static const long ID_BUTTON2;
+		static const long ID_BUTTON3;
 		static const long ID_PANEL1;
 		//*)
 
@@ -48,13 +47,15 @@ class ScriptConsole: public wxPanel
 		//*)
 
 		//(*Declarations(ScriptConsole)
+		wxButton* btnExecute;
+		wxTextCtrl* txtCommand;
 		wxPanel* Panel1;
-		wxBitmapButton* btnLoad;
-		wxComboBox* txtCommand;
-		wxBitmapButton* btnExecute;
-		wxBitmapButton* btnClear;
+		wxStaticText* StaticText1;
+		wxBoxSizer* BoxSizer2;
+		wxButton* btnClear;
+		wxButton* btnLoad;
 		wxTextCtrl* txtConsole;
-		wxStaticText* lblCommand;
+		wxBoxSizer* BoxSizer1;
 		//*)
 
 	private:

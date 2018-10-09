@@ -1,5 +1,5 @@
-<?xml version="1.0" encoding="utf-8" ?>
-<resource xmlns="http://www.wxwidgets.org/wxxrc" version="2.5.3.0">
+<?xml version="1.0" encoding="utf-8"?>
+<resource>
   <object class="wxMenuBar" name="main_menu_bar">
     <object class="wxMenu" name="file_menu">
       <label>&amp;File</label>
@@ -29,8 +29,8 @@
           <help>Create a new custom something :-)</help>
         </object>
         <object class="wxMenuItem" name="idFileNewUser">
-          <label>From template...</label>
-          <help>Create a new project based on a previously saved template</help>
+          <label>From user template...</label>
+          <help>Create a new project based on a previously saved user template</help>
         </object>
       </object>
       <object class="separator"/>
@@ -64,15 +64,21 @@
       </object>
       <object class="separator"/>
       <object class="wxMenuItem" name="idFileSave">
-        <label>&amp;Save file</label>
+        <label>&amp;Save</label>
         <bitmap>images\16x16\filesave.png</bitmap>
         <accel>Ctrl-S</accel>
         <help>Save the active file</help>
       </object>
       <object class="wxMenuItem" name="idFileSaveAs">
-        <label>Save file &amp;as...</label>
+        <label>Save &amp;as...</label>
         <bitmap>images\16x16\filesaveas.png</bitmap>
         <help>Save the active file under a different name</help>
+      </object>
+      <object class="wxMenuItem" name="idFileSaveAllFiles">
+        <label>Save a&amp;ll files</label>
+        <bitmap>images\16x16\filesaveall.png</bitmap>
+        <accel>Ctrl-Shift-S</accel>
+        <help>Save all modified files</help>
       </object>
       <object class="separator"/>
       <object class="wxMenuItem" name="idFileSaveProject">
@@ -84,8 +90,12 @@
         <help>Save active project under a different name</help>
       </object>
       <object class="wxMenuItem" name="idFileSaveProjectTemplate">
-        <label>Save project as template...</label>
-        <help>Keep this project as a template to base new projects on</help>
+        <label>Save project as user-template...</label>
+        <help>Keep this project as a user-template to base new projects on</help>
+      </object>
+      <object class="wxMenuItem" name="idFileSaveProjectAllProjects">
+        <label>Save all projects</label>
+        <help>Save all modified projects</help>
       </object>
       <object class="separator"/>
       <object class="wxMenuItem" name="idFileSaveWorkspace">
@@ -96,12 +106,16 @@
         <label>Save wor&amp;kspace as...</label>
         <help>Save current workspace under a different name</help>
       </object>
+      <object class="wxMenuItem" name="idFileCloseWorkspace">
+        <label>Close workspace</label>
+        <help>Close current workspace</help>
+      </object>
       <object class="separator"/>
       <object class="wxMenuItem" name="idFileSaveAll">
         <label>Save everything</label>
         <bitmap>images\16x16\filesaveall.png</bitmap>
-        <accel>Ctrl-Shift-S</accel>
-        <help>Save all source files, projects and the workspace, if there are changes to them. Save the configuration</help>
+        <accel>Alt-Shift-S</accel>
+        <help>Save all files, projects and the workspace</help>
       </object>
       <object class="separator"/>
       <object class="wxMenuItem" name="idFileClose">
@@ -119,14 +133,13 @@
         <label>Close project</label>
         <help>Close active project</help>
       </object>
-      <object class="wxMenuItem" name="idFileCloseWorkspace">
-        <label>Close workspace</label>
-        <help>Close current workspace</help>
+      <object class="wxMenuItem" name="idFileCloseAllProjects">
+        <label>Close all projects</label>
+        <help>Close all opened projects</help>
       </object>
       <object class="separator"/>
       <object class="wxMenuItem" name="idFilePrint">
         <label>Print...</label>
-        <accel>Ctrl-P</accel>
         <bitmap>images\16x16\fileprint.png</bitmap>
       </object>
       <object class="separator"/>
@@ -151,26 +164,23 @@
         <accel>Ctrl-Shift-Z</accel>
         <help>Redo the last editing operation</help>
       </object>
-      <object class="wxMenuItem" name="idEditClearHistory">
-        <label>Clear changes history</label>
-        <bitmap>images\16x16\history_clear.png</bitmap>
-        <help>Clear the undo-/redo- and (if exists) changebar-history</help>
-        <bitmap>images\16x16\history_clear.png</bitmap>
-      </object>
       <object class="separator"/>
       <object class="wxMenuItem" name="idEditCut">
         <label>Cu&amp;t</label>
         <bitmap>images\16x16\editcut.png</bitmap>
+        <accel>Ctrl-X</accel>
         <help>Copy selected text to clipboard and erase it</help>
       </object>
       <object class="wxMenuItem" name="idEditCopy">
         <label>&amp;Copy</label>
         <bitmap>images\16x16\editcopy.png</bitmap>
+        <accel>Ctrl-C</accel>
         <help>Copy selected text to clipboard</help>
       </object>
       <object class="wxMenuItem" name="idEditPaste">
         <label>&amp;Paste</label>
         <bitmap>images\16x16\editpaste.png</bitmap>
+        <accel>Ctrl-V</accel>
         <help>Paste text from clipboard</help>
       </object>
       <object class="separator"/>
@@ -207,11 +217,6 @@
           <accel>Alt-PgDn</accel>
           <help>Goto next bookmark</help>
         </object>
-        <object class="wxMenuItem" name="idEditBookmarksClearAll">
-          <label>Clear &amp;all bookmarks</label>
-          <accel></accel>
-          <help>Clear all bookmarks</help>
-        </object>
       </object>
       <object class="wxMenu" name="idEditFolding">
         <label>&amp;Folding</label>
@@ -224,7 +229,7 @@
           <help>Unfold all</help>
         </object>
         <object class="wxMenuItem" name="idEditToggleAllFolds">
-          <label>&amp;Toggle all</label>
+          <label>&amp;Toggle all folds</label>
           <accel>Shift-F12</accel>
           <help>Toggle all folds</help>
         </object>
@@ -246,17 +251,17 @@
       <object class="wxMenu" name="idEditEOLMode">
         <label>&amp;End-of-line mode</label>
         <object class="wxMenuItem" name="idEditEOLCRLF">
-          <label>Windows (CR &amp;&amp; LF)</label>
+          <label>CR &amp;&amp; LF</label>
           <help>End-of-line mode uses carriage return and line feed</help>
           <radio>1</radio>
         </object>
         <object class="wxMenuItem" name="idEditEOLCR">
-          <label>Mac (CR)</label>
+          <label>CR</label>
           <help>End-of-line mode uses carriage return only</help>
           <radio>1</radio>
         </object>
         <object class="wxMenuItem" name="idEditEOLLF">
-          <label>Unix (LF)</label>
+          <label>LF</label>
           <help>End-of-line mode uses line feed only</help>
           <radio>1</radio>
         </object>
@@ -407,16 +412,6 @@
             <label>Paste</label>
             <help>Paste before current line</help>
           </object>
-          <object class="wxMenuItem" name="idEditLineUp">
-            <label>Move up</label>
-            <accel>Alt-UP</accel>
-            <help>Transpose current line(s) up</help>
-          </object>
-          <object class="wxMenuItem" name="idEditLineDown">
-            <label>Move down</label>
-            <accel>Alt-DOWN</accel>
-            <help>Transpose current line(s) down</help>
-          </object>
         </object>
         <object class="wxMenu" name="idEditSpecialCommandsCase">
           <label>Case</label>
@@ -429,42 +424,12 @@
             <help>Make selection lowercase</help>
           </object>
         </object>
-        <object class="wxMenu" name="idEditSpecialCommandsOther">
-          <label>Other</label>
-          <object class="wxMenuItem" name="idEditInsertNewLine">
-            <label>Insert new line</label>
-            <accel>Shift+Return</accel>
-            <help>Insert line below current line</help>
-          </object>
-          <object class="wxMenuItem" name="idEditGotoLineEnd">
-            <label>Goto line end</label>
-            <accel>Ctrl+Return</accel>
-            <help>Goto current line end</help>
-          </object>
-          <object class="wxMenuItem" name="idEditInsertNewLineBelow">
-            <label>Insert unindented line below current line</label>
-            <help>Insert line below current line without indentation</help>
-          </object>
-          <object class="wxMenuItem" name="idEditInsertNewLineAbove">
-            <label>Insert unindented line above current line</label>
-            <help>Insert line above current line without indentation</help>
-          </object>
-        </object>
       </object>
       <object class="separator"/>
       <object class="wxMenuItem" name="idEditSelectAll">
         <label>Select &amp;all</label>
+        <accel>Ctrl-A</accel>
         <help>Selects the entire text range</help>
-      </object>
-      <object class="wxMenuItem" name="idEditSelectNext">
-        <label>&amp;Select next occurrence</label>
-        <accel>Ctrl-E</accel>
-        <help>Selects the next occurrence of the currently selected text. Allows editing all the occurrences.</help>
-      </object>
-      <object class="wxMenuItem" name="idEditSelectNextSkip">
-        <label>&amp;Select skip to next occurrence</label>
-        <accel>Shift-Ctrl-E</accel>
-        <help>Deselects the current text and then selects the next occurrence of the same text. Allows editing all the occurrences.</help>
       </object>
       <object class="separator"/>
       <object class="wxMenuItem" name="idEditCommentSelected">
@@ -473,7 +438,7 @@
         <help>Comments the selected block of code</help>
       </object>
       <object class="wxMenuItem" name="idEditUncommentSelected">
-        <label>Uncomme&amp;nt</label>
+        <label>Un&amp;comment</label>
         <accel>Shift-Ctrl-X</accel>
         <help>Uncomments the selected block of code</help>
       </object>
@@ -482,59 +447,44 @@
         <help>Toggles the commentation of the selected block of code</help>
       </object>
       <object class="wxMenuItem" name="idEditStreamCommentSelected">
-        <label>Stream-comme&amp;nt</label>
+        <label>Stream-Comme&amp;nt</label>
         <help>Comments the selected code</help>
       </object>
       <object class="wxMenuItem" name="idEditBoxCommentSelected">
-        <label>Box-comme&amp;nt</label>
+        <label>Box-Comme&amp;nt</label>
         <help>Boxcomments the selected lines of code</help>
       </object>
       <object class="separator"/>
+      <object class="wxMenuItem" name="idEditAutoComplete">
+        <label>Auto-complete</label>
+        <accel>Ctrl-J</accel>
+        <help>Auto-completes the word under the caret (nothing to do with code-completion plugins)</help>
+      </object>
       <object class="wxMenuItem" name="idEditGotoMatchingBrace">
         <label>Goto matching brace</label>
         <accel>Ctrl-Shift-B</accel>
         <help>Moves the caret to the matching brace (if any)</help>
       </object>
-      <object class="separator"/>
-      <object class="wxMenuItem" name="idEditShowCallTip">
-        <label>Show call tip</label>
-        <accel>Ctrl-Shift-Space</accel>
-      </object>
     </object>
     <object class="wxMenu" name="menu_view">
       <label>&amp;View</label>
       <object class="wxMenu" name="idViewLayouts">
-        <label>Perspectives</label>
+        <label>Layouts</label>
         <object class="separator"/>
         <object class="wxMenuItem" name="idViewLayoutSave">
           <label>Save current</label>
-          <help>Save current perspective</help>
+          <help>Save current layout</help>
         </object>
         <object class="wxMenuItem" name="idViewLayoutDelete">
           <label>Delete current</label>
-          <help>Delete current perspective</help>
+          <help>Delete current layout</help>
         </object>
       </object>
       <object class="wxMenu" name="idViewToolbars">
         <label>Toolbars</label>
-        <object class="wxMenuItem" name="idViewToolFit">
-          <label>&amp;Fit toolbars</label>
-          <help>Try to reorder toolbars in such a way that all of them are visible</help>
-        </object>
-        <object class="wxMenuItem" name="idViewToolOptimize">
-          <label>&amp;Optimize toolbars</label>
-          <help>Try to reorder the toolbars in such a way that the use minimum space</help>
-        </object>
-        <object class="separator"/>
         <object class="wxMenuItem" name="idViewToolMain">
           <label>&amp;Main</label>
           <help>Show/hide main toolbar</help>
-          <checkable>1</checkable>
-          <enabled>1</enabled>
-        </object>
-        <object class="wxMenuItem" name="idViewToolDebugger">
-          <label>&amp;Debugger</label>
-          <help>Show/hide debugger toolbar</help>
           <checkable>1</checkable>
           <enabled>1</enabled>
         </object>
@@ -553,21 +503,9 @@
         <checkable>1</checkable>
         <enabled>1</enabled>
       </object>
-      <object class="wxMenuItem" name="idViewStartPage">
-        <label>Start &amp;Page</label>
-        <help>Show/hide start page</help>
-        <checkable>1</checkable>
-        <enabled>1</enabled>
-      </object>
       <object class="wxMenuItem" name="idViewScriptConsole">
         <label>S&amp;cript console</label>
         <help>Show/hide the script console</help>
-        <checkable>1</checkable>
-        <enabled>1</enabled>
-      </object>
-      <object class="wxMenuItem" name="idViewHideEditorTabs">
-        <label>Hide editor tabs</label>
-        <help>Show/hide the editor tabs</help>
         <checkable>1</checkable>
         <enabled>1</enabled>
       </object>
@@ -579,9 +517,8 @@
       </object>
       <object class="separator"/>
       <object class="wxMenuItem" name="idViewFullScreen">
-        <label>F&amp;ull screen</label>
-        <accel>SHIFT-F11</accel>
-        <help>Switch to full screen view</help>
+        <label>F&amp;ullScreen</label>
+        <help>Switch to FullScreen view</help>
         <checkable>1</checkable>
         <enabled>1</enabled>
       </object>
@@ -589,20 +526,6 @@
       <object class="wxMenuItem" name="idViewFocusEditor">
         <label>Focus editor</label>
         <help>Set focus on the active editor</help>
-      </object>
-      <object class="wxMenuItem" name="idViewFocusManagement">
-        <label>Focus management panel</label>
-        <help>Set focus on the management panel</help>
-      </object>
-      <object class="wxMenuItem" name="idViewFocusLogsAndOthers">
-        <label>Focus logs and others</label>
-        <help>Set focus on the logs and others panel</help>
-      </object>
-      <object class="separator"/>
-      <object class="wxMenuItem" name="idViewSwitchTabs">
-        <label>S&amp;witch tabs</label>
-        <accel>Ctrl+Tab</accel>
-        <help>Switch between open editor tabs</help>
       </object>
     </object>
     <object class="wxMenu" name="menu_search">
@@ -614,7 +537,7 @@
         <help>Search for text</help>
       </object>
       <object class="wxMenuItem" name="idSearchFindInFiles">
-        <label>Find in fil&amp;es...</label>
+        <label>&amp;Find in Files...</label>
         <bitmap>images\16x16\findf.png</bitmap>
         <accel>Ctrl-Shift-F</accel>
         <help>Search for text</help>
@@ -631,18 +554,6 @@
         <accel>Shift-F3</accel>
         <help>Repeat the last search in the opposite direction</help>
       </object>
-      <object class="wxMenuItem" name="idSearchFindSelectedNext">
-        <label>Find &amp;next selected</label>
-        <bitmap>images\16x16\filefindnext.png</bitmap>
-        <accel></accel>
-        <help>Search for selected text in the same direction</help>
-      </object>
-      <object class="wxMenuItem" name="idSearchFindSelectedPrevious">
-        <label>Find &amp;previous selected</label>
-        <bitmap>images\16x16\filefindprev.png</bitmap>
-        <accel></accel>
-        <help>Search for selected text in the opposite direction</help>
-      </object>
       <object class="separator"/>
       <object class="wxMenuItem" name="idSearchReplace">
         <label>&amp;Replace...</label>
@@ -651,7 +562,7 @@
         <help>Find and replace text</help>
       </object>
       <object class="wxMenuItem" name="idSearchReplaceInFiles">
-        <label>Replace in file&amp;s...</label>
+        <label>&amp;Replace in Files...</label>
         <bitmap>images\16x16\searchreplacef.png</bitmap>
         <accel>Ctrl-Shift-R</accel>
         <help>Find and replace text</help>
@@ -662,18 +573,6 @@
         <bitmap>images\16x16\goto.png</bitmap>
         <accel>Ctrl-G</accel>
         <help>Goto a specific line</help>
-      </object>
-      <object class="wxMenuItem" name="idSearchGotoNextChanged">
-        <label>Goto next changed line</label>
-        <bitmap>images\16x16\filefindnext.png</bitmap>
-        <accel>Ctrl-F3</accel>
-        <help>Goto next changed line</help>
-      </object>
-      <object class="wxMenuItem" name="idSearchGotoPreviousChanged">
-        <label>Goto previous changed line</label>
-        <bitmap>images\16x16\filefindprev.png</bitmap>
-        <accel>Ctrl-Shift-F3</accel>
-        <help>Goto previous changed line</help>
       </object>
     </object>
     <object class="wxMenu" name="menu_project">
@@ -700,13 +599,9 @@
         <label>E&amp;ditor...</label>
         <help>Change editor's settings</help>
       </object>
-      <object class="wxMenuItem" name="idSettingsCompiler">
-        <label>&amp;Compiler...</label>
-        <help>Change compiler settings</help>
-      </object>
-      <object class="wxMenuItem" name="idSettingsDebugger">
-        <label>&amp;Debugger...</label>
-        <help>Change debugger settings</help>
+      <object class="wxMenuItem" name="idSettingsCompilerDebugger">
+        <label>&amp;Compiler and debugger...</label>
+        <help>Change compiler and debugger settings</help>
       </object>
       <object class="wxMenuItem" name="idSettingsGlobalUserVars">
         <label>&amp;Global variables...</label>

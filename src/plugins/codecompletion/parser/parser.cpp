@@ -8,671 +8,865 @@
  */
 
 #include <sdk.h>
-
-#ifndef CB_PRECOMP
-    #include <queue>
-
-    #include <wx/app.h>
-    #include <wx/dir.h>
-    #include <wx/filename.h>
-    #include <wx/intl.h>
-    #include <wx/progdlg.h>
-
-    #include <cbproject.h>
-    #include <configmanager.h>
-    #include <editormanager.h>
-    #include <globals.h>
-    #include <infowindow.h>
-    #include <logmanager.h>
-    #include <manager.h>
-#endif
-
+#include <wx/app.h>
+#include <wx/filename.h>
 #include <wx/tokenzr.h>
-#include <cbstyledtextctrl.h>
-
+#include <wx/intl.h>
+#include <wx/progdlg.h>
 #include "parser.h"
-#include "parserthreadedtask.h"
-
 #include "../classbrowser.h"
 #include "../classbrowserbuilderthread.h"
+#ifndef STANDALONE
+    #include <configmanager.h>
+    #include <logmanager.h>
+    #include <editormanager.h>
+    #include <manager.h>
+    #include <globals.h>
+    #include <infowindow.h>
+#endif // STANDALONE
 
+#include <queue>
 
 #ifndef CB_PRECOMP
-    #include "editorbase.h"
+      #include "editorbase.h"
 #endif
 
-#define CC_PARSER_DEBUG_OUTPUT 0
+static const char CACHE_MAGIC[] = "CCCACHE_1_3";
+static const int batch_timer_delay = 500;
+static const int reparse_timer_delay = 250;
 
-#if defined(CC_GLOBAL_DEBUG_OUTPUT)
-    #if CC_GLOBAL_DEBUG_OUTPUT == 1
-        #undef CC_PARSER_DEBUG_OUTPUT
-        #define CC_PARSER_DEBUG_OUTPUT 1
-    #elif CC_GLOBAL_DEBUG_OUTPUT == 2
-        #undef CC_PARSER_DEBUG_OUTPUT
-        #define CC_PARSER_DEBUG_OUTPUT 2
-    #endif
+int PARSER_END = wxNewId();
+static int idPool = wxNewId();
+int TIMER_ID = wxNewId();
+int BATCH_TIMER_ID = wxNewId();
+
+BEGIN_EVENT_TABLE(Parser, wxEvtHandler)
+END_EVENT_TABLE()
+
+Parser::Parser(wxEvtHandler* parent)
+    : m_Options(),
+    m_BrowserOptions(),
+    m_pParent(parent),
+#ifndef STANDALONE
+    m_pImageList(0L),
 #endif
-
-#if CC_PARSER_DEBUG_OUTPUT == 1
-    #define TRACE(format, args...) \
-        CCLogger::Get()->DebugLog(F(format, ##args))
-    #define TRACE2(format, args...)
-#elif CC_PARSER_DEBUG_OUTPUT == 2
-    #define TRACE(format, args...)                                              \
-        do                                                                      \
-        {                                                                       \
-            if (g_EnableDebugTrace)                                             \
-                CCLogger::Get()->DebugLog(F(format, ##args));                   \
-        }                                                                       \
-        while (false)
-    #define TRACE2(format, args...) \
-        CCLogger::Get()->DebugLog(F(format, ##args))
-#else
-    #define TRACE(format, args...)
-    #define TRACE2(format, args...)
-#endif
-
-namespace ParserCommon
-{
-    static const int PARSER_BATCHPARSE_TIMER_DELAY           = 300;
-    static const int PARSER_BATCHPARSE_TIMER_RUN_IMMEDIATELY = 10;
-    static const int PARSER_BATCHPARSE_TIMER_DELAY_LONG      = 1000;
-    static const int PARSER_REPARSE_TIMER_DELAY              = 100;
-
-    // this static variable point to the Parser instance which is currently running the taskpool
-    // when the taskpool finishes, the pointer is set to nullptr.
-    static volatile Parser* s_CurrentParser = nullptr;
-
-    // NOTE (ollydbg#1#): This static variable is used to prevent changing the member variables of
-    // the Parser class from different threads. Basically, It should not be a static wxMutex for all
-    // the instances of the Parser class, it should be a member variable of the Parser class.
-    // Maybe, the author of this locker (Loaden?) thought that accessing to different Parser instances
-    // from different threads should also be avoided.
-    static          wxMutex s_ParserMutex;
-
-    int idParserStart = wxNewId();
-    int idParserEnd   = wxNewId();
-
-}// namespace ParserCommon
-
-Parser::Parser(wxEvtHandler* parent, cbProject* project) :
-    m_Parent(parent),
-    m_Project(project),
     m_UsingCache(false),
-    m_Pool(this, wxNewId(), 1, 2 * 1024 * 1024), // in the meanwhile it'll have to be forced to 1
-    m_IsParsing(false),
+    m_Pool(this, idPool, 1), // in the meanwhile it'll have to be forced to 1
+    m_pTokens(0),
+    m_pTempTokens(0),
     m_NeedsReparse(false),
-    m_IsFirstBatch(false),
-    m_ReparseTimer(this, wxNewId()),
-    m_BatchTimer(this, wxNewId()),
+    m_IsBatch(false),
+    m_pClassBrowser(0),
+    m_TreeBuildingStatus(0),
+    m_TreeBuildingTokenIdx(0),
+    m_timer(this, TIMER_ID),
+    m_batchtimer(this,BATCH_TIMER_ID),
     m_StopWatchRunning(false),
     m_LastStopWatchTime(0),
-    m_IgnoreThreadEvents(true),
-    m_IsBatchParseDone(false),
-    m_ParserState(ParserCommon::ptCreateParser),
-    m_NeedMarkFileAsLocal(true)
+    m_IgnoreThreadEvents(false),
+    m_ShuttingDown(false),
+    m_pClassBrowserBuilderThread(0)
 {
+    m_pTokens = new TokensTree;
+    m_pTempTokens = new TokensTree;
+    m_LocalFiles.clear();
+    m_GlobalIncludes.clear();
     ReadOptions();
+#ifndef STANDALONE
+    m_pImageList = new wxImageList(16, 16);
+    wxBitmap bmp;
+    wxString prefix;
+    prefix = ConfigManager::GetDataFolder() + _T("/images/codecompletion/");
+    // bitmaps must be added by order of PARSER_IMG_* consts
+    bmp = cbLoadBitmap(prefix + _T("class_folder.png"), wxBITMAP_TYPE_PNG);
+    m_pImageList->Add(bmp); // PARSER_IMG_CLASS_FOLDER
+    bmp = cbLoadBitmap(prefix + _T("class.png"), wxBITMAP_TYPE_PNG);
+    m_pImageList->Add(bmp); // PARSER_IMG_CLASS
+    bmp = cbLoadBitmap(prefix + _T("ctor_private.png"), wxBITMAP_TYPE_PNG);
+    m_pImageList->Add(bmp); // PARSER_IMG_CTOR_PRIVATE
+    bmp = cbLoadBitmap(prefix + _T("ctor_protected.png"), wxBITMAP_TYPE_PNG);
+    m_pImageList->Add(bmp); // PARSER_IMG_CTOR_PROTECTED
+    bmp = cbLoadBitmap(prefix + _T("ctor_public.png"), wxBITMAP_TYPE_PNG);
+    m_pImageList->Add(bmp); // PARSER_IMG_CTOR_PUBLIC
+    bmp = cbLoadBitmap(prefix + _T("dtor_private.png"), wxBITMAP_TYPE_PNG);
+    m_pImageList->Add(bmp); // PARSER_IMG_DTOR_PRIVATE
+    bmp = cbLoadBitmap(prefix + _T("dtor_protected.png"), wxBITMAP_TYPE_PNG);
+    m_pImageList->Add(bmp); // PARSER_IMG_DTOR_PROTECTED
+    bmp = cbLoadBitmap(prefix + _T("dtor_public.png"), wxBITMAP_TYPE_PNG);
+    m_pImageList->Add(bmp); // PARSER_IMG_DTOR_PUBLIC
+    bmp = cbLoadBitmap(prefix + _T("method_private.png"), wxBITMAP_TYPE_PNG);
+    m_pImageList->Add(bmp); // PARSER_IMG_FUNC_PRIVATE
+    bmp = cbLoadBitmap(prefix + _T("method_protected.png"), wxBITMAP_TYPE_PNG);
+    m_pImageList->Add(bmp); // PARSER_IMG_FUNC_PRIVATE
+    bmp = cbLoadBitmap(prefix + _T("method_public.png"), wxBITMAP_TYPE_PNG);
+    m_pImageList->Add(bmp); // PARSER_IMG_FUNC_PUBLIC
+    bmp = cbLoadBitmap(prefix + _T("var_private.png"), wxBITMAP_TYPE_PNG);
+    m_pImageList->Add(bmp); // PARSER_IMG_VAR_PRIVATE
+    bmp = cbLoadBitmap(prefix + _T("var_protected.png"), wxBITMAP_TYPE_PNG);
+    m_pImageList->Add(bmp); // PARSER_IMG_VAR_PROTECTED
+    bmp = cbLoadBitmap(prefix + _T("var_public.png"), wxBITMAP_TYPE_PNG);
+    m_pImageList->Add(bmp); // PARSER_IMG_VAR_PUBLIC
+    bmp = cbLoadBitmap(prefix + _T("preproc.png"), wxBITMAP_TYPE_PNG);
+    m_pImageList->Add(bmp); // PARSER_IMG_PREPROCESSOR
+    bmp = cbLoadBitmap(prefix + _T("enum.png"), wxBITMAP_TYPE_PNG);
+    m_pImageList->Add(bmp); // PARSER_IMG_ENUM
+    bmp = cbLoadBitmap(prefix + _T("enumerator.png"), wxBITMAP_TYPE_PNG);
+    m_pImageList->Add(bmp); // PARSER_IMG_ENUMERATOR
+    bmp = cbLoadBitmap(prefix + _T("namespace.png"), wxBITMAP_TYPE_PNG);
+    m_pImageList->Add(bmp); // PARSER_IMG_NAMESPACE
+    bmp = cbLoadBitmap(prefix + _T("typedef.png"), wxBITMAP_TYPE_PNG);
+    m_pImageList->Add(bmp); // PARSER_IMG_TYPEDEF
+    bmp = cbLoadBitmap(prefix + _T("symbols_folder.png"), wxBITMAP_TYPE_PNG);
+    m_pImageList->Add(bmp); // PARSER_IMG_SYMBOLS_FOLDER
+    bmp = cbLoadBitmap(prefix + _T("enums_folder.png"), wxBITMAP_TYPE_PNG);
+    m_pImageList->Add(bmp); // PARSER_IMG_ENUMS_FOLDER
+    bmp = cbLoadBitmap(prefix + _T("preproc_folder.png"), wxBITMAP_TYPE_PNG);
+    m_pImageList->Add(bmp); // PARSER_IMG_PREPROC_FOLDER
+    bmp = cbLoadBitmap(prefix + _T("others_folder.png"), wxBITMAP_TYPE_PNG);
+    m_pImageList->Add(bmp); // PARSER_IMG_OTHERS_FOLDER
+    bmp = cbLoadBitmap(prefix + _T("typedefs_folder.png"), wxBITMAP_TYPE_PNG);
+    m_pImageList->Add(bmp); // PARSER_IMG_TYPEDEF_FOLDER
+#endif // STANDALONE
     ConnectEvents();
 }
 
 Parser::~Parser()
 {
-    // Don't wrap the s_ParserMutex lock around TerminateAllThreads(), since, it will cause a deadlock
-    // in TerminateAllThreads() when calling DeleteParser() before parsing has finished.
+    m_ShuttingDown = true;
+    if(m_pClassBrowser && m_pClassBrowser->GetParserPtr() == this)
+        m_pClassBrowser->UnlinkParser();
+    m_TreeBuildingStatus = 0;
+    m_pClassBrowser = NULL;
 
-    DisconnectEvents();
-    TerminateAllThreads();
-
-    CC_LOCKER_TRACK_P_MTX_LOCK(ParserCommon::s_ParserMutex)
-
-    if (ParserCommon::s_CurrentParser == this)
-        ParserCommon::s_CurrentParser = nullptr;
-
-    CC_LOCKER_TRACK_P_MTX_UNLOCK(ParserCommon::s_ParserMutex)
+    Clear(); // Clear also disconnects the events
+#ifndef STANDALONE
+    Delete(m_pImageList);
+    Delete(m_pTempTokens);
+    Delete(m_pTokens);
+#endif // STANDALONE
 }
 
 void Parser::ConnectEvents()
 {
-    Connect(m_Pool.GetId(),         cbEVT_THREADTASK_ALLDONE,
-            (wxObjectEventFunction)(wxEventFunction)(wxCommandEventFunction)&Parser::OnAllThreadsDone);
-    Connect(m_ReparseTimer.GetId(), wxEVT_TIMER, wxTimerEventHandler(Parser::OnReparseTimer));
-    Connect(m_BatchTimer.GetId(),   wxEVT_TIMER, wxTimerEventHandler(Parser::OnBatchTimer));
+    Connect(-1,-1,cbEVT_THREADTASK_ALLDONE,
+            (wxObjectEventFunction)(wxEventFunction)(wxCommandEventFunction)
+            &Parser::OnAllThreadsDone);
+    Connect(TIMER_ID,-1, wxEVT_TIMER,(wxObjectEventFunction)
+            (wxEventFunction)(wxTimerEventFunction)&Parser::OnTimer);
+    Connect(BATCH_TIMER_ID,-1,wxEVT_TIMER,(wxObjectEventFunction)
+            (wxEventFunction)(wxTimerEventFunction)&Parser::OnBatchTimer);
 }
 
 void Parser::DisconnectEvents()
 {
-    Disconnect(m_Pool.GetId(),         cbEVT_THREADTASK_ALLDONE,
-               (wxObjectEventFunction)(wxEventFunction)(wxCommandEventFunction)&Parser::OnAllThreadsDone);
-    Disconnect(m_ReparseTimer.GetId(), wxEVT_TIMER, wxTimerEventHandler(Parser::OnReparseTimer));
-    Disconnect(m_BatchTimer.GetId(),   wxEVT_TIMER, wxTimerEventHandler(Parser::OnBatchTimer));
+    Disconnect(-1,BATCH_TIMER_ID,wxEVT_TIMER);
+    Disconnect(-1,TIMER_ID, wxEVT_TIMER);
+    Disconnect(-1,-1,cbEVT_THREADTASK_ALLDONE);
+}
+
+void Parser::ReadOptions()
+{
+#ifdef STANDALONE
+    m_Options.followLocalIncludes = true;
+    m_Options.followGlobalIncludes = false;
+    m_Options.caseSensitive = true;
+    m_Options.wantPreprocessor = false;
+    m_Options.useSmartSense = true;
+    m_BrowserOptions.showInheritance = false;
+    m_BrowserOptions.expandNS = false;
+    m_BrowserOptions.viewFlat = false;
+    m_BrowserOptions.displayFilter = bdfWorkspace;
+#else // !STANDALONE
+    ConfigManager* cfg = Manager::Get()->GetConfigManager(_T("code_completion"));
+
+    // one-time default settings change: upgrade everyone
+    bool force_all_on = !cfg->ReadBool(_T("/parser_defaults_changed"), false);
+    if (force_all_on)
+    {
+        cfg->Write(_T("/parser_defaults_changed"), (bool)true);
+
+        cfg->Write(_T("/parser_follow_local_includes"), true);
+        cfg->Write(_T("/parser_follow_global_includes"), true);
+        cfg->Write(_T("/want_preprocessor"), true);
+    }
+
+    //m_Pool.SetConcurrentThreads(cfg->ReadInt(_T("/max_threads"), 1)); // Ignore it in the meanwhile
+    m_Options.followLocalIncludes = cfg->ReadBool(_T("/parser_follow_local_includes"), true);
+    m_Options.followGlobalIncludes = cfg->ReadBool(_T("/parser_follow_global_includes"), true);
+    m_Options.caseSensitive = cfg->ReadBool(_T("/case_sensitive"), false);
+    m_Options.useSmartSense = cfg->ReadBool(_T("/use_SmartSense"), true);
+    m_Options.wantPreprocessor = cfg->ReadBool(_T("/want_preprocessor"), true);
+    m_BrowserOptions.showInheritance = cfg->ReadBool(_T("/browser_show_inheritance"), false);
+    m_BrowserOptions.expandNS = cfg->ReadBool(_T("/browser_expand_ns"), false);
+    m_BrowserOptions.displayFilter = (BrowserDisplayFilter)cfg->ReadInt(_T("/browser_display_filter"), bdfWorkspace);
+#endif // STANDALONE
+}
+
+void Parser::WriteOptions()
+{
+#ifndef STANDALONE
+    ConfigManager* cfg = Manager::Get()->GetConfigManager(_T("code_completion"));
+
+    cfg->Write(_T("/max_threads"), (int)GetMaxThreads());
+    cfg->Write(_T("/parser_follow_local_includes"), m_Options.followLocalIncludes);
+    cfg->Write(_T("/parser_follow_global_includes"), m_Options.followGlobalIncludes);
+    cfg->Write(_T("/case_sensitive"), m_Options.caseSensitive);
+    cfg->Write(_T("/use_SmartSense"), m_Options.useSmartSense);
+    cfg->Write(_T("/want_preprocessor"), m_Options.wantPreprocessor);
+    cfg->Write(_T("/browser_show_inheritance"), m_BrowserOptions.showInheritance);
+    cfg->Write(_T("/browser_expand_ns"), m_BrowserOptions.expandNS);
+    cfg->Write(_T("/browser_display_filter"), m_BrowserOptions.displayFilter);
+#endif // STANDALONE
+}
+
+bool Parser::CacheNeedsUpdate()
+{
+    if (m_UsingCache)
+    {
+        wxCriticalSectionLocker lock(s_MutexProtection);
+        return m_pTokens->m_modified;
+    }
+    return true;
+}
+
+unsigned int Parser::GetFilesCount()
+{
+    wxCriticalSectionLocker lock(s_MutexProtection);
+    return m_pTokens->m_FilesMap.size();
 }
 
 bool Parser::Done()
 {
-    CC_LOCKER_TRACK_P_MTX_LOCK(ParserCommon::s_ParserMutex)
-
-    bool done = m_BatchParseFiles.empty()
-                && m_PredefinedMacros.IsEmpty()
-                && !m_NeedMarkFileAsLocal
-                && m_Pool.Done();
-
-    CC_LOCKER_TRACK_P_MTX_UNLOCK(ParserCommon::s_ParserMutex)
-
-    return done;
+    wxCriticalSectionLocker lock(s_mutexListProtection);
+    return m_Pool.Done();
 }
 
-wxString Parser::NotDoneReason()
+#ifndef STANDALONE
+void Parser::SetTokenKindImage(int kind, const wxBitmap& bitmap, const wxBitmap& mask)
 {
-    CC_LOCKER_TRACK_P_MTX_LOCK(ParserCommon::s_ParserMutex)
-
-    wxString reason = _T(" > Reasons:");
-    if (!m_BatchParseFiles.empty())
-        reason += _T("\n- still batch parse files to parse");
-    if (!m_PredefinedMacros.IsEmpty())
-        reason += _T("\n- still pre-defined macros to operate");
-    if (m_NeedMarkFileAsLocal)
-        reason += _T("\n- still need to mark files as local");
-    if (!m_Pool.Done())
-        reason += _T("\n- thread pool is not done yet");
-
-    CC_LOCKER_TRACK_P_MTX_UNLOCK(ParserCommon::s_ParserMutex)
-
-    return reason;
+    if (kind < PARSER_IMG_MIN || kind > PARSER_IMG_MAX)
+        return;
+#ifdef __WXMSW__
+    m_pImageList->Replace(kind, bitmap, mask);
+#endif
 }
 
-void Parser::AddPredefinedMacros(const wxString& defs)
+void Parser::SetTokenKindImage(int kind, const wxBitmap& bitmap, const wxColour& maskColour)
 {
-    if (m_BatchTimer.IsRunning())
+    if (kind < PARSER_IMG_MIN || kind > PARSER_IMG_MAX)
+        return;
+    m_pImageList->Replace(kind, bitmap);//, maskColour);
+}
+
+void Parser::SetTokenKindImage(int kind, const wxIcon& icon)
+{
+    if (kind < PARSER_IMG_MIN || kind > PARSER_IMG_MAX)
+        return;
+    m_pImageList->Replace(kind, icon);
+}
+
+int Parser::GetTokenKindImage(Token* token)
+{
+    if (!token)
+        return PARSER_IMG_NONE;
+
+    switch (token->m_TokenKind)
     {
-        m_BatchTimer.Stop();
-        TRACE(_T("Parser::AddPredefinedMacros(): Stop the m_BatchTimer."));
+        case tkPreprocessor: return PARSER_IMG_PREPROCESSOR;
+
+        case tkEnum: return PARSER_IMG_ENUM;
+
+        case tkEnumerator: return PARSER_IMG_ENUMERATOR;
+
+        case tkClass: return PARSER_IMG_CLASS;
+
+        case tkNamespace: return PARSER_IMG_NAMESPACE;
+
+        case tkTypedef: return PARSER_IMG_TYPEDEF;
+
+        case tkConstructor:
+            switch (token->m_Scope)
+            {
+                case tsProtected: return PARSER_IMG_CTOR_PROTECTED;
+                case tsPrivate: return PARSER_IMG_CTOR_PRIVATE;
+                default: return PARSER_IMG_CTOR_PUBLIC;
+            }
+
+        case tkDestructor:
+            switch (token->m_Scope)
+            {
+                case tsProtected: return PARSER_IMG_DTOR_PROTECTED;
+                case tsPrivate: return PARSER_IMG_DTOR_PRIVATE;
+                default: return PARSER_IMG_DTOR_PUBLIC;
+            }
+
+        case tkFunction:
+            switch (token->m_Scope)
+            {
+                case tsProtected: return PARSER_IMG_FUNC_PROTECTED;
+                case tsPrivate: return PARSER_IMG_FUNC_PRIVATE;
+                default: return PARSER_IMG_FUNC_PUBLIC;
+            }
+
+        case tkVariable:
+            switch (token->m_Scope)
+            {
+                case tsProtected: return PARSER_IMG_VAR_PROTECTED;
+                case tsPrivate: return PARSER_IMG_VAR_PRIVATE;
+                default: return PARSER_IMG_VAR_PUBLIC;
+            }
+
+        default: return PARSER_IMG_NONE;
     }
+}
+#endif // STANDALONE
 
-    CC_LOCKER_TRACK_P_MTX_LOCK(ParserCommon::s_ParserMutex)
+Token* Parser::FindTokenByName(const wxString& name, bool globalsOnly, short int kindMask) const
+{
+    wxCriticalSectionLocker lock(s_MutexProtection);
+    int result = m_pTokens->TokenExists(name,-1,kindMask);
+    return m_pTokens->at(result);
+}
 
-    m_PredefinedMacros << defs;
-
-    // ptUndefined means at least the cbproject is parsed already, this means the user try to
-    // reparse the project, since the predefined macro buffer is only collected when a new Parser
-    // is created
-    if (m_ParserState == ParserCommon::ptUndefined)
-        m_ParserState = ParserCommon::ptCreateParser;
-
-    if (!m_IsParsing)
+Token* Parser::FindChildTokenByName(Token* parent, const wxString& name, bool useInheritance, short int kindMask) const
+{
+    if (!parent)
+        return FindTokenByName(name, false, kindMask);
+    Token* result = 0;
+    wxCriticalSectionLocker *lock = 0;
     {
-        TRACE(_T("Parser::AddPredefinedMacros(): Starting m_BatchTimer."));
-        m_BatchTimer.Start(ParserCommon::PARSER_BATCHPARSE_TIMER_DELAY, wxTIMER_ONE_SHOT);
+        lock = new wxCriticalSectionLocker(s_MutexProtection);
+        result = m_pTokens->at(m_pTokens->TokenExists(name,parent->GetSelf(),kindMask));
+        delete lock;
     }
-
-    CC_LOCKER_TRACK_P_MTX_UNLOCK(ParserCommon::s_ParserMutex)
-}
-
-void Parser::ClearPredefinedMacros()
-{
-    CC_LOCKER_TRACK_P_MTX_LOCK(ParserCommon::s_ParserMutex)
-
-    m_LastPredefinedMacros = m_PredefinedMacros;
-    m_PredefinedMacros.Clear();
-
-    CC_LOCKER_TRACK_P_MTX_UNLOCK(ParserCommon::s_ParserMutex);
-}
-
-const wxString Parser::GetPredefinedMacros() const
-{
-    CCLogger::Get()->DebugLog(_T("Parser::GetPredefinedMacros()"));
-    return m_LastPredefinedMacros;
-}
-
-void Parser::AddBatchParse(const StringList& filenames)
-{
-    // this function has the same logic as the previous function Parser::AddPriorityHeader
-    // it just add some files to a m_BatchParseFiles, and tick the m_BatchTimer timer.
-    if (m_BatchTimer.IsRunning())
-        m_BatchTimer.Stop();
-
-    CC_LOCKER_TRACK_P_MTX_LOCK(ParserCommon::s_ParserMutex)
-
-    if (m_BatchParseFiles.empty())
-        m_BatchParseFiles = filenames;
-    else
-        std::copy(filenames.begin(), filenames.end(), std::back_inserter(m_BatchParseFiles));
-
-    if (m_ParserState == ParserCommon::ptUndefined)
-        m_ParserState = ParserCommon::ptCreateParser;
-
-    if (!m_IsParsing)
+    if(!result && useInheritance)
     {
-        TRACE(_T("Parser::AddBatchParse(): Starting m_BatchTimer."));
-        m_BatchTimer.Start(ParserCommon::PARSER_BATCHPARSE_TIMER_DELAY, wxTIMER_ONE_SHOT);
-    }
-
-    CC_LOCKER_TRACK_P_MTX_UNLOCK(ParserCommon::s_ParserMutex)
-}
-
-void Parser::AddParse(const wxString& filename)
-{
-    // similar logic as the Parser::AddBatchParse, but this function only add one file to
-    // m_BatchParseFiles member, also it does not change the m_ParserState state.
-    if (m_BatchTimer.IsRunning())
-        m_BatchTimer.Stop();
-
-    CC_LOCKER_TRACK_P_MTX_LOCK(ParserCommon::s_ParserMutex)
-
-    m_BatchParseFiles.push_back(filename);
-
-    if (!m_IsParsing)
-    {
-        TRACE(_T("Parser::AddParse(): Starting m_BatchTimer."));
-        m_BatchTimer.Start(ParserCommon::PARSER_BATCHPARSE_TIMER_DELAY, wxTIMER_ONE_SHOT);
-    }
-
-    CC_LOCKER_TRACK_P_MTX_UNLOCK(ParserCommon::s_ParserMutex)
-}
-
-bool Parser::Parse(const wxString& filename, bool isLocal, bool locked)
-{
-    // most ParserThreadOptions was copied from m_Options
-    ParserThreadOptions opts;
-
-    opts.useBuffer             = false;
-    opts.bufferSkipBlocks      = false;
-    opts.bufferSkipOuterBlocks = false;
-
-    opts.followLocalIncludes   = m_Options.followLocalIncludes;
-    opts.followGlobalIncludes  = m_Options.followGlobalIncludes;
-    opts.wantPreprocessor      = m_Options.wantPreprocessor;
-    opts.parseComplexMacros    = m_Options.parseComplexMacros;
-    opts.platformCheck         = m_Options.platformCheck;
-
-    // whether to collect doxygen style documents.
-    opts.storeDocumentation    = m_Options.storeDocumentation;
-
-    opts.loader                = nullptr; // must be 0 at this point
-
-    bool result = false;
-    // a (false) do while, so we can quickly exit the loop by break statement
-    do
-    {
-        bool canparse = false;
+        // no reason for a critical section here:
+        // it will only recurse to itself.
+        // the critical section above is sufficient
+        TokenIdxSet::iterator it;
+        for(it = parent->m_DirectAncestors.begin();it != parent->m_DirectAncestors.end();++it)
         {
-            // check to see whether the filename is already parsed, if not, then we first add
-            // it to ReserveFileForParsing
-            if (!locked)
-                CC_LOCKER_TRACK_TT_MTX_LOCK(s_TokenTreeMutex)
-
-            //check to see whether it is assigned already
-            canparse = !m_TokenTree->IsFileParsed(filename);
-            if (canparse)
-                canparse = m_TokenTree->ReserveFileForParsing(filename, true) != 0;
-
-            if (!locked)
-                CC_LOCKER_TRACK_TT_MTX_UNLOCK(s_TokenTreeMutex)
+            Token* ancestor = m_pTokens->at(*it);
+            result = FindChildTokenByName(ancestor, name, true, kindMask);
+            if(result)
+                break;
         }
-
-        if (!canparse)
-        {
-            TRACE(_T("Parser::Parse(): file already parsed or reserved for parsing") + filename);
-            break;
-        }
-
-        // once the Load function is called, it will return a loader pointer, and start loading
-        // the file content in a background thread(see: BackgroundThread class)
-        // the loader will be deleted in the ParserThread::InitTokenizer() function.
-        // the second argument is the option whether we should reuse the Editor buffer
-        // if m_NeedsReparse is true, thus means we need to load the file content from the editor
-        // buffer instead of the hard disk.
-        opts.loader = Manager::Get()->GetFileManager()->Load(filename, m_NeedsReparse);
-
-        // we are going to parse this file, so create a ParserThread
-        ParserThread* thread = new ParserThread(this, filename, isLocal, opts, m_TokenTree);
-        TRACE(_T("Parser::Parse(): Parsing %s"), filename.wx_str());
-
-        // We now properly parse each source file from top to bottom (i.e., expanding each
-        // #include directive: If locked is true, which means this function is called when handling
-        // #include directive, the tree is already locked, so recursive here.
-        if (locked)
-        {
-
-            // release the tree locker, don't block the GUI to access the TokenTree for a long time
-            CC_LOCKER_TRACK_TT_MTX_UNLOCK(s_TokenTreeMutex)
-            wxMilliSleep(1);
-            CC_LOCKER_TRACK_TT_MTX_LOCK(s_TokenTreeMutex)
-
-            TRACE(_T("Parser::Parse(): Parsing included header, %s"), filename.wx_str());
-            // run the parse recursively
-            AddParserThread(thread);
-            result = thread->Parse();
-            RemoveParserThread(thread);
-            delete thread;
-            return true;
-        }
-        else
-        {
-            // files should not be parsed immediately, so we need to put it to the pool.
-            TRACE(_T("Parser::Parse(): Adding a Parsing job for %s"), filename.wx_str());
-            m_Pool.AddTask(thread, true); // autodelete = true
-        }
-
-        result = true;
     }
-    while (false);
-
     return result;
 }
 
-bool Parser::ParseBuffer(const wxString& buffer,   bool isLocal,
-                         bool  bufferSkipBlocks,   bool isTemp,
-                         const wxString& filename, int  parentIdx, int initLine)
+size_t Parser::FindMatches(const wxString& s,TokenList& result,bool caseSensitive,bool is_prefix)
+{
+    result.clear();
+    TokenIdxSet tmpresult;
+    wxCriticalSectionLocker lock(s_MutexProtection);
+    if(!m_pTokens->FindMatches(s,tmpresult,caseSensitive,is_prefix))
+        return 0;
+
+    TokenIdxSet::iterator it;
+    for(it = tmpresult.begin();it!=tmpresult.end();++it)
+    {
+        Token* token = m_pTokens->at(*it);
+        if(token)
+        result.push_back(token);
+    }
+    return result.size();
+}
+
+void Parser::LinkInheritance(bool tempsOnly)
+{
+    wxCriticalSectionLocker lock(s_MutexProtection);
+    (tempsOnly ? m_pTempTokens :  m_pTokens)->RecalcData();
+}
+
+void Parser::MarkFileTokensAsLocal(const wxString& filename, bool local, void* userData)
+{
+    wxCriticalSectionLocker lock(s_MutexProtection);
+    m_pTokens->MarkFileTokensAsLocal(filename, local, userData);
+}
+
+bool Parser::ParseBuffer(const wxString& buffer, bool isLocal, bool bufferSkipBlocks, bool isTemp)
 {
     ParserThreadOptions opts;
+    opts.wantPreprocessor = m_Options.wantPreprocessor;
+    opts.followLocalIncludes = m_Options.followLocalIncludes;
+    opts.followGlobalIncludes = m_Options.followGlobalIncludes;
+    opts.useBuffer = true;
+    opts.isTemp = isTemp;
+    opts.bufferSkipBlocks = bufferSkipBlocks;
+    opts.handleFunctions = false;
+    return Parse(buffer, isLocal, opts);
+}
 
-    opts.useBuffer            = true;
-    opts.fileOfBuffer         = filename;
-    opts.parentIdxOfBuffer    = parentIdx;
-    opts.initLineOfBuffer     = initLine;
-    opts.bufferSkipBlocks     = bufferSkipBlocks;
-    opts.isTemp               = isTemp;
+void Parser::BatchParse(const wxArrayString& filenames)
+{
+    m_batchtimer.Stop();
+    m_IsBatch = true;
+    m_Pool.BatchBegin();
+    for (unsigned int i = 0; i < filenames.GetCount(); ++i)
+    {
+        LoaderBase* loader = NULL; //defer loading until later
+        Parse(filenames[i], true, loader);
+    }
 
-    opts.followLocalIncludes  = false;
-    opts.followGlobalIncludes = false;
-    opts.wantPreprocessor     = m_Options.wantPreprocessor;
-    opts.parseComplexMacros   = m_Options.parseComplexMacros;
-    opts.platformCheck        = true;
+    // Allow future parses to take place in this same run
+    m_batchtimer.Start(batch_timer_delay,wxTIMER_ONE_SHOT);
+}
 
-    opts.handleFunctions      = true;   // enabled to support function ptr in local block
+bool Parser::Parse(const wxString& filename, bool isLocal, LoaderBase* loader)
+{
+    ParserThreadOptions opts;
+    opts.wantPreprocessor = m_Options.wantPreprocessor;
+    opts.useBuffer = false;
+    opts.bufferSkipBlocks = false;
+    opts.bufferSkipOuterBlocks = false;
+    opts.followLocalIncludes = m_Options.followLocalIncludes;
+    opts.followGlobalIncludes = m_Options.followGlobalIncludes;
+    opts.loader = loader;
 
-    opts.storeDocumentation   = m_Options.storeDocumentation;
+    // feature incomplete
+//    bool isSource = FileTypeOf(filename) == ftSource;
+//    opts.handleClasses = !isSource;
+//    opts.handleEnums = !isSource;
+////    opts.handleFunctions = !isSource; // always true, so we can get the implementation info
+//    opts.handleTypedefs = !isSource;
+//    opts.handleVars = !isSource;
 
-    ParserThread thread(this, buffer, isLocal, opts, m_TokenTree);
+    return Parse(UnixFilename(filename), isLocal, opts);
+}
 
-    CC_LOCKER_TRACK_TT_MTX_LOCK(s_TokenTreeMutex)
+bool Parser::Parse(const wxString& bufferOrFilename, bool isLocal, ParserThreadOptions& opts)
+{
+    wxString buffOrFile = bufferOrFilename;
+    bool result = false;
+    do
+    {
+        if(!opts.useBuffer)
+        {
+            wxCriticalSectionLocker lock(s_MutexProtection);
+            bool canparse = !m_pTokens->IsFileParsed(buffOrFile);
+            if(canparse)
+                canparse = m_pTokens->ReserveFileForParsing(buffOrFile,true) != 0;
+            if (!canparse)
+            {
+               if(opts.loader) // if a loader is already open at this point, the caller must clean it up
+                   Manager::Get()->GetLogManager()->DebugLog(_T("CodeCompletion Plugin: FileLoader memory leak likely loading file ")+bufferOrFilename);
+               break;
+            }
+            if(!opts.loader) //this should always be true (memory will leak if a loader has already been initialized before this point)
+                opts.loader=Manager::Get()->GetFileManager()->Load(bufferOrFilename, false);
+        }
 
-    bool success = thread.Parse();
+//        Manager::Get()->GetLogManager()->DebugLog(_T("Creating task for: %s"), buffOrFile.c_str());
+        ParserThread* thread = new ParserThread(this,
+                                                buffOrFile,
+                                                isLocal,
+                                                opts,
+                                                m_pTokens);
+        if (opts.useBuffer)
+        {
+            result = thread->Parse();
+            LinkInheritance(true);
+            delete thread;
+            break;
+        }
 
-    CC_LOCKER_TRACK_TT_MTX_UNLOCK(s_TokenTreeMutex)
+        bool use_timer = m_batchtimer.IsRunning();
+        if(!m_IsBatch && wxThread::IsMain())
+        {
+            use_timer = true;
+            m_IsBatch = true;
+            m_Pool.BatchBegin();
+        }
+//        Manager::Get()->GetLogManager()->DebugLog(_T("parsing %s"),buffOrFile.c_str());
+        if(m_IgnoreThreadEvents)
+            m_IgnoreThreadEvents = false;
+        #ifdef CODECOMPLETION_PROFILING
+        StartStopWatch();
+        m_batchtimer.Stop();
+        thread->Parse();
+        #else
+        m_Pool.AddTask(thread, true);
+        #endif
 
-    return success;
+        // For every parse, reset the countdown to -batch_timer_delay.
+        // This will give us a tolerance period before the next parse job is queued.
+        if(use_timer)
+            m_batchtimer.Start(batch_timer_delay,wxTIMER_ONE_SHOT);
+        result = true;
+    }while(false);
+    return result;
 }
 
 bool Parser::ParseBufferForFunctions(const wxString& buffer)
 {
     ParserThreadOptions opts;
-
-    opts.useBuffer            = true;
-    opts.bufferSkipBlocks     = true;
-
-    opts.followLocalIncludes  = false;
-    opts.followGlobalIncludes = false;
-    opts.wantPreprocessor     = m_Options.wantPreprocessor;
-    opts.parseComplexMacros   = m_Options.parseComplexMacros;
-    opts.platformCheck        = m_Options.platformCheck;
-
-    opts.handleFunctions      = true;
-
-    opts.storeDocumentation   = m_Options.storeDocumentation;
-
-    ParserThread thread(this, buffer, false, opts, m_TempTokenTree);
-
-    CC_LOCKER_TRACK_TT_MTX_LOCK(s_TokenTreeMutex)
-
-    bool success = thread.Parse();
-
-    CC_LOCKER_TRACK_TT_MTX_UNLOCK(s_TokenTreeMutex)
-
-    return success;
+    opts.wantPreprocessor = m_Options.wantPreprocessor;
+    opts.useBuffer = true;
+    opts.bufferSkipBlocks = true;
+    opts.handleFunctions = true;
+    ParserThread* thread = new ParserThread(this,
+                                            buffer,
+                                            false,
+                                            opts,
+                                            m_pTempTokens);
+    bool result = thread->Parse();
+    delete thread;
+    return result;
 }
 
-bool Parser::ParseBufferForNamespaces(const wxString& buffer, NameSpaceVec& result)
+bool Parser::ParseBufferForUsingNamespace(const wxString& buffer, wxArrayString& result)
 {
     ParserThreadOptions opts;
-
-    opts.useBuffer            = true;
-
-    opts.followLocalIncludes  = false;
-    opts.followGlobalIncludes = false;
-    opts.wantPreprocessor     = m_Options.wantPreprocessor;
-    opts.parseComplexMacros   = false;
-    opts.platformCheck        = true;
-
-    opts.storeDocumentation   = m_Options.storeDocumentation;
-
-    ParserThread thread(this, wxEmptyString, true, opts, m_TempTokenTree);
-
-    CC_LOCKER_TRACK_TT_MTX_LOCK(s_TokenTreeMutex)
-
-    bool success = thread.ParseBufferForNamespaces(buffer, result);
-
-    CC_LOCKER_TRACK_TT_MTX_UNLOCK(s_TokenTreeMutex)
-
-    return success;
-}
-
-bool Parser::ParseBufferForUsingNamespace(const wxString& buffer, wxArrayString& result, bool bufferSkipBlocks)
-{
-    ParserThreadOptions opts;
-
-    opts.useBuffer            = true;
-
-    opts.followLocalIncludes  = false;
-    opts.followGlobalIncludes = false;
-    opts.wantPreprocessor     = m_Options.wantPreprocessor;
-    opts.parseComplexMacros   = false;
-    opts.platformCheck        = true;
-    opts.bufferSkipBlocks     = bufferSkipBlocks;
-
-    opts.storeDocumentation   = m_Options.storeDocumentation;
-
-    ParserThread thread(this, wxEmptyString, false, opts, m_TempTokenTree);
-
-    CC_LOCKER_TRACK_TT_MTX_LOCK(s_TokenTreeMutex)
-
-    bool success = thread.ParseBufferForUsingNamespace(buffer, result);
-
-    CC_LOCKER_TRACK_TT_MTX_UNLOCK(s_TokenTreeMutex)
-
-    return success;
+//    opts.wantPreprocessor = m_Options.wantPreprocessor; // ignored
+//    opts.useBuffer = false; // ignored
+//    opts.bufferSkipBlocks = false; // ignored
+    ParserThread* thread = new ParserThread(this,
+                                            wxEmptyString,
+                                            false,
+                                            opts,
+                                            m_pTempTokens);
+    bool bresult = thread->ParseBufferForUsingNamespace(buffer, result);
+    delete thread;
+    return bresult;
 }
 
 bool Parser::RemoveFile(const wxString& filename)
 {
-    CC_LOCKER_TRACK_TT_MTX_LOCK(s_TokenTreeMutex)
+    if(!Done())
+        return false; // Can't alter the tokens tree if parsing has not finished
+    bool result = false;
+    wxString file = UnixFilename(filename);
+    {
+        wxCriticalSectionLocker lock(s_MutexProtection);
+        size_t index = m_pTokens->GetFileIndex(file);
+        result = m_pTokens->m_FilesStatus.count(index);
 
-    const size_t fileIdx = m_TokenTree->InsertFileOrGetIndex(filename);
-    const bool   result  = m_TokenTree->GetFileStatusCountForIndex(fileIdx);
-
-    m_TokenTree->RemoveFile(filename);
-    m_TokenTree->EraseFileMapInFileMap(fileIdx);
-    m_TokenTree->EraseFileStatusByIndex(fileIdx);
-    m_TokenTree->EraseFilesToBeReparsedByIndex(fileIdx);
-
-    CC_LOCKER_TRACK_TT_MTX_UNLOCK(s_TokenTreeMutex)
-
+        m_pTokens->RemoveFile(filename);
+        m_pTokens->m_FilesMap.erase(index);
+        m_pTokens->m_FilesStatus.erase(index);
+        m_pTokens->m_FilesToBeReparsed.erase(index);
+        m_pTokens->m_modified = true;
+    }
     return result;
 }
 
-bool Parser::AddFile(const wxString& filename, cbProject* project, cb_unused bool isLocal)
+bool Parser::Reparse(const wxString& filename, bool isLocal)
 {
-    // this function will lock the token tree twice
-    // the first place is the function IsFileParsed() function
-    // then the AddParse() call
-    if (project != m_Project)
-        return false;
-
-    if ( IsFileParsed(filename) )
-        return false;
-
-    if (m_ParserState == ParserCommon::ptUndefined)
-        m_ParserState = ParserCommon::ptAddFileToParser;
-
-    AddParse(filename);
-    if (project)
-        m_NeedMarkFileAsLocal = true;
-
+    if (!Done())
+        return false; // if still parsing, exit with error
+    wxString file = UnixFilename(filename);
+    if(isLocal)
+        m_LocalFiles.insert(filename);
+    else
+        m_LocalFiles.erase(filename);
+    {
+        wxCriticalSectionLocker lock(s_MutexProtection);
+        m_pTokens->FlagFileForReparsing(file);
+    }
+    m_NeedsReparse = true;
+    m_timer.Start(reparse_timer_delay,wxTIMER_ONE_SHOT);
     return true;
 }
 
-bool Parser::Reparse(const wxString& filename, cb_unused bool isLocal)
+void Parser::Clear()
 {
-    if (!Done())
+    DisconnectEvents();
+//    if(m_ShuttingDown)
+//    {
+//        Manager::Get()->GetLogManager()->DebugLog(_T("Terminating threads..."));
+//    }
+    TerminateAllThreads(); //
+//    if(m_ShuttingDown)
+//    {
+//        Manager::Get()->GetLogManager()->DebugLog(_T("Done."));
+//    }
+
+    Manager::ProcessPendingEvents();
+
+    m_IncludeDirs.Clear();
+    m_pTokens->clear();
+    m_pTempTokens->clear();
+
+    m_LocalFiles.clear();
+    m_GlobalIncludes.clear();
+
+    if(!m_ShuttingDown)
     {
-        wxString msg(_T("Parser::Reparse : The Parser is not done."));
-        msg += NotDoneReason();
-        CCLogger::Get()->DebugLog(msg);
-        return false;
+        Manager::ProcessPendingEvents();
+        ConnectEvents();
     }
 
-    if (m_ReparseTimer.IsRunning())
-        m_ReparseTimer.Stop();
+    m_UsingCache = false;
+}
 
-    CC_LOCKER_TRACK_TT_MTX_LOCK(s_TokenTreeMutex)
+bool Parser::ReadFromCache(wxInputStream* f)
+{
+    bool result = false;
+    wxCriticalSectionLocker lock(s_MutexProtection);
 
-    m_TokenTree->FlagFileForReparsing(filename);
+    char CACHE_MAGIC_READ[] = "           ";
+    m_pTokens->clear(); // Clear data
 
-    CC_LOCKER_TRACK_TT_MTX_UNLOCK(s_TokenTreeMutex)
+    // File format is like this:
+    //
+    // CACHE_MAGIC
+    // Number of parsed files
+    // Number of tokens
+    // Parsed files
+    // Tokens
+    // EOF
 
-    m_NeedsReparse = true;
-    TRACE(_T("Parser::Reparse(): Starting m_ReparseTimer."));
-    m_ReparseTimer.Start(ParserCommon::PARSER_REPARSE_TIMER_DELAY, wxTIMER_ONE_SHOT);
+//  Begin loading process
+    do
+    {
 
-    return true;
+        // keep a backup of include dirs
+        if (f->Read(CACHE_MAGIC_READ, sizeof(CACHE_MAGIC_READ)).LastRead() != sizeof(CACHE_MAGIC_READ) ||
+            strncmp(CACHE_MAGIC, CACHE_MAGIC_READ, sizeof(CACHE_MAGIC_READ) != 0))
+            break;
+        int fcount = 0, actual_fcount = 0;
+        int tcount = 0, actual_tcount = 0;
+        int idx;
+        if (!LoadIntFromFile(f, &fcount))
+            break;
+        if (!LoadIntFromFile(f, &tcount))
+            break;
+        if (fcount < 0)
+            break;
+        if (tcount < 0)
+            break;
+
+        wxString file;
+        int nonempty_token = 0;
+        Token* token = 0;
+        do // do while-false block
+        {
+            // Filenames
+            int i;
+            for (i = 0; i < fcount && !f->Eof(); ++i)
+            {
+                if(!LoadIntFromFile(f,&idx)) // Filename index
+                    break;
+                if(idx != i)
+                    break;
+                if(!LoadStringFromFile(f,file)) // Filename data
+                    break;
+                if(!idx)
+                    file.Clear();
+                if(file.IsEmpty())
+                    idx = 0;
+                m_pTokens->m_FilenamesMap.insert(file);
+                actual_fcount++;
+            }
+            result = (actual_fcount == fcount);
+            if(!result)
+                break;
+            if(tcount)
+                m_pTokens->m_Tokens.resize(tcount,0);
+            // Tokens
+            for (i = 0; i < tcount && !f->Eof(); ++i)
+            {
+                token = 0;
+                if (!LoadIntFromFile(f, &nonempty_token))
+                break;
+                if(nonempty_token != 0)
+                {
+                    token = new Token();
+                    if (!token->SerializeIn(f))
+                    {
+                        delete token;
+                        token = 0;
+                        break;
+                    }
+                    m_pTokens->insert(i,token);
+                }
+                ++actual_tcount;
+            }
+            if(actual_tcount != tcount)
+                break;
+            m_pTokens->RecalcFreeList();
+            result = true;
+        }while(false);
+
+    }
+    while(false);
+
+//  End loading process
+
+    if(result)
+        m_UsingCache = true;
+    else
+        m_pTokens->clear();
+    m_pTokens->m_modified = false;
+    return result;
+}
+
+bool Parser::WriteToCache(wxOutputStream* f)
+{
+    bool result = false;
+    wxCriticalSectionLocker lock(s_MutexProtection);
+//  Begin saving process
+
+    size_t tcount = m_pTokens->m_Tokens.size();
+    size_t fcount = m_pTokens->m_FilenamesMap.size();
+    size_t i = 0;
+
+    // write cache magic
+    f->Write(CACHE_MAGIC, sizeof(CACHE_MAGIC));
+
+    SaveIntToFile(f, fcount); // num parsed files
+    SaveIntToFile(f, tcount); // num tokens
+
+    // Filenames
+    for(i = 0; i < fcount; ++i)
+    {
+        SaveIntToFile(f,i);
+        SaveStringToFile(f,m_pTokens->m_FilenamesMap.GetString(i));
+    }
+
+    // Tokens
+
+    for (i = 0; i < tcount; ++i)
+    {
+        // Manager::Get()->GetLogManager()->DebugLog(_T("Token #%d, offset %d"),i,f->TellO());
+        Token* token = m_pTokens->at(i);
+        SaveIntToFile(f,(token!=0) ? 1 : 0);
+        if(token)
+            token->SerializeOut(f);
+    }
+
+    result = true;
+
+    if(result)
+        m_pTokens->m_modified = false;
+    return result;
+//  End saving process
+    return result;
 }
 
 void Parser::TerminateAllThreads()
 {
-    // NOTE: This should not be locked with s_ParserMutex, otherwise we'll be stuck in an
-    // infinite loop below since the worker thread also enters s_ParserMutex.
-    // In fact cbThreadPool maintains it's own mutex, so m_Pool is probably threadsafe.
-    AbortParserThreads();
+    m_IgnoreThreadEvents = true;
     m_Pool.AbortAllTasks();
-    while (!m_Pool.Done())
-        wxMilliSleep(1);
 }
 
-bool Parser::UpdateParsingProject(cbProject* project)
+void Parser::AddIncludeDir(const wxString& file)
 {
-    if (m_Project == project)
-        return true;
+    wxString base = file;
+    if (base.Last() == wxFILE_SEP_PATH)
+        base.RemoveLast();
 
-    else if (!Done())
+    if(m_IncludeDirs.Index(base) == wxNOT_FOUND)
     {
-        wxString msg(_T("Parser::UpdateParsingProject(): The Parser is not done."));
-        msg += NotDoneReason();
-        CCLogger::Get()->DebugLog(msg);
-        return false;
+//        Manager::Get()->GetLogManager()->DebugLog(_T("Adding %s"), base.c_str());
+        m_IncludeDirs.Add(base);
     }
-    else
+} // end of AddIncludeDir
+
+wxString Parser::FindFirstFileInIncludeDirs(const wxString& file)
+{
+    wxString FirstFound = m_GlobalIncludes.GetItem(file);
+    if(FirstFound.IsEmpty())
     {
-        m_Project = project;
-        return true;
+        wxArrayString FoundSet = FindFileInIncludeDirs(file,true);
+        if(FoundSet.GetCount())
+        {
+            FirstFound = UnixFilename(FoundSet[0]);
+            m_GlobalIncludes.AddItem(file,FirstFound);
+        }
     }
+    return FirstFound;
 }
+
+wxArrayString Parser::FindFileInIncludeDirs(const wxString& file,bool firstonly)
+{
+    wxArrayString FoundSet;
+    for(size_t idxSearch = 0; idxSearch < m_IncludeDirs.GetCount(); ++idxSearch)
+    {
+        wxString base = m_IncludeDirs[idxSearch];
+        wxFileName tmp = file;
+        NormalizePath(tmp,base);
+        wxString fullname = tmp.GetFullPath();
+        if(wxFileExists(fullname))
+        {
+            FoundSet.Add(fullname);
+            if(firstonly)
+                break;
+        }
+    } // end for : idx : idxSearch
+//    Manager::Get()->GetLogManager()->DebugLog(_T("Searching %s"), file.c_str());
+//    Manager::Get()->GetLogManager()->DebugLog(_T("Found %d"), FoundSet.GetCount());
+    return FoundSet;
+} // end of FindFileInIncludeDirs
 
 void Parser::OnAllThreadsDone(CodeBlocksEvent& event)
 {
-    // m_IgnoreThreadEvents is initialized to true, so we returned quickly.
-    // but when the parser try to parse the batchFiles, it will set the m_IgnoreThreadEvents to false
-    // so, the control will go forward. Finally, when the last stage: mark C::B project tokens as
-    // local thread finished, it will set m_IgnoreThreadEvents again
-    if (m_IgnoreThreadEvents || Manager::IsAppShuttingDown())
+    if(m_IgnoreThreadEvents)
         return;
-
-    if (event.GetId() != m_Pool.GetId())
-    {
-        CCLogger::Get()->DebugLog(_T("Parser::OnAllThreadsDone(): Why is event.GetId() not equal m_Pool.GetId()?"));
-        return;
-    }
-
-    if (!m_TokenTree)
-        cbThrow(_T("m_TokenTree is a nullptr?!"));
-
-    if (!m_IsParsing)
-    {
-        CCLogger::Get()->DebugLog(_T("Parser::OnAllThreadsDone(): Why is m_IsParsing false?"));
-        return;
-    }
-
-    // Do next task
-    if (!m_PredefinedMacros.IsEmpty()
-        || !m_BatchParseFiles.empty() )
-    {
-        TRACE(_T("Parser::OnAllThreadsDone(): Still some tasks left, starting m_BatchTimer."));
-        m_BatchTimer.Start(ParserCommon::PARSER_BATCHPARSE_TIMER_RUN_IMMEDIATELY, wxTIMER_ONE_SHOT);
-    }
-#if defined(CC_PARSER_PROFILE_TEST)
-    // Do nothing
-#else
-    else if (   (   m_ParserState == ParserCommon::ptCreateParser
-                 || m_ParserState == ParserCommon::ptAddFileToParser )
-             && m_NeedMarkFileAsLocal
-             && m_Project)
-    {
-        m_NeedMarkFileAsLocal = false;
-        MarkFileAsLocalThreadedTask* thread = new MarkFileAsLocalThreadedTask(this, m_Project);
-        m_Pool.AddTask(thread, true);
-        TRACE(_T("Parser::OnAllThreadsDone(): Add a MarkFileAsLocalThreadedTask."));
-    }
-#endif
-    // Finish all task, then we need post a PARSER_END event
-    else
-    {
-        if (!m_Project)
-            m_NeedMarkFileAsLocal = false;
-
-        // since the last stage: mark project files as local is done, we finish all the stages now.
-        m_IgnoreThreadEvents = true;
-        m_NeedsReparse       = false;
-        m_IsParsing          = false;
-        m_IsBatchParseDone   = true;
-
-        EndStopWatch(); // stop counting the time we take for parsing the files
-
-        wxString prj = (m_Project ? m_Project->GetTitle() : _T("*NONE*"));
-        wxString parseEndLog;
-
-        CC_LOCKER_TRACK_TT_MTX_LOCK(s_TokenTreeMutex)
-
-        parseEndLog.Printf(_T("Project '%s' parsing stage done (%lu total parsed files, ")
-                           _T("%lu tokens in %ld minute(s), %ld.%03ld seconds)."), prj.wx_str(),
-                           m_TokenTree ? static_cast<unsigned long>(m_TokenTree->GetFileMapSize()) : 0,
-                           m_TokenTree ? static_cast<unsigned long>(m_TokenTree->realsize())       : 0,
-                           (m_LastStopWatchTime / 60000),
-                           (m_LastStopWatchTime / 1000) % 60,
-                           (m_LastStopWatchTime % 1000) );
-
-        CC_LOCKER_TRACK_TT_MTX_UNLOCK(s_TokenTreeMutex)
-
-        // tell the parent(native parser and the code completion plugin) that some tasks are done
-        // and the task pool switches to idle mode.
-        ProcessParserEvent(m_ParserState, ParserCommon::idParserEnd, parseEndLog);
-
-        // reset the parser state
-        m_ParserState = ParserCommon::ptUndefined;
-
-        // the current parser is not parsing any files, so set the static pointer to NULL
-        ParserCommon::s_CurrentParser = nullptr;
-        TRACE(_T("Parser::OnAllThreadsDone(): Post a PARSER_END event"));
-    }
+    EndStopWatch();
+//    LinkInheritance(false);
+    wxCommandEvent evt(wxEVT_COMMAND_MENU_SELECTED, PARSER_END);
+    evt.SetClientData(this);
+    wxPostEvent(m_pParent, evt);
 }
 
-bool Parser::ParseFile(const wxString& filename, bool isGlobal, bool locked)
+wxString Parser::GetFullFileName(const wxString& src,const wxString& tgt, bool isGlobal)
 {
-    if (   (!isGlobal && !m_Options.followLocalIncludes)
-        || ( isGlobal && !m_Options.followGlobalIncludes) )
-        return false;
+    wxCriticalSectionLocker lock(s_mutexListProtection);
+    wxString fullname(_T("")); // Initialize with Empty String
+    if (isGlobal)
+    {
+        fullname = FindFirstFileInIncludeDirs(tgt);
+        if (fullname.IsEmpty())
+        {
+            // not found; check this case:
+            //
+            // we had entered the previous file like this: #include <gl/gl.h>
+            // and it now does this: #include "glext.h"
+            // glext.h was correctly not found above but we can now search
+            // for gl/glext.h.
+            // if we still not find it, it's not there. A compilation error
+            // is imminent (well, almost - I guess the compiler knows a little better ;).
+            wxString base = wxFileName(src).GetPath(wxPATH_GET_VOLUME | wxPATH_GET_SEPARATOR);
+            fullname = FindFirstFileInIncludeDirs(base + tgt);
+        }
+    }
 
+    // NOTE: isGlobal is always true. The following code never executes...
+
+    else // local files are more tricky, since they depend on two filenames
+    {
+        wxFileName fname(tgt);
+        wxFileName source(src);
+        if(NormalizePath(fname,source.GetPath(wxPATH_GET_VOLUME)))
+        {
+            fullname = fname.GetFullPath();
+            if(!wxFileExists(fullname))
+                fullname.Clear();
+        }
+    }
+
+    return fullname;
+}
+
+void Parser::OnParseFile(const wxString& filename,int flags)
+{
+    if(m_IgnoreThreadEvents)
+        return;
+    if ((flags == 0 && !m_Options.followLocalIncludes) ||
+        (flags == 1 && !m_Options.followGlobalIncludes))
+        return;
     if (filename.IsEmpty())
-        return false;
-
-    // TODO (Morten#9#) locker ?
-    const bool ret = Parse(filename, !isGlobal, locked);
-
-    return ret;
+        return;
+    LoaderBase* loader = NULL; //defer loading until later
+    Parse(filename, flags == 0, loader); // isLocal = (flags==0)
 }
 
 void Parser::StartStopWatch()
 {
-    if (!m_StopWatchRunning)
+    if(!m_StopWatchRunning)
     {
         m_StopWatchRunning = true;
         m_StopWatch.Start();
@@ -681,268 +875,88 @@ void Parser::StartStopWatch()
 
 void Parser::EndStopWatch()
 {
-    if (m_StopWatchRunning)
+    if(m_StopWatchRunning)
     {
         m_StopWatch.Pause();
         m_StopWatchRunning = false;
-        if (m_IsBatchParseDone)
-            m_LastStopWatchTime  = m_StopWatch.Time();
-        else
-            m_LastStopWatchTime += m_StopWatch.Time();
+        m_LastStopWatchTime = m_StopWatch.Time();
     }
 }
 
-void Parser::OnReparseTimer(wxTimerEvent& event)
+long Parser::EllapsedTime()
+{
+    return m_StopWatchRunning ? m_StopWatch.Time() : 0;
+}
+
+long Parser::LastParseTime()
+{
+    return m_LastStopWatchTime;
+}
+
+void Parser::OnTimer(wxTimerEvent& event)
 {
     ReparseModifiedFiles();
     event.Skip();
 }
 
-void Parser::OnBatchTimer(cb_unused wxTimerEvent& event)
+void Parser::OnBatchTimer(wxTimerEvent& event)
 {
-    if (Manager::IsAppShuttingDown())
-        return;
-
-    if (ParserCommon::s_CurrentParser && ParserCommon::s_CurrentParser != this)
+#ifndef CODECOMPLETION_PROFILING
+    Manager::Get()->GetLogManager()->DebugLog(_T("Starting batch parsing"));
+    if(m_IsBatch)
     {
-        // Current batch parser already exists, just return later
-        TRACE(_T("Parser::OnBatchTimer(): Starting m_BatchTimer."));
-        m_BatchTimer.Start(ParserCommon::PARSER_BATCHPARSE_TIMER_DELAY_LONG, wxTIMER_ONE_SHOT);
-        return;
+        m_IsBatch = false;
+        StartStopWatch();
+        m_Pool.BatchEnd();
     }
-
-    StartStopWatch(); // start counting the time we take for parsing the files
-
-    if (m_BatchParseFiles.empty()
-        && m_PredefinedMacros.IsEmpty() ) // easy case: is there any thing to do at all?
-    {
-        return;
-    }
-
-    bool send_event          = true;
-    bool sendStartParseEvent = false;
-    if (   !m_BatchParseFiles.empty()
-        || !m_PredefinedMacros.IsEmpty() )
-    {
-        CC_LOCKER_TRACK_P_MTX_LOCK(ParserCommon::s_ParserMutex)
-
-        ParserThreadedTask* thread = new ParserThreadedTask(this, ParserCommon::s_ParserMutex);
-        TRACE(_T("Parser::OnBatchTimer(): Adding a ParserThreadedTask thread to m_Pool."));
-        m_Pool.AddTask(thread, true); //once this function is called, the thread will be executed from the pool.
-
-        if (ParserCommon::s_CurrentParser)
-            send_event = false;
-        else // Have not done any batch parsing yet -> assign parser
-        {
-            ParserCommon::s_CurrentParser = this;
-            m_StopWatch.Start(); // reset timer
-            sendStartParseEvent = true;
-        }
-
-        CC_LOCKER_TRACK_P_MTX_UNLOCK(ParserCommon::s_ParserMutex)
-    }
-
-    if (send_event)
-    {
-        if (sendStartParseEvent)
-            ProcessParserEvent(m_ParserState,             ParserCommon::idParserStart);
-        else
-            ProcessParserEvent(ParserCommon::ptUndefined, ParserCommon::idParserStart, _T("Unexpected behaviour!"));
-    }
+#else
+    EndStopWatch();
+    if(m_LastStopWatchTime > batch_timer_delay)
+        m_LastStopWatchTime -= batch_timer_delay;
+    else
+        m_LastStopWatchTime = 0;
+    CodeBlocksEvent evt;
+    OnAllThreadsDone(evt);
+#endif
 }
 
-void Parser::ReparseModifiedFiles()
+bool Parser::ReparseModifiedFiles()
 {
-    if ( !Done() )
-    {
-        wxString msg(_T("Parser::ReparseModifiedFiles : The Parser is not done."));
-        msg += NotDoneReason();
-        CCLogger::Get()->DebugLog(msg);
-
-        TRACE(_T("Parser::ReparseModifiedFiles(): Starting m_ReparseTimer."));
-        m_ReparseTimer.Start(ParserCommon::PARSER_REPARSE_TIMER_DELAY, wxTIMER_ONE_SHOT);
-        return;
-    }
-
-    if (!m_NeedsReparse)
-        m_NeedsReparse = true;
-
-    std::queue<size_t>   files_idx;
+    if(!m_NeedsReparse || !m_Pool.Done())
+        return false;
+    Manager::Get()->GetLogManager()->DebugLog(_T("Reparsing saved files..."));
+    m_NeedsReparse = false;
     std::queue<wxString> files_list;
-    TokenFileSet::const_iterator it;
-
-    CC_LOCKER_TRACK_TT_MTX_LOCK(s_TokenTreeMutex)
-
-    // Collect files to be re-parsed
-    // Loop two times so that we reparse modified *header* files first, next *implementation* files
-    for (it = m_TokenTree->GetFilesToBeReparsed()->begin(); it != m_TokenTree->GetFilesToBeReparsed()->end(); ++it)
     {
-        wxString filename = m_TokenTree->GetFilename(*it);
-        if ( FileTypeOf(filename) == ftSource || FileTypeOf(filename) == ftTemplateSource ) // ignore source files (*.cpp etc)
-            continue;
-        files_list.push(filename);
-        files_idx.push(*it);
-    }
-    for (it = m_TokenTree->GetFilesToBeReparsed()->begin(); it != m_TokenTree->GetFilesToBeReparsed()->end(); ++it)
-    {
-        wxString filename = m_TokenTree->GetFilename(*it);
-        if ( FileTypeOf(filename) != ftSource && FileTypeOf(filename) != ftTemplateSource  ) // ignore non-source files (*.h etc)
-            continue;
-        files_list.push(filename);
-        files_idx.push(*it);
-    }
+        wxCriticalSectionLocker lock(s_MutexProtection);
+        TokenFilesSet::iterator it;
 
-    // Now actually remove the files from the tree, once a file is removed from the tree, the file
-    // and its tokens are totally removed
-    while (!files_idx.empty())
-    {
-        m_TokenTree->RemoveFile(files_idx.front());
-        files_idx.pop();
+        // loop two times so that we reparse modified *header* files first
+        // because they usually hold definitions which need to exist
+        // when we parse the normal source files...
+        for(it = m_pTokens->m_FilesToBeReparsed.begin(); it != m_pTokens->m_FilesToBeReparsed.end(); ++it)
+        {
+            m_pTokens->RemoveFile(*it);
+            wxString filename = m_pTokens->m_FilenamesMap.GetString(*it);
+            if (FileTypeOf(filename) == ftSource) // ignore source files (*.cpp etc)
+                continue;
+            files_list.push(filename);
+        }
+        for(it = m_pTokens->m_FilesToBeReparsed.begin(); it != m_pTokens->m_FilesToBeReparsed.end(); ++it)
+        {
+            m_pTokens->RemoveFile(*it);
+            wxString filename = m_pTokens->m_FilenamesMap.GetString(*it);
+            if (FileTypeOf(filename) != ftSource) // ignore non-source files (*.h etc)
+                continue;
+            files_list.push(filename);
+        }
     }
-
-    CC_LOCKER_TRACK_TT_MTX_UNLOCK(s_TokenTreeMutex)
-
-    if (!files_list.empty() && m_ParserState == ParserCommon::ptUndefined)
-        m_ParserState = ParserCommon::ptReparseFile;
-    else
-        m_NeedsReparse = false;
 
     while (!files_list.empty())
     {
-        // add those files again, so they will be parsed later
-        AddParse(files_list.front());
+        wxString& filename = files_list.front();
+        Parse(filename, m_LocalFiles.count(filename));
         files_list.pop();
     }
-}
-
-bool Parser::IsFileParsed(const wxString& filename)
-{
-    bool isParsed = false;
-
-    CC_LOCKER_TRACK_TT_MTX_LOCK(s_TokenTreeMutex)
-
-    isParsed = m_TokenTree->IsFileParsed(filename);
-
-    CC_LOCKER_TRACK_TT_MTX_UNLOCK(s_TokenTreeMutex)
-
-    if (!isParsed)
-    {
-        CC_LOCKER_TRACK_P_MTX_LOCK(ParserCommon::s_ParserMutex)
-
-        StringList::iterator it = std::find(m_BatchParseFiles.begin(), m_BatchParseFiles.end(), filename);
-        isParsed = it != m_BatchParseFiles.end();
-
-        CC_LOCKER_TRACK_P_MTX_UNLOCK(ParserCommon::s_ParserMutex)
-    }
-
-    return isParsed;
-}
-
-void Parser::ProcessParserEvent(ParserCommon::ParserState state, int id, const wxString& info)
-{
-    wxCommandEvent evt(wxEVT_COMMAND_MENU_SELECTED, id);
-    evt.SetEventObject(this);     // Parser*
-    evt.SetClientData(m_Project); // cbProject*
-    evt.SetInt(state);
-    evt.SetString(info);
-    m_Parent->ProcessEvent(evt);
-}
-
-void Parser::ReadOptions()
-{
-    ConfigManager* cfg = Manager::Get()->GetConfigManager(_T("code_completion"));
-
-    // one-time default settings change: upgrade everyone
-    bool force_all_on = !cfg->ReadBool(_T("/parser_defaults_changed"), false);
-    if (force_all_on)
-    {
-        cfg->Write(_T("/parser_defaults_changed"),       true);
-
-        cfg->Write(_T("/parser_follow_local_includes"),  true);
-        cfg->Write(_T("/parser_follow_global_includes"), true);
-        cfg->Write(_T("/want_preprocessor"),             true);
-        cfg->Write(_T("/parse_complex_macros"),          true);
-        cfg->Write(_T("/platform_check"),                true);
-    }
-
-    // Page "Code Completion"
-    m_Options.useSmartSense        = cfg->ReadBool(_T("/use_SmartSense"),                true);
-    m_Options.whileTyping          = cfg->ReadBool(_T("/while_typing"),                  true);
-
-    // the m_Options.caseSensitive is following the global option in ccmanager
-    // ccmcfg means ccmanager's config
-    ConfigManager* ccmcfg = Manager::Get()->GetConfigManager(_T("ccmanager"));
-    m_Options.caseSensitive        = ccmcfg->ReadBool(_T("/case_sensitive"),             false);
-
-    // Page "C / C++ parser"
-    m_Options.followLocalIncludes  = cfg->ReadBool(_T("/parser_follow_local_includes"),  true);
-    m_Options.followGlobalIncludes = cfg->ReadBool(_T("/parser_follow_global_includes"), true);
-    m_Options.wantPreprocessor     = cfg->ReadBool(_T("/want_preprocessor"),             true);
-    m_Options.parseComplexMacros   = cfg->ReadBool(_T("/parse_complex_macros"),          true);
-    m_Options.platformCheck        = cfg->ReadBool(_T("/platform_check"),                true);
-
-    // Page "Symbol browser"
-    m_BrowserOptions.showInheritance = cfg->ReadBool(_T("/browser_show_inheritance"),    false);
-    m_BrowserOptions.expandNS        = cfg->ReadBool(_T("/browser_expand_ns"),           false);
-    m_BrowserOptions.treeMembers     = cfg->ReadBool(_T("/browser_tree_members"),        true);
-
-    // Token tree
-    m_BrowserOptions.displayFilter   = (BrowserDisplayFilter)cfg->ReadInt(_T("/browser_display_filter"), bdfFile);
-    m_BrowserOptions.sortType        = (BrowserSortType)cfg->ReadInt(_T("/browser_sort_type"),           bstKind);
-
-    // Page "Documentation:
-    m_Options.storeDocumentation     = cfg->ReadBool(_T("/use_documentation_helper"),         false);
-
-    // force re-read of file types
-    ParserCommon::EFileType ft_dummy = ParserCommon::FileType(wxEmptyString, true);
-    wxUnusedVar(ft_dummy);
-}
-
-void Parser::WriteOptions()
-{
-    ConfigManager* cfg = Manager::Get()->GetConfigManager(_T("code_completion"));
-
-    // Page "Code Completion"
-    cfg->Write(_T("/use_SmartSense"),                m_Options.useSmartSense);
-    cfg->Write(_T("/while_typing"),                  m_Options.whileTyping);
-
-    // Page "C / C++ parser"
-    cfg->Write(_T("/parser_follow_local_includes"),  m_Options.followLocalIncludes);
-    cfg->Write(_T("/parser_follow_global_includes"), m_Options.followGlobalIncludes);
-    cfg->Write(_T("/want_preprocessor"),             m_Options.wantPreprocessor);
-    cfg->Write(_T("/parse_complex_macros"),          m_Options.parseComplexMacros);
-    cfg->Write(_T("/platform_check"),                m_Options.platformCheck);
-
-    // Page "Symbol browser"
-    cfg->Write(_T("/browser_show_inheritance"),      m_BrowserOptions.showInheritance);
-    cfg->Write(_T("/browser_expand_ns"),             m_BrowserOptions.expandNS);
-    cfg->Write(_T("/browser_tree_members"),          m_BrowserOptions.treeMembers);
-
-    // Token tree
-    cfg->Write(_T("/browser_display_filter"),        m_BrowserOptions.displayFilter);
-    cfg->Write(_T("/browser_sort_type"),             m_BrowserOptions.sortType);
-
-    // Page "Documentation":
-    // m_Options.storeDocumentation will be written by DocumentationPopup
-}
-
-void Parser::AddParserThread(cbThreadedTask* task)
-{
-    if (task)
-        m_tasksQueue.push_back(task);
-}
-
-void Parser::RemoveParserThread(cbThreadedTask* task)
-{
-    if ( task &&  m_tasksQueue.size() )
-        m_tasksQueue.pop_back();
-}
-
-void Parser::AbortParserThreads()
-{
-    if ( m_tasksQueue.size() )
-    {
-        for (TasksQueue::iterator it = m_tasksQueue.begin(); it != m_tasksQueue.end(); ++it)
-            (*it)->Abort();
-    }
+    return true;
 }

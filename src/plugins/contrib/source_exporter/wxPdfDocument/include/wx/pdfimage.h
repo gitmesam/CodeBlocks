@@ -10,20 +10,17 @@
 
 /// \file pdfimage.h Interface of the wxPdfImage class
 
-#ifndef _PDF_IMAGE_H_
-#define _PDF_IMAGE_H_
+#ifndef _PDFIMAGE_H_
+#define _PDFIMAGE_H_
 
-// wxWidgets headers
 #include <wx/filesys.h>
 #include <wx/image.h>
-#include <wx/stream.h>
-#include <wx/string.h>
 
-// wxPdfDocument headers
 #include "wx/pdfdocdef.h"
 
 // Forward declarations
-class WXDLLIMPEXP_FWD_PDFDOC wxPdfDocument;
+
+class WXDLLIMPEXP_PDFDOC wxPdfDocument;
 
 /// Class representing image objects. (For internal use only)
 class WXDLLIMPEXP_PDFDOC wxPdfImage
@@ -33,8 +30,7 @@ public:
   wxPdfImage(wxPdfDocument* document, int index, const wxString& name, const wxString& type);
 
   /// Constructor
-  wxPdfImage(wxPdfDocument* document, int index, const wxString& name, const wxImage& image, 
-             bool jpegFormat = false);
+  wxPdfImage(wxPdfDocument* document, int index, const wxString& name, const wxImage& image);
 
   /// Constructor
   wxPdfImage(wxPdfDocument* document, int index, const wxString& name, wxInputStream& stream, const wxString& mimeType);
@@ -87,8 +83,8 @@ public:
   /// Get image offset in Y direction
   int GetY() { return m_y; }
 
-  /// Get colour space
-  wxString GetColourSpace() { return m_cs; }
+  /// Get color space
+  wxString GetColorSpace() { return m_cs; }
 
   /// Get bits per component
   int GetBitsPerComponent() { return m_bpc; }
@@ -100,19 +96,19 @@ public:
   wxString GetParms() { return m_parms; }
 
   /// Get palette size
-  unsigned int GetPaletteSize() { return m_palSize; }
+  int GetPaletteSize() { return m_palSize; }
 
   /// Get palette data
   char* GetPalette() { return m_pal; }
 
   /// Get transparency size
-  unsigned int GetTransparencySize() { return m_trnsSize; }
+  int GetTransparencySize() { return m_trnsSize; }
 
   /// Get transparency data
   char* GetTransparency() { return m_trns; }
 
   /// Get image data size
-  unsigned int GetDataSize() { return m_dataSize; }
+  int GetDataSize() { return m_dataSize; }
 
   /// Get image data
   char* GetData() { return m_data; }
@@ -122,7 +118,7 @@ public:
 
 protected:
   /// Extract info from a wxImage
-  bool ConvertWxImage(const wxImage& image, bool jpegFormat);
+  bool ConvertWxImage(const wxImage& image);
 
   /// Extract info from a JPEG file
   bool ParseJPG(wxInputStream* imageStream);
@@ -173,15 +169,15 @@ protected:
 
   int            m_width;     ///< Image width in pixels
   int            m_height;    ///< Image height in pixels
-  wxString       m_cs;        ///< Colourspace
-  char           m_bpc;       ///< Bits per colour
+  wxString       m_cs;        ///< Colorspace
+  char           m_bpc;       ///< Bits per color
   wxString       m_f;         ///< Compression method
   wxString       m_parms;     ///< Additional PDF parameters
-  unsigned int   m_palSize;   ///< Size of palette
+  int            m_palSize;   ///< Size of palette
   char*          m_pal;       ///< Palette data
-  unsigned int   m_trnsSize;  ///< Transparency colour size
-  char*          m_trns;      ///< Transparency colour data
-  unsigned int   m_dataSize;  ///< Image data size
+  int            m_trnsSize;  ///< Transparency color size
+  char*          m_trns;      ///< Transparency color data
+  int            m_dataSize;  ///< Image data size
   char*          m_data;      ///< Image data
 
   bool           m_isFormObj; ///< Flag whether image must be treated as form object

@@ -14,9 +14,9 @@
 
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
-	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+	Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
-// RCS-ID: $Id$
+// RCS-ID: $Id: snippetpropertyform.cpp 28 2007-04-01 14:32:57Z Pecan $
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -36,14 +36,12 @@
 #pragma hdrstop
 #endif //__BORLANDC__
 
-//#include "wxscintilla/include/wx/wxscintilla.h" //svn5785
-#include <wx/wxscintilla.h>                       //svn5785
 #include "snippetpropertyform.h"
-//-#include "edit.h"
+#include "edit.h"
 
 ///////////////////////////////////////////////////////////////////////////
 
-SnippetPropertyForm::SnippetPropertyForm( wxWindow* parent, int id, wxString title, wxPoint pos, wxSize size, int style ) : wxScrollingDialog( parent, id, title, pos, size, style )
+SnippetPropertyForm::SnippetPropertyForm( wxWindow* parent, int id, wxString title, wxPoint pos, wxSize size, int style ) : wxDialog( parent, id, title, pos, size, style )
 {
 	wxBoxSizer* sbSizer;
 	sbSizer = new wxBoxSizer(  wxVERTICAL );
@@ -54,8 +52,7 @@ SnippetPropertyForm::SnippetPropertyForm( wxWindow* parent, int id, wxString tit
 	m_ItemLabelStaticText = new wxStaticText( this, ID_DEFAULT, wxT("Label"), wxDefaultPosition, wxDefaultSize, 0 );
 	bSizer->Add( m_ItemLabelStaticText, 0, wxALL, 5 );
     // Label Text Area
-	//-m_ItemLabelTextCtrl = new wxTextCtrl( this, ID_DEFAULT, wxT(""), wxDefaultPosition, wxDefaultSize, 0 );
-	m_ItemLabelTextCtrl = new wxTextCtrl( this, ID_DEFAULT, wxT(""), wxDefaultPosition, wxDefaultSize, wxTE_PROCESS_ENTER  );
+	m_ItemLabelTextCtrl = new wxTextCtrl( this, ID_DEFAULT, wxT(""), wxDefaultPosition, wxDefaultSize, 0 );
 	bSizer->Add( m_ItemLabelTextCtrl, 1, wxALL, 5 );
 
 	sbSizer->Add( bSizer, 0, wxEXPAND, 5 );
@@ -67,8 +64,7 @@ SnippetPropertyForm::SnippetPropertyForm( wxWindow* parent, int id, wxString tit
 	bSizer1->Add( m_SnippetStaticText, 0, wxALL, 5 );
 
     // create wxscintilla edit control
-    //-m_SnippetEditCtrl = new Edit(this, ID_DEFAULT, wxDefaultPosition, wxDefaultSize, 0);//|wxHSCROLL|wxNO_BORDER|wxVSCROLL|wxTE_MULTILINE  );
-    m_SnippetEditCtrl = new wxScintilla(this, ID_DEFAULT, wxDefaultPosition, wxDefaultSize, 0);//|wxHSCROLL|wxNO_BORDER|wxVSCROLL|wxTE_MULTILINE  );
+    m_SnippetEditCtrl = new Edit(this, ID_DEFAULT, wxDefaultPosition, wxDefaultSize, 0);//|wxHSCROLL|wxNO_BORDER|wxVSCROLL|wxTE_MULTILINE  );
 	bSizer1->Add( m_SnippetEditCtrl, 1, wxALL|wxEXPAND, 5 );
 
 	sbSizer->Add( bSizer1, 1, wxEXPAND, 5 );
@@ -80,8 +76,8 @@ SnippetPropertyForm::SnippetPropertyForm( wxWindow* parent, int id, wxString tit
 	wxBoxSizer* bSizer5;
 	bSizer5 = new wxBoxSizer( wxHORIZONTAL );
 
-	//-2018/03/24 m_SnippetButton = new wxButton( this, ID_SNIPPETBUTTON, wxT("ExtEdit"), wxDefaultPosition, wxDefaultSize, 0 );
-	//-2018/03/24 bSizer5->Add( m_SnippetButton, 0, wxALL, 5 );
+	m_SnippetButton = new wxButton( this, ID_SNIPPETBUTTON, wxT("Edit"), wxDefaultPosition, wxDefaultSize, 0 );
+	bSizer5->Add( m_SnippetButton, 0, wxALL, 5 );
 
 	m_FileSelectButton = new wxButton( this, ID_FILESELECTBUTTON, wxT("Link target"), wxDefaultPosition, wxDefaultSize, 0 );
 	bSizer5->Add( m_FileSelectButton, 0, wxALL, 5 );

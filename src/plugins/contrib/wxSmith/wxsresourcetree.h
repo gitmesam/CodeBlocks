@@ -23,19 +23,19 @@
 #ifndef WXSRESOURCETREE_H
 #define WXSRESOURCETREE_H
 
-#include <wx/treectrl.h>
-#include "wxsresourcetreeitemdata.h"
-
-#if defined(__WXMSW__) && defined(LoadImage)
-    // Fix Windows winuser.h Header define of LoadImage.
-    #undef LoadImage
+#ifndef WX_PRECOMP
+#   ifdef __WXMSW__
+#       include <wx/msw/wrapwin.h>  // Needed to prevent LoadImage define bug.
+#   endif
 #endif
 
+#include <wx/treectrl.h>
+#include "wxsresourcetreeitemdata.h"
 
 class wxsResource;
 class wxsProject;
 
-/** \brief Definition of resource tree identifier. Separate name of type could be useful in future */
+/** \brief Definition of resource tree identifier. Separate name of type could be usefull in future */
 typedef wxTreeItemId wxsResourceItemId;
 
 // TODO: Rewrite this class with custom widget

@@ -38,8 +38,10 @@ class wxsGauge: public wxsWidget
         virtual wxObject* OnBuildPreview(wxWindow* Parent,long Flags);
         virtual void OnEnumWidgetProperties(long Flags);
 
-        long Range;
-        long Value;
+        int Range;
+        int Value;
+        int Shadow;
+        int Bezel;
 };
 
 #endif

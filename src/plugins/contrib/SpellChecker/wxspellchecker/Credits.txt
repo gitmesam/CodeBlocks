@@ -1,2 +1,0 @@
-Initial development of wxSpellChecker and MySpell/Aspell interfaces by Joseph Blough
-VisualStudio 7 Project Files provided by Bryan Petty

@@ -23,11 +23,9 @@
 #include <wx/bmpbuttn.h>
 #include "wxsbitmapbutton.h"
 
-#include <prep.h>
-
 namespace
 {
-    wxsRegisterItem<wxsBitmapButton> Reg(_T("BitmapButton"),wxsTWidget,_T("Standard"),360);
+    wxsRegisterItem<wxsBitmapButton> Reg(_T("BitmapButton"),wxsTWidget,_T("Standard"),50);
 
     WXS_ST_BEGIN(wxsBitmapButtonStyles,_T("wxBU_AUTODRAW"))
         WXS_ST_CATEGORY("wxBitmapButton")
@@ -52,8 +50,7 @@ wxsBitmapButton::wxsBitmapButton(wxsItemResData* Data):
         Data,
         &Reg.Info,
         wxsBitmapButtonEvents,
-        wxsBitmapButtonStyles),
-    IsDefault(false)
+        wxsBitmapButtonStyles)
 {}
 
 void wxsBitmapButton::OnBuildCreatingCode()
@@ -86,7 +83,6 @@ void wxsBitmapButton::OnBuildCreatingCode()
             return;
         }
 
-        case wxsUnknownLanguage: // fall through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsBitmapButton::OnBuildCreatingCode"),GetLanguage());
@@ -122,7 +118,7 @@ wxObject* wxsBitmapButton::OnBuildPreview(wxWindow* Parent,long Flags)
 }
 
 
-void wxsBitmapButton::OnEnumWidgetProperties(cb_unused long Flags)
+void wxsBitmapButton::OnEnumWidgetProperties(long Flags)
 {
     WXS_BITMAP(wxsBitmapButton,BitmapLabel,_("Bitmap"),_T("bitmap"),_T("wxART_OTHER"))
     WXS_BITMAP(wxsBitmapButton,BitmapDisabled,_("Disabled bmp."),_T("disabled"),_T("wxART_OTHER"))

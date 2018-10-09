@@ -39,7 +39,6 @@ struct wxsBitmapIconData
     wxString Id;
     wxString Client;
     wxString FileName;
-    wxString CodeText;
 
     /** \brief Generating preview for this bitmap / icon */
     wxBitmap GetPreview(const wxSize& Size,const wxString& DefaultClient = wxART_OTHER);
@@ -64,7 +63,7 @@ typedef wxsBitmapIconData wxsIconData;
  */
 class wxsBitmapIconProperty: public wxsCustomEditorProperty
 {
-    public:
+	public:
 
         /** \brief Ctor
          *  \param PGName           name of property in Property Grid
@@ -73,15 +72,15 @@ class wxsBitmapIconProperty: public wxsCustomEditorProperty
          *  \param DefaultClient    name of default art provider client
          *  \param Priority         priority of this property
          */
-        wxsBitmapIconProperty(
+		wxsBitmapIconProperty(
             const wxString& PGName,
             const wxString& DataName,
             long Offset,
             const wxString& DefaultClient = _T("wxART_OTHER"),
             int Priority=100);
 
-        /** \brief Returning type name */
-        virtual const wxString GetTypeName() { return _T("wxBitmapIcon"); }
+		/** \brief Returning type name */
+		virtual const wxString GetTypeName() { return _T("wxBitmapIcon"); }
 
         /** \brief Showing editor for this property */
         virtual bool ShowEditor(wxsPropertyContainer* Object);
@@ -92,9 +91,8 @@ class wxsBitmapIconProperty: public wxsCustomEditorProperty
         virtual bool XmlWrite(wxsPropertyContainer* Object,TiXmlElement* Element);
         virtual bool PropStreamRead(wxsPropertyContainer* Object,wxsPropertyStream* Stream);
         virtual bool PropStreamWrite(wxsPropertyContainer* Object,wxsPropertyStream* Stream);
-        virtual wxString GetStr(wxsPropertyContainer* Object);
 
-    private:
+	private:
 
         long Offset;
         wxString DefaultClient;

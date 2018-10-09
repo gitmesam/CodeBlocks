@@ -8,34 +8,46 @@
 
 #include <wx/wxprec.h>
 
-#include "scrollingdialog.h"
-
-#ifndef WX_PRECOMP
-    #include <wx/button.h>
-    #include <wx/intl.h>
-    #include <wx/listbox.h>
-    #include <wx/sizer.h>
-    #include <wx/xrc/xmlres.h>
+#ifdef __BORLANDC__
+    #pragma hdrstop
 #endif
 
-class SelectIncludeFile: public wxScrollingDialog
+#ifndef WX_PRECOMP
+	//(*Headers(SelectIncludeFile)
+	#include <wx/button.h>
+	#include <wx/dialog.h>
+	#include <wx/intl.h>
+	#include <wx/listbox.h>
+	#include <wx/sizer.h>
+	#include <wx/xrc/xmlres.h>
+	//*)
+#endif
+
+class SelectIncludeFile: public wxDialog
 {
-public:
-    SelectIncludeFile(wxWindow* parent,wxWindowID id = -1);
-    virtual ~SelectIncludeFile();
+	public:
 
-    void AddListEntries(const wxArrayString& IncludeFile);
-    wxString GetIncludeFile() const { return m_SelectedIncludeFile; }
+		SelectIncludeFile(wxWindow* parent,wxWindowID id = -1);
+		virtual ~SelectIncludeFile();
+		void AddListEntries(const wxArrayString& IncludeFile);
+		wxString GetIncludeFile() const {return m_SelectedIncludeFile;}
 
-private:
-    void OnOk(wxCommandEvent& event);
-    void OnCancel(wxCommandEvent& event);
+		//(*Identifiers(SelectIncludeFile)
+		//*)
 
-    wxListBox* LstIncludeFiles;
+	private:
 
-    wxString m_SelectedIncludeFile;
+		//(*Handlers(SelectIncludeFile)
+		void OnOk(wxCommandEvent& event);
+		void OnCancel(wxCommandEvent& event);
+		//*)
 
-    DECLARE_EVENT_TABLE()
+		//(*Declarations(SelectIncludeFile)
+		wxListBox* ListBox1;
+		//*)
+
+		wxString m_SelectedIncludeFile;
+		DECLARE_EVENT_TABLE()
 };
 
 #endif // SELECTINCLUDEFILE_H

@@ -15,9 +15,9 @@
 
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
-	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+	Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
-// RCS-ID: $Id$
+// RCS-ID: $Id: menuidentifiers.h 85 2007-05-29 15:40:31Z Pecan $
 
 #ifndef MENUIDENTIFIERS_H_INCLUDED
 #define MENUIDENTIFIERS_H_INCLUDED
@@ -35,9 +35,9 @@ extern int idViewSnippets ;
 //#endif
 
 //-#if defined(__WXMSW__) && !defined(BUILDING_PLUGIN)
-//-#if !defined(BUILDING_PLUGIN)
-//-extern int idMenuProperties    ;
-//-#endif
+#if !defined(BUILDING_PLUGIN)
+extern int idMenuProperties    ;
+#endif
 
 // Search control menu ids
 extern int idSearchSnippetCtrl ;
@@ -68,7 +68,6 @@ extern int idMnuScope           ;
 extern int idMnuScopeSnippets   ;
 extern int idMnuScopeCategories ;
 extern int idMnuScopeBoth       ;
-extern int idMnuSearchExtended  ;
 
 
 #endif // MENUIDENTIFIERS_H_INCLUDED

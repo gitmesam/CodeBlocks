@@ -95,12 +95,14 @@ void byoGameBase::BackToWorkTimer()
                 // Played to much
 
                 for ( size_t i=0; i<AllGames.Count(); ++i )
+                {
                     AllGames[i]->SetPause(true);
-
+                }
                 AnnoyingDialog dlg(_("Work reminder (stop playing games!)"),
                                    _("Don't you think you had enough already?\nGet back to work, NOW!"),
                                    wxART_WARNING,
-                                   AnnoyingDialog::OK);
+                                   AnnoyingDialog::OK,
+                                   wxID_OK);
                 dlg.ShowModal();
 
                 if ( IsMinWorkTime )
@@ -109,7 +111,9 @@ void byoGameBase::BackToWorkTimer()
                     WorkingTicks = 0;
                 }
                 else
+                {
                     PlayingTicks = 0;
+                }
             }
         }
     }
@@ -141,11 +145,12 @@ void byoGameBase::BackToWorkTimer()
                 AnnoyingDialog dlg(_("Repose reminder"),
                                    _("You've been working for a long time.\n"
                                      "Please stand up, take small walk,\n"
-                                     "make tea or coffee, smile to your neighbours :)\n"
+                                     "make tea or cofee, smile to your neighbours :)\n"
                                      "\n"
                                      "I'm watching you, do not cheat\n"),
                                    wxART_WARNING,
-                                   AnnoyingDialog::OK);
+                                   AnnoyingDialog::OK,
+                                   wxID_OK);
                 dlg.ShowModal();
                 WorkingTicks = 0;
             }
@@ -153,7 +158,9 @@ void byoGameBase::BackToWorkTimer()
     }
 
     for ( size_t i=0; i<AllGames.Count(); i++ )
+    {
         AllGames[i]->Refresh();
+    }
 }
 
 void byoGameBase::RecalculateSizeHints(int minStepsHoriz,int minStepsVert)
@@ -260,12 +267,12 @@ wxString byoGameBase::GetBackToWorkString() const
     return wxString::Format(_("Please wait... %d:%d left"),left/60,left%60);
 }
 
-void byoGameBase::OnSize(wxSizeEvent& /*event*/)
+void byoGameBase::OnSize(wxSizeEvent& event)
 {
     RecalculateSizeHints(m_MinCellsHoriz,m_MinCellsVert);
 }
 
-void byoGameBase::OnKillFocus(wxFocusEvent& /*event*/)
+void byoGameBase::OnKillFocus(wxFocusEvent& event)
 {
     SetPause(true);
 }

@@ -53,7 +53,7 @@ void copystrings::OnAttach()
 	// (see: does not need) this plugin...
 }
 
-void copystrings::OnRelease(bool /*appShutDown*/)
+void copystrings::OnRelease(bool appShutDown)
 {
 	// do de-initialization for your plugin
 	// if appShutDown is false, the plugin is unloaded because Code::Blocks is being shut down,
@@ -62,8 +62,6 @@ void copystrings::OnRelease(bool /*appShutDown*/)
 	// m_IsAttached will be FALSE...
 }
 
-namespace
-{
 void GetStrings(const wxString& buffer,wxString& result)
 {
     typedef map<wxString, bool, less<wxString> > mymaptype;
@@ -141,8 +139,6 @@ void GetStrings(const wxString& buffer,wxString& result)
                 else
                     mode = 8;
             break;
-            default:
-            break;
         }
     } // end for : idx : i
     result.Clear();
@@ -157,7 +153,6 @@ void GetStrings(const wxString& buffer,wxString& result)
     }
     return;
 } // end of GetStrings
-}
 
 int copystrings::Execute()
 {

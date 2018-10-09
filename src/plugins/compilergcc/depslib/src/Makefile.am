@@ -33,5 +33,3 @@ noinst_HEADERS = alloc.h \
 			timestamp.h
 
 EXTRA_INST = main.c
-
-EXTRA_DIST = main.c

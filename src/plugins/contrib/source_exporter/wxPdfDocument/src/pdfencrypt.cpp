@@ -6,10 +6,34 @@
 // Created:     2005-08-17
 // RCS-ID:      $$
 // Copyright:   (c) Ulrich Telle
-// Licence:     wxWindows licence
+// Licence:     wxWindows licence + RSA Data Security license
 ///////////////////////////////////////////////////////////////////////////////
 
 /// \file pdfencrypt.cpp Implementation of the wxPdfEncrypt class
+
+/*
+ **********************************************************************
+ ** Copyright (C) 1990, RSA Data Security, Inc. All rights reserved. **
+ **                                                                  **
+ ** License to copy and use this software is granted provided that   **
+ ** it is identified as the "RSA Data Security, Inc. MD5 Message     **
+ ** Digest Algorithm" in all material mentioning or referencing this **
+ ** software or this function.                                       **
+ **                                                                  **
+ ** License is also granted to make and use derivative works         **
+ ** provided that such works are identified as "derived from the RSA **
+ ** Data Security, Inc. MD5 Message Digest Algorithm" in all         **
+ ** material mentioning or referencing the derived work.             **
+ **                                                                  **
+ ** RSA Data Security, Inc. makes no representations concerning      **
+ ** either the merchantability of this software or the suitability   **
+ ** of this software for any particular purpose.  It is provided "as **
+ ** is" without express or implied warranty of any kind.             **
+ **                                                                  **
+ ** These notices must be retained in any copies of any part of this **
+ ** documentation and/or software.                                   **
+ **********************************************************************
+ */
 
 // For compilers that support precompilation, includes <wx.h>.
 #include <wx/wxprec.h>
@@ -25,317 +49,288 @@
 // includes
 #include <wx/log.h>
 
+#include "wx/pdfdoc.h"
 #include "wx/pdfencrypt.h"
-#include "wx/pdfrijndael.h"
-#include "wx/pdfutility.h"
+
+// ----------------
+// MD5 by RSA
+// ----------------
+
+// C headers for MD5
+#include <sys/types.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #define MD5_HASHBYTES 16
 
-/*
- * This is an OpenSSL-compatible implementation of the RSA Data Security, Inc.
- * MD5 Message-Digest Algorithm (RFC 1321).
- *
- * Homepage:
- * http://openwall.info/wiki/people/solar/software/public-domain-source-code/md5
- *
- * Author:
- * Alexander Peslyak, better known as Solar Designer <solar at openwall.com>
- *
- * This software was written by Alexander Peslyak in 2001.  No copyright is
- * claimed, and the software is hereby placed in the public domain.
- * In case this attempt to disclaim copyright and place the software in the
- * public domain is deemed null and void, then the software is
- * Copyright (c) 2001 Alexander Peslyak and it is hereby released to the
- * general public under the following terms:
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted.
- *
- * There's ABSOLUTELY NO WARRANTY, express or implied.
- *
- * (This is a heavily cut-down "BSD license".)
- *
- * This differs from Colin Plumb's older public domain implementation in that
- * no exactly 32-bit integer data type is required (any 32-bit or wider
- * unsigned integer data type will do), there's no compile-time endianness
- * configuration, and the function prototypes match OpenSSL's.  No code from
- * Colin Plumb's implementation has been reused; this comment merely compares
- * the properties of the two independent implementations.
- *
- * The primary goals of this implementation are portability and ease of use.
- * It is meant to be fast, but not as fast as possible.  Some known
- * optimizations are not included to reduce source code size and avoid
- * compile-time configuration.
- */
-
-#include <string.h>
-
-/* Any 32-bit or wider unsigned integer data type will do */
-typedef unsigned int MD5_u32plus;
-
-typedef struct {
-  MD5_u32plus lo, hi;
-  MD5_u32plus a, b, c, d;
-  unsigned char buffer[64];
-  MD5_u32plus block[16];
+/// Structure representing an MD5 context while ecrypting. (For internal use only)
+typedef struct MD5Context
+{
+  unsigned int buf[4];
+  unsigned int bits[2];
+  unsigned char in[64];
 } MD5_CTX;
 
-static void MD5_Init(MD5_CTX *ctx);
-static void MD5_Update(MD5_CTX *ctx, const void *data, unsigned long size);
-static void MD5_Final(unsigned char *result, MD5_CTX *ctx);
+static void  MD5Init(MD5_CTX *context);
+static void  MD5Update(MD5_CTX *context, unsigned char const *buf, unsigned len);
+static void  MD5Final(unsigned char digest[MD5_HASHBYTES], MD5_CTX *context);
+static void  MD5Transform(unsigned int buf[4], unsigned int const in[16]);
 
-/*
- * The basic MD5 functions.
- *
- * F and G are optimized compared to their RFC 1321 definitions for
- * architectures that lack an AND-NOT instruction, just like in Colin Plumb's
- * implementation.
- */
-#define F(x, y, z)			((z) ^ ((x) & ((y) ^ (z))))
-#define G(x, y, z)			((y) ^ ((z) & ((x) ^ (y))))
-#define H(x, y, z)			(((x) ^ (y)) ^ (z))
-#define H2(x, y, z)			((x) ^ ((y) ^ (z)))
-#define I(x, y, z)			((y) ^ ((x) | ~(z)))
+#if 0
+static char* MD5End(MD5_CTX *, char *);
 
-/*
- * The MD5 transformation for all four rounds.
- */
-#define STEP(f, a, b, c, d, x, t, s) \
-	(a) += f((b), (c), (d)) + (x) + (t); \
-	(a) = (((a) << (s)) | (((a) & 0xffffffff) >> (32 - (s)))); \
-	(a) += (b);
+static char* MD5End(MD5_CTX *ctx, char *buf)
+{
+  int i;
+  unsigned char digest[MD5_HASHBYTES];
+  char hex[]="0123456789abcdef";
 
-/*
- * SET reads 4 input bytes in little-endian byte order and stores them
- * in a properly aligned word in host byte order.
- *
- * The check for little-endian architectures that tolerate unaligned
- * memory accesses is just an optimization.  Nothing will break if it
- * doesn't work.
- */
-#if defined(__i386__) || defined(__x86_64__) || defined(__vax__)
-#define SET(n) \
-	(*(MD5_u32plus *)&ptr[(n) * 4])
-#define GET(n) \
-	SET(n)
-#else
-#define SET(n) \
-	(ctx->block[(n)] = \
-	(MD5_u32plus)ptr[(n) * 4] | \
-	((MD5_u32plus)ptr[(n) * 4 + 1] << 8) | \
-	((MD5_u32plus)ptr[(n) * 4 + 2] << 16) | \
-	((MD5_u32plus)ptr[(n) * 4 + 3] << 24))
-#define GET(n) \
-	(ctx->block[(n)])
+  if (!buf)
+  {
+    buf = (char *)malloc(33);
+  }
+    
+  if (!buf)
+  {
+    return 0;
+  }
+    
+  MD5Final(digest,ctx);
+  for (i=0;i<MD5_HASHBYTES;i++)
+  {
+    buf[i+i] = hex[digest[i] >> 4];
+    buf[i+i+1] = hex[digest[i] & 0x0f];
+  }
+  buf[i+i] = '\0';
+  return buf;
+}
 #endif
 
 /*
- * This processes one or more 64-byte data blocks, but does NOT update
- * the bit counters.  There are no alignment requirements.
+ * Final wrapup - pad to 64-byte boundary with the bit pattern
+ * 1 0* (64-bit count of bits processed, MSB-first)
  */
-static const void *body(MD5_CTX *ctx, const void *data, unsigned long size)
+static void MD5Final(unsigned char digest[16], MD5_CTX *ctx)
 {
-	const unsigned char *ptr;
-	MD5_u32plus a, b, c, d;
-	MD5_u32plus saved_a, saved_b, saved_c, saved_d;
+  unsigned count;
+  unsigned char *p;
 
-	ptr = (const unsigned char *)data;
+  /* Compute number of bytes mod 64 */
+  count = (ctx->bits[0] >> 3) & 0x3F; 
 
-	a = ctx->a;
-	b = ctx->b;
-	c = ctx->c;
-	d = ctx->d;
+  /* Set the first char of padding to 0x80.  This is safe since there is
+     always at least one byte free */
+  p = ctx->in + count;
+  *p++ = 0x80;
 
-	do {
-		saved_a = a;
-		saved_b = b;
-		saved_c = c;
-		saved_d = d;
+  /* Bytes of padding needed to make 64 bytes */
+  count = 64 - 1 - count;
 
-/* Round 1 */
-		STEP(F, a, b, c, d, SET(0), 0xd76aa478, 7)
-		STEP(F, d, a, b, c, SET(1), 0xe8c7b756, 12)
-		STEP(F, c, d, a, b, SET(2), 0x242070db, 17)
-		STEP(F, b, c, d, a, SET(3), 0xc1bdceee, 22)
-		STEP(F, a, b, c, d, SET(4), 0xf57c0faf, 7)
-		STEP(F, d, a, b, c, SET(5), 0x4787c62a, 12)
-		STEP(F, c, d, a, b, SET(6), 0xa8304613, 17)
-		STEP(F, b, c, d, a, SET(7), 0xfd469501, 22)
-		STEP(F, a, b, c, d, SET(8), 0x698098d8, 7)
-		STEP(F, d, a, b, c, SET(9), 0x8b44f7af, 12)
-		STEP(F, c, d, a, b, SET(10), 0xffff5bb1, 17)
-		STEP(F, b, c, d, a, SET(11), 0x895cd7be, 22)
-		STEP(F, a, b, c, d, SET(12), 0x6b901122, 7)
-		STEP(F, d, a, b, c, SET(13), 0xfd987193, 12)
-		STEP(F, c, d, a, b, SET(14), 0xa679438e, 17)
-		STEP(F, b, c, d, a, SET(15), 0x49b40821, 22)
+  /* Pad out to 56 mod 64 */
+  if (count < 8)
+  {
+    /* Two lots of padding:  Pad the first block to 64 bytes */
+    memset(p, 0, count);
+    MD5Transform(ctx->buf, (unsigned int *) ctx->in);
 
-/* Round 2 */
-		STEP(G, a, b, c, d, GET(1), 0xf61e2562, 5)
-		STEP(G, d, a, b, c, GET(6), 0xc040b340, 9)
-		STEP(G, c, d, a, b, GET(11), 0x265e5a51, 14)
-		STEP(G, b, c, d, a, GET(0), 0xe9b6c7aa, 20)
-		STEP(G, a, b, c, d, GET(5), 0xd62f105d, 5)
-		STEP(G, d, a, b, c, GET(10), 0x02441453, 9)
-		STEP(G, c, d, a, b, GET(15), 0xd8a1e681, 14)
-		STEP(G, b, c, d, a, GET(4), 0xe7d3fbc8, 20)
-		STEP(G, a, b, c, d, GET(9), 0x21e1cde6, 5)
-		STEP(G, d, a, b, c, GET(14), 0xc33707d6, 9)
-		STEP(G, c, d, a, b, GET(3), 0xf4d50d87, 14)
-		STEP(G, b, c, d, a, GET(8), 0x455a14ed, 20)
-		STEP(G, a, b, c, d, GET(13), 0xa9e3e905, 5)
-		STEP(G, d, a, b, c, GET(2), 0xfcefa3f8, 9)
-		STEP(G, c, d, a, b, GET(7), 0x676f02d9, 14)
-		STEP(G, b, c, d, a, GET(12), 0x8d2a4c8a, 20)
+    /* Now fill the next block with 56 bytes */
+    memset(ctx->in, 0, 56);
+  }
+  else
+  {
+    /* Pad block to 56 bytes */
+    memset(p, 0, count - 8);   
+  }
 
-/* Round 3 */
-		STEP(H, a, b, c, d, GET(5), 0xfffa3942, 4)
-		STEP(H2, d, a, b, c, GET(8), 0x8771f681, 11)
-		STEP(H, c, d, a, b, GET(11), 0x6d9d6122, 16)
-		STEP(H2, b, c, d, a, GET(14), 0xfde5380c, 23)
-		STEP(H, a, b, c, d, GET(1), 0xa4beea44, 4)
-		STEP(H2, d, a, b, c, GET(4), 0x4bdecfa9, 11)
-		STEP(H, c, d, a, b, GET(7), 0xf6bb4b60, 16)
-		STEP(H2, b, c, d, a, GET(10), 0xbebfbc70, 23)
-		STEP(H, a, b, c, d, GET(13), 0x289b7ec6, 4)
-		STEP(H2, d, a, b, c, GET(0), 0xeaa127fa, 11)
-		STEP(H, c, d, a, b, GET(3), 0xd4ef3085, 16)
-		STEP(H2, b, c, d, a, GET(6), 0x04881d05, 23)
-		STEP(H, a, b, c, d, GET(9), 0xd9d4d039, 4)
-		STEP(H2, d, a, b, c, GET(12), 0xe6db99e5, 11)
-		STEP(H, c, d, a, b, GET(15), 0x1fa27cf8, 16)
-		STEP(H2, b, c, d, a, GET(2), 0xc4ac5665, 23)
+  /* Append length in bits and transform */
+  ((unsigned int *) ctx->in)[14] = ctx->bits[0];
+  ((unsigned int *) ctx->in)[15] = ctx->bits[1];
 
-/* Round 4 */
-		STEP(I, a, b, c, d, GET(0), 0xf4292244, 6)
-		STEP(I, d, a, b, c, GET(7), 0x432aff97, 10)
-		STEP(I, c, d, a, b, GET(14), 0xab9423a7, 15)
-		STEP(I, b, c, d, a, GET(5), 0xfc93a039, 21)
-		STEP(I, a, b, c, d, GET(12), 0x655b59c3, 6)
-		STEP(I, d, a, b, c, GET(3), 0x8f0ccc92, 10)
-		STEP(I, c, d, a, b, GET(10), 0xffeff47d, 15)
-		STEP(I, b, c, d, a, GET(1), 0x85845dd1, 21)
-		STEP(I, a, b, c, d, GET(8), 0x6fa87e4f, 6)
-		STEP(I, d, a, b, c, GET(15), 0xfe2ce6e0, 10)
-		STEP(I, c, d, a, b, GET(6), 0xa3014314, 15)
-		STEP(I, b, c, d, a, GET(13), 0x4e0811a1, 21)
-		STEP(I, a, b, c, d, GET(4), 0xf7537e82, 6)
-		STEP(I, d, a, b, c, GET(11), 0xbd3af235, 10)
-		STEP(I, c, d, a, b, GET(2), 0x2ad7d2bb, 15)
-		STEP(I, b, c, d, a, GET(9), 0xeb86d391, 21)
-
-		a += saved_a;
-		b += saved_b;
-		c += saved_c;
-		d += saved_d;
-
-		ptr += 64;
-	} while (size -= 64);
-
-	ctx->a = a;
-	ctx->b = b;
-	ctx->c = c;
-	ctx->d = d;
-
-	return ptr;
+  MD5Transform(ctx->buf, (unsigned int *) ctx->in);
+  memcpy(digest, ctx->buf, 16);
+  memset((char *) ctx, 0, sizeof(ctx));       /* In case it's sensitive */
 }
 
-void MD5_Init(MD5_CTX *ctx)
+static void MD5Init(MD5_CTX *ctx)
 {
-	ctx->a = 0x67452301;
-	ctx->b = 0xefcdab89;
-	ctx->c = 0x98badcfe;
-	ctx->d = 0x10325476;
+  ctx->buf[0] = 0x67452301;
+  ctx->buf[1] = 0xefcdab89;
+  ctx->buf[2] = 0x98badcfe;
+  ctx->buf[3] = 0x10325476;
 
-	ctx->lo = 0;
-	ctx->hi = 0;
+  ctx->bits[0] = 0;
+  ctx->bits[1] = 0;
 }
 
-void MD5_Update(MD5_CTX *ctx, const void *data, unsigned long size)
+static void MD5Update(MD5_CTX *ctx, unsigned char const *buf, unsigned len)
 {
-	MD5_u32plus saved_lo;
-	unsigned long used, available;
+  unsigned int t;
 
-	saved_lo = ctx->lo;
-	if ((ctx->lo = (saved_lo + size) & 0x1fffffff) < saved_lo)
-		ctx->hi++;
-	ctx->hi += size >> 29;
+  /* Update bitcount */
 
-	used = saved_lo & 0x3f;
+  t = ctx->bits[0];
+  if ((ctx->bits[0] = t + ((unsigned int) len << 3)) < t)
+  {
+        ctx->bits[1]++;         /* Carry from low to high */
+  }
+  ctx->bits[1] += len >> 29;
 
-	if (used) {
-		available = 64 - used;
+  t = (t >> 3) & 0x3f;        /* Bytes already in shsInfo->data */
 
-		if (size < available) {
-			memcpy(&ctx->buffer[used], data, size);
-			return;
-		}
+  /* Handle any leading odd-sized chunks */
 
-		memcpy(&ctx->buffer[used], data, available);
-		data = (const unsigned char *)data + available;
-		size -= available;
-		body(ctx, ctx->buffer, 64);
-	}
+  if (t)
+  {
+    unsigned char *p = (unsigned char *) ctx->in + t;
 
-	if (size >= 64) {
-		data = body(ctx, data, size & ~(unsigned long)0x3f);
-		size &= 0x3f;
-	}
+    t = 64 - t;
+    if (len < t)
+    {
+      memcpy(p, buf, len);
+      return;
+    }
+    memcpy(p, buf, t);
+    MD5Transform(ctx->buf, (unsigned int *) ctx->in);
+    buf += t;
+    len -= t;
+  }
+  /* Process data in 64-byte chunks */
 
-	memcpy(ctx->buffer, data, size);
+  while (len >= 64)
+  {
+    memcpy(ctx->in, buf, 64);
+    MD5Transform(ctx->buf, (unsigned int *) ctx->in);
+    buf += 64;
+    len -= 64;
+  }
+
+  /* Handle any remaining bytes of data. */
+
+  memcpy(ctx->in, buf, len);
 }
 
-void MD5_Final(unsigned char *result, MD5_CTX *ctx)
+
+/* #define F1(x, y, z) (x & y | ~x & z) */
+#define F1(x, y, z) (z ^ (x & (y ^ z)))   
+#define F2(x, y, z) F1(z, x, y)
+#define F3(x, y, z) (x ^ y ^ z)
+#define F4(x, y, z) (y ^ (x | ~z))
+
+/* This is the central step in the MD5 algorithm. */
+#define MD5STEP(f, w, x, y, z, data, s) \
+        ( w += f(x, y, z) + data,  w = w<<s | w>>(32-s),  w += x )
+
+/*
+ * The core of the MD5 algorithm, this alters an existing MD5 hash to
+ * reflect the addition of 16 longwords of new data.  MD5Update blocks
+ * the data and converts bytes into longwords for this routine.
+ */
+static void MD5Transform(unsigned int buf[4], unsigned int const in[16])
 {
-	unsigned long used, available;
+  register unsigned int a, b, c, d;
 
-	used = ctx->lo & 0x3f;
+  a = buf[0];
+  b = buf[1];
+  c = buf[2];
+  d = buf[3];
 
-	ctx->buffer[used++] = 0x80;
+  MD5STEP(F1, a, b, c, d, in[0] + 0xd76aa478, 7); 
+  MD5STEP(F1, d, a, b, c, in[1] + 0xe8c7b756, 12);
+  MD5STEP(F1, c, d, a, b, in[2] + 0x242070db, 17);
+  MD5STEP(F1, b, c, d, a, in[3] + 0xc1bdceee, 22);
+  MD5STEP(F1, a, b, c, d, in[4] + 0xf57c0faf, 7); 
+  MD5STEP(F1, d, a, b, c, in[5] + 0x4787c62a, 12);
+  MD5STEP(F1, c, d, a, b, in[6] + 0xa8304613, 17);
+  MD5STEP(F1, b, c, d, a, in[7] + 0xfd469501, 22); 
+  MD5STEP(F1, a, b, c, d, in[8] + 0x698098d8, 7);  
+  MD5STEP(F1, d, a, b, c, in[9] + 0x8b44f7af, 12); 
+  MD5STEP(F1, c, d, a, b, in[10] + 0xffff5bb1, 17);
+  MD5STEP(F1, b, c, d, a, in[11] + 0x895cd7be, 22);
+  MD5STEP(F1, a, b, c, d, in[12] + 0x6b901122, 7); 
+  MD5STEP(F1, d, a, b, c, in[13] + 0xfd987193, 12);
+  MD5STEP(F1, c, d, a, b, in[14] + 0xa679438e, 17);
+  MD5STEP(F1, b, c, d, a, in[15] + 0x49b40821, 22);
 
-	available = 64 - used;
+  MD5STEP(F2, a, b, c, d, in[1] + 0xf61e2562, 5);  
+  MD5STEP(F2, d, a, b, c, in[6] + 0xc040b340, 9);  
+  MD5STEP(F2, c, d, a, b, in[11] + 0x265e5a51, 14);
+  MD5STEP(F2, b, c, d, a, in[0] + 0xe9b6c7aa, 20); 
+  MD5STEP(F2, a, b, c, d, in[5] + 0xd62f105d, 5);  
+  MD5STEP(F2, d, a, b, c, in[10] + 0x02441453, 9); 
+  MD5STEP(F2, c, d, a, b, in[15] + 0xd8a1e681, 14);
+  MD5STEP(F2, b, c, d, a, in[4] + 0xe7d3fbc8, 20); 
+  MD5STEP(F2, a, b, c, d, in[9] + 0x21e1cde6, 5);  
+  MD5STEP(F2, d, a, b, c, in[14] + 0xc33707d6, 9); 
+  MD5STEP(F2, c, d, a, b, in[3] + 0xf4d50d87, 14); 
+  MD5STEP(F2, b, c, d, a, in[8] + 0x455a14ed, 20); 
+  MD5STEP(F2, a, b, c, d, in[13] + 0xa9e3e905, 5);
+  MD5STEP(F2, d, a, b, c, in[2] + 0xfcefa3f8, 9);  
+  MD5STEP(F2, c, d, a, b, in[7] + 0x676f02d9, 14);
+  MD5STEP(F2, b, c, d, a, in[12] + 0x8d2a4c8a, 20);
 
-	if (available < 8) {
-		memset(&ctx->buffer[used], 0, available);
-		body(ctx, ctx->buffer, 64);
-		used = 0;
-		available = 64;
-	}
+  MD5STEP(F3, a, b, c, d, in[5] + 0xfffa3942, 4);
+  MD5STEP(F3, d, a, b, c, in[8] + 0x8771f681, 11);
+  MD5STEP(F3, c, d, a, b, in[11] + 0x6d9d6122, 16);
+  MD5STEP(F3, b, c, d, a, in[14] + 0xfde5380c, 23);
+  MD5STEP(F3, a, b, c, d, in[1] + 0xa4beea44, 4);  
+  MD5STEP(F3, d, a, b, c, in[4] + 0x4bdecfa9, 11); 
+  MD5STEP(F3, c, d, a, b, in[7] + 0xf6bb4b60, 16); 
+  MD5STEP(F3, b, c, d, a, in[10] + 0xbebfbc70, 23);
+  MD5STEP(F3, a, b, c, d, in[13] + 0x289b7ec6, 4); 
+  MD5STEP(F3, d, a, b, c, in[0] + 0xeaa127fa, 11); 
+  MD5STEP(F3, c, d, a, b, in[3] + 0xd4ef3085, 16); 
+  MD5STEP(F3, b, c, d, a, in[6] + 0x04881d05, 23); 
+  MD5STEP(F3, a, b, c, d, in[9] + 0xd9d4d039, 4);  
+  MD5STEP(F3, d, a, b, c, in[12] + 0xe6db99e5, 11);
+  MD5STEP(F3, c, d, a, b, in[15] + 0x1fa27cf8, 16);
+  MD5STEP(F3, b, c, d, a, in[2] + 0xc4ac5665, 23); 
 
-	memset(&ctx->buffer[used], 0, available - 8);
+  MD5STEP(F4, a, b, c, d, in[0] + 0xf4292244, 6);
+  MD5STEP(F4, d, a, b, c, in[7] + 0x432aff97, 10);
+  MD5STEP(F4, c, d, a, b, in[14] + 0xab9423a7, 15);
+  MD5STEP(F4, b, c, d, a, in[5] + 0xfc93a039, 21); 
+  MD5STEP(F4, a, b, c, d, in[12] + 0x655b59c3, 6); 
+  MD5STEP(F4, d, a, b, c, in[3] + 0x8f0ccc92, 10); 
+  MD5STEP(F4, c, d, a, b, in[10] + 0xffeff47d, 15);
+  MD5STEP(F4, b, c, d, a, in[1] + 0x85845dd1, 21); 
+  MD5STEP(F4, a, b, c, d, in[8] + 0x6fa87e4f, 6);  
+  MD5STEP(F4, d, a, b, c, in[15] + 0xfe2ce6e0, 10);
+  MD5STEP(F4, c, d, a, b, in[6] + 0xa3014314, 15); 
+  MD5STEP(F4, b, c, d, a, in[13] + 0x4e0811a1, 21);
+  MD5STEP(F4, a, b, c, d, in[4] + 0xf7537e82, 6);  
+  MD5STEP(F4, d, a, b, c, in[11] + 0xbd3af235, 10);
+  MD5STEP(F4, c, d, a, b, in[2] + 0x2ad7d2bb, 15); 
+  MD5STEP(F4, b, c, d, a, in[9] + 0xeb86d391, 21); 
 
-	ctx->lo <<= 3;
-	ctx->buffer[56] = ctx->lo;
-	ctx->buffer[57] = ctx->lo >> 8;
-	ctx->buffer[58] = ctx->lo >> 16;
-	ctx->buffer[59] = ctx->lo >> 24;
-	ctx->buffer[60] = ctx->hi;
-	ctx->buffer[61] = ctx->hi >> 8;
-	ctx->buffer[62] = ctx->hi >> 16;
-	ctx->buffer[63] = ctx->hi >> 24;
-
-	body(ctx, ctx->buffer, 64);
-
-	result[0] = ctx->a;
-	result[1] = ctx->a >> 8;
-	result[2] = ctx->a >> 16;
-	result[3] = ctx->a >> 24;
-	result[4] = ctx->b;
-	result[5] = ctx->b >> 8;
-	result[6] = ctx->b >> 16;
-	result[7] = ctx->b >> 24;
-	result[8] = ctx->c;
-	result[9] = ctx->c >> 8;
-	result[10] = ctx->c >> 16;
-	result[11] = ctx->c >> 24;
-	result[12] = ctx->d;
-	result[13] = ctx->d >> 8;
-	result[14] = ctx->d >> 16;
-	result[15] = ctx->d >> 24;
-
-	memset(ctx, 0, sizeof(*ctx));
+  buf[0] += a;
+  buf[1] += b;
+  buf[2] += c;
+  buf[3] += d;
 }
+ 
 
+#ifndef REVERSEBYTE
+#define byteReverse(buf, len)   /* Nothing */
+#else
+void byteReverse(unsigned char *buf, unsigned longs);
+
+/*
+ * Note: this code is harmless on little-endian machines.
+ */
+static void byteReverse(unsigned char *buf, unsigned longs)
+{
+  unsigned int t;
+  do
+  {
+    t = (unsigned int) ((unsigned) buf[3] << 8 | buf[2]) << 16 |
+        ((unsigned) buf[1] << 8 | buf[0]);
+    *(unsigned int *) buf = t;  
+    buf += 4;
+  }
+  while (--longs);
+}
+#endif
 
 // ---------------------------
 // wxPdfEncrypt implementation
@@ -384,16 +379,14 @@ wxPdfEncrypt::~wxPdfEncrypt()
 void
 wxPdfEncrypt::PadPassword(const wxString& password, unsigned char pswd[32])
 {
-  unsigned int m = (unsigned int) password.Length();
+  int m = password.Length();
   if (m > 32) m = 32;
 
-  unsigned int j;
-  unsigned int p = 0;
-  wxString::const_iterator ch = password.begin();
+  int j;
+  int p = 0;
   for (j = 0; j < m; j++)
   {
-    pswd[p++] = (unsigned char) ((unsigned int) (*ch) & 0xff);
-    ++ch;
+    pswd[p++] = (unsigned char) password.GetChar(j);
   }
   for (j = 0; p < 32 && j < 32; j++)
   {
@@ -404,8 +397,7 @@ wxPdfEncrypt::PadPassword(const wxString& password, unsigned char pswd[32])
 void
 wxPdfEncrypt::GenerateEncryptionKey(const wxString& userPassword,
                                     const wxString& ownerPassword,
-                                    int protection,
-                                    const wxString& documentId)
+                                    int protection)
 {
   unsigned char userpswd[32];
   unsigned char ownerpswd[32];
@@ -421,14 +413,7 @@ wxPdfEncrypt::GenerateEncryptionKey(const wxString& userPassword,
   ComputeOwnerKey(userpswd, ownerpswd, m_keyLength*8, m_rValue, false, m_oValue);
 
   // Compute encryption key and U value
-  if (documentId.IsEmpty())
-  {
-    m_documentId = CreateDocumentId();
-  }
-  else
-  {
-    m_documentId = documentId;
-  }
+  m_documentId = CreateDocumentId();
   ComputeEncryptionKey(m_documentId, userpswd,
                        m_oValue, m_pValue, m_keyLength*8, m_rValue, m_uValue);
 }
@@ -441,14 +426,10 @@ wxPdfEncrypt::Authenticate(const wxString& documentID, const wxString& password,
   unsigned char userKey[32];
   bool ok = false;
   int j;
-  wxString::const_iterator uChar = uValue.begin();
-  wxString::const_iterator oChar = oValue.begin();
   for (j = 0; j < 32; j++)
   {
-    m_uValue[j] = (unsigned char) ((unsigned int) (*uChar) & 0xff);
-    m_oValue[j] = (unsigned char) ((unsigned int) (*oChar) & 0xff);
-    ++uChar;
-    ++oChar;
+    m_uValue[j] = (unsigned char) uValue.GetChar(j);
+    m_oValue[j] = (unsigned char) oValue.GetChar(j);
   }
   m_pValue = pValue;
   m_keyLength = lengthValue / 8;
@@ -472,31 +453,31 @@ wxPdfEncrypt::Authenticate(const wxString& documentID, const wxString& password,
 
 void
 wxPdfEncrypt::ComputeOwnerKey(unsigned char userPad[32], unsigned char ownerPad[32],
-                              unsigned int keyLength, int revision, bool authenticate,
+                              int keyLength, int revision, bool authenticate,
                               unsigned char ownerKey[32])
 {
   unsigned char mkey[MD5_HASHBYTES];
   unsigned char digest[MD5_HASHBYTES];
-  unsigned int length = keyLength / 8;
+  int length = keyLength / 8;
 
   MD5_CTX ctx;
-  MD5_Init(&ctx);
-  MD5_Update(&ctx, ownerPad, 32);
-  MD5_Final(digest,&ctx);
+  MD5Init(&ctx);
+  MD5Update(&ctx, ownerPad, 32);
+  MD5Final(digest,&ctx);
 
   if (revision == 3 || revision == 4)
   {
     // only use for the input as many bit as the key consists of
-    unsigned int k;
+    int k;
     for (k = 0; k < 50; ++k)
     {
-      MD5_Init(&ctx);
-      MD5_Update(&ctx, digest, length);
-      MD5_Final(digest,&ctx);
+      MD5Init(&ctx);
+      MD5Update(&ctx, digest, length);
+      MD5Final(digest,&ctx);
     }
     memcpy(ownerKey, userPad, 32);
-    unsigned int i;
-    unsigned int j;
+    int i;
+    int j;
     for (i = 0; i < 20; ++i)
     {
       for (j = 0; j < length ; ++j)
@@ -522,53 +503,52 @@ wxPdfEncrypt::ComputeOwnerKey(unsigned char userPad[32], unsigned char ownerPad[
 void
 wxPdfEncrypt::ComputeEncryptionKey(const wxString& documentId,
                                    unsigned char userPad[32], unsigned char ownerKey[32],
-                                   int pValue, unsigned int keyLength, int revision,
+                                   int pValue, int keyLength, int revision,
                                    unsigned char userKey[32])
 {
-  unsigned int k;
+  int j;
+  int k;
   m_keyLength = keyLength / 8;
 
   MD5_CTX ctx;
-  MD5_Init(&ctx);
-  MD5_Update(&ctx, userPad, 32);
-  MD5_Update(&ctx, ownerKey, 32);
+  MD5Init(&ctx);
+  MD5Update(&ctx, userPad, 32);
+  MD5Update(&ctx, ownerKey, 32);
 
   unsigned char ext[4];
   ext[0] = (unsigned char) ( pValue        & 0xff);
   ext[1] = (unsigned char) ((pValue >>  8) & 0xff);
   ext[2] = (unsigned char) ((pValue >> 16) & 0xff);
   ext[3] = (unsigned char) ((pValue >> 24) & 0xff);
-  MD5_Update(&ctx, ext, 4);
+  MD5Update(&ctx, ext, 4);
 
-  unsigned int docIdLength = (unsigned int) documentId.Length();
+  size_t docIdLength = documentId.Length();
   unsigned char* docId = NULL;
   if (docIdLength > 0)
   {
     docId = new unsigned char[docIdLength];
-    unsigned int j;
-    wxString::const_iterator dChar = documentId.begin();
+    size_t j;
     for (j = 0; j < docIdLength; j++)
     {
-      docId[j] = (unsigned char) ((unsigned int) (*dChar) & 0xff);
-      ++dChar;
+      docId[j] = (unsigned char) documentId.GetChar(j);
     }
-    MD5_Update(&ctx, docId, docIdLength);
+    MD5Update(&ctx, docId, docIdLength);
   }
   
   // TODO: (Revision 3 or greater) If document metadata is not being encrypted,
   //       pass 4 bytes with the value 0xFFFFFFFF to the MD5 hash function.
 
   unsigned char digest[MD5_HASHBYTES];
-  MD5_Final(digest,&ctx);
+  MD5Final(digest,&ctx);
 
   // only use the really needed bits as input for the hash
   if (revision == 3 || revision == 4)
   {
     for (k = 0; k < 50; ++k)
     {
-      MD5_Init(&ctx);
-      MD5_Update(&ctx, digest, m_keyLength);
-      MD5_Final(digest, &ctx);
+      MD5Init(&ctx);
+      MD5Update(&ctx, digest, m_keyLength);
+      MD5Final(digest, &ctx);
     }
   }
 
@@ -577,13 +557,13 @@ wxPdfEncrypt::ComputeEncryptionKey(const wxString& documentId,
   // Setup user key
   if (revision == 3 || revision == 4)
   {
-    MD5_Init(&ctx);
-    MD5_Update(&ctx, padding, 32);
+    MD5Init(&ctx);
+    MD5Update(&ctx, padding, 32);
     if (docId != NULL)
     {
-      MD5_Update(&ctx, docId, docIdLength);
+      MD5Update(&ctx, docId, docIdLength);
     }
-    MD5_Final(digest, &ctx);
+    MD5Final(digest, &ctx);
     memcpy(userKey, digest, 16);
     for (k = 16; k < 32; ++k)
     {
@@ -591,7 +571,6 @@ wxPdfEncrypt::ComputeEncryptionKey(const wxString& documentId,
     }
     for (k = 0; k < 20; k++)
     {
-      unsigned int j;
       for (j = 0; j < m_keyLength; ++j)
       {
         digest[j] = (unsigned char)(m_encryptionKey[j] ^ k);
@@ -626,9 +605,9 @@ wxPdfEncrypt::CheckKey(unsigned char key1[32], unsigned char key2[32])
 void
 wxPdfEncrypt::Encrypt(int n, int g, wxString& str)
 {
-  unsigned int len = (unsigned int) str.Length();
+  size_t len = str.Length();
   unsigned char* data = new unsigned char[len];
-  unsigned int j;
+  size_t j;
   for (j = 0; j < len; j++)
   {
     data[j] = (unsigned char) str.GetChar(j);
@@ -642,12 +621,12 @@ wxPdfEncrypt::Encrypt(int n, int g, wxString& str)
 }
 
 void
-wxPdfEncrypt::Encrypt(int n, int g, unsigned char* str, unsigned int len)
+wxPdfEncrypt::Encrypt(int n, int g, unsigned char* str, int len)
 {
   unsigned char objkey[MD5_HASHBYTES];
   unsigned char nkey[MD5_HASHBYTES+5+4];
-  unsigned int nkeylen = m_keyLength + 5;
-  unsigned int j;
+  int nkeylen = m_keyLength + 5;
+  int j;
   for (j = 0; j < m_keyLength; j++)
   {
     nkey[j] = m_encryptionKey[j];
@@ -688,12 +667,12 @@ wxPdfEncrypt::Encrypt(int n, int g, unsigned char* str, unsigned int len)
 */
 
 void
-wxPdfEncrypt::RC4(unsigned char* key, unsigned int keylen,
-                  unsigned char* textin, unsigned int textlen,
+wxPdfEncrypt::RC4(unsigned char* key, int keylen,
+                  unsigned char* textin, int textlen,
                   unsigned char* textout)
 {
-  unsigned int i;
-  unsigned int j;
+  int i;
+  int j;
   int t;
   unsigned char rc4[256];
 
@@ -735,50 +714,48 @@ wxPdfEncrypt::RC4(unsigned char* key, unsigned int keylen,
 }
 
 void
-wxPdfEncrypt::GetMD5Binary(const unsigned char* data, unsigned int length, unsigned char* digest)
+wxPdfEncrypt::GetMD5Binary(const unsigned char* data, int length, unsigned char* digest)
 {
   MD5_CTX ctx;
-  MD5_Init(&ctx);
-  MD5_Update(&ctx, data, length);
-  MD5_Final(digest,&ctx);
+  MD5Init(&ctx);
+  MD5Update(&ctx, data, length);
+  MD5Final(digest,&ctx);
 }
 
 void
-wxPdfEncrypt::AES(unsigned char* key, unsigned int keylen,
-                  unsigned char* textin, unsigned int textlen,
+wxPdfEncrypt::AES(unsigned char* key, int WXUNUSED(keylen),
+                  unsigned char* textin, int textlen,
                   unsigned char* textout)
 {
-  wxUnusedVar(keylen);
   GenerateInitialVector(textout);
   m_aes->init(wxPdfRijndael::CBC, wxPdfRijndael::Encrypt, key, wxPdfRijndael::Key16Bytes, textout);
-  size_t offset = CalculateStreamOffset();
+  int offset = CalculateStreamOffset();
   int len = m_aes->padEncrypt(&textin[offset], textlen, &textout[offset]);
   
   // It is a good idea to check the error code
   if (len < 0)
   {
-    wxLogError(wxString(wxT("wxPdfEncrypt::AES: ")) +
-               wxString(_("Error on encrypting.")));
+    wxLogError(_T("wxPdfEncrypt::AES: Error on encrypting."));
   }
 }
 
 void
 wxPdfEncrypt::GenerateInitialVector(unsigned char iv[16])
 {
-  wxString keyString = wxPdfUtility::GetUniqueId();
+  wxString keyString = wxPdfDocument::GetUniqueId();
 #if wxUSE_UNICODE
   wxCharBuffer cb(keyString.ToAscii());
   const char* key = (const char*) cb;
 #else
   const char* key = (const char*) keyString.c_str();
 #endif
-  GetMD5Binary((const unsigned char*) key, (unsigned int) keyString.Length(), iv);
+  GetMD5Binary((const unsigned char*) key, keyString.Length(), iv);
 }
 
-size_t
-wxPdfEncrypt::CalculateStreamLength(size_t length)
+int
+wxPdfEncrypt::CalculateStreamLength(int length)
 {
-  size_t realLength = length;
+  int realLength = length;
   if (m_rValue == 4)
   {
 //    realLength = (length % 0x7ffffff0) + 32;
@@ -791,10 +768,10 @@ wxPdfEncrypt::CalculateStreamLength(size_t length)
   return realLength;
 }
 
-size_t
+int
 wxPdfEncrypt::CalculateStreamOffset()
 {
-  size_t offset = 0;
+  int offset = 0;
   if (m_rValue == 4)
   {
     offset = 16;
@@ -811,7 +788,7 @@ wxPdfEncrypt::CreateDocumentId()
   int k;
   for (k = 0; k < 16; k++)
   {
-    documentId.Append(wxChar(id[k]));
+    documentId.Append(id[k]);
   }
   return documentId;
 }

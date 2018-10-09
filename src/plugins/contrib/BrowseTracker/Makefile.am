@@ -1,27 +1,23 @@
-AM_CPPFLAGS = $(WX_CXXFLAGS) \
-			-I$(top_srcdir)/src/include \
-			-I$(top_srcdir)/src/sdk/wxscintilla/include
+INCLUDES = $(WX_CXXFLAGS) \
+		-I$(top_srcdir)/src/include \
+		-I$(top_srcdir)/src/include/wxscintilla/include
 
-pluginlibdir = $(pkglibdir)/plugins
+libdir = $(pkgdatadir)/plugins
 
-pluginlib_LTLIBRARIES = libBrowseTracker.la
+lib_LTLIBRARIES = libBrowseTracker.la
 
-libBrowseTracker_la_LDFLAGS = @MODULE_SHARED_LDFLAGS@ -version-info 0:1:0 -no-undefined -avoid-version
+libBrowseTracker_la_LDFLAGS = -module -version-info 0:1:0 -shared -no-undefined -avoid-version
 
-libBrowseTracker_la_LIBADD = ../../../sdk/libcodeblocks.la \
-			$(WX_LIBS) \
-			$(CB_TINYXML_LIBS)
+libBrowseTracker_la_LIBADD = $(PLUGIN_WX_LIBS) ../../../sdk/libcodeblocks.la
 
 libBrowseTracker_la_SOURCES = BrowseTracker.cpp \
 			BrowseSelector.cpp \
 			Version.cpp \
 			BrowseMarks.cpp \
-			BrowseTrackerConfPanel.cpp \
+			BrowseTrackerCfg.cpp \
 			BrowseTrackerLayout.cpp \
-			ConfigPanel.cpp \
-			ProjectData.cpp \
-			JumpTracker.cpp \
-			JumpData.cpp
+			ConfigDlg.cpp \
+			ProjectData.cpp
 
 noinst_HEADERS =  	BrowseTracker.h \
 			BrowseSelector.h \
@@ -30,21 +26,16 @@ noinst_HEADERS =  	BrowseTracker.h \
 			BrowseMarks.h \
 			BrowseXpms.h \
 			BrowseTrackerDefs.h \
-			BrowseTrackerConfPanel.h \
+			BrowseTrackerCfg.h \
 			BrowseTrackerLayout.h \
-			ConfigPanel.h \
-			ProjectData.h \
-			JumpTracker.h \
-			JumpData.h
+			ConfigDlg.h \
+			ProjectData.h
 
-EXTRA_DIST = 	$(srcdir)/*.cbp \
-			BrowseTrackerToolbar.xrc \
-			manifest.xml \
-			$(srcdir)/images/*.png \
-			$(srcdir)/images/16x16/*.png
+EXTRA_DIST = 	BrowseTracker.cbp \
+		BrowseTracker-unix.cbp
 
 pkgdata_DATA = BrowseTracker.zip
 CLEANFILES = $(pkgdata_DATA)
 
 BrowseTracker.zip: manifest.xml
-	PWD=`pwd` cd $(srcdir) && zip -R $(PWD)/BrowseTracker.zip manifest.xml *.xrc images/*.png images/16x16/*.png > /dev/null
+	PWD=`pwd` cd $(srcdir) && zip $(PWD)/BrowseTracker.zip manifest.xml > /dev/null

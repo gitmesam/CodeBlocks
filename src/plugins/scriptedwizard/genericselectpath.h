@@ -6,11 +6,14 @@
 #ifndef GENERICSELECTPATH_H
 #define GENERICSELECTPATH_H
 
+#ifdef __BORLANDC__
+    #pragma hdrstop
+#endif
 
-//(*HeadersPCH(GenericSelectPath)
-#include <wx/sizer.h>
+//(*Headers(GenericSelectPath)
 #include <wx/button.h>
 #include <wx/panel.h>
+#include <wx/sizer.h>
 #include <wx/stattext.h>
 #include <wx/textctrl.h>
 //*)
@@ -44,12 +47,12 @@ class GenericSelectPath: public wxPanel
 		//*)
 
 		//(*Declarations(GenericSelectPath)
-		wxBoxSizer* BoxSizer2;
-		wxButton* btnBrowse;
-		wxTextCtrl* txtFolder;
-		wxStaticText* lblLabel;
 		wxBoxSizer* BoxSizer1;
 		wxStaticText* lblDescr;
+		wxStaticText* lblLabel;
+		wxBoxSizer* BoxSizer2;
+		wxTextCtrl* txtFolder;
+		wxButton* btnBrowse;
 		//*)
 
 	private:

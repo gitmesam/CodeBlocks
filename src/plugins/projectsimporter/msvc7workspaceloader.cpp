@@ -30,12 +30,8 @@
 #include <wx/progdlg.h>
 
 #include "msvc7workspaceloader.h"
-#include "msvc7loader.h"
 #include "importers_globals.h"
 #include "encodingdetector.h"
-#include "filefilters.h"
-
-wxString MSVC7WorkspaceLoader::g_WorkspacePath = wxEmptyString;
 
 MSVC7WorkspaceLoader::MSVC7WorkspaceLoader()
 {
@@ -49,7 +45,7 @@ MSVC7WorkspaceLoader::~MSVC7WorkspaceLoader()
 
 bool MSVC7WorkspaceLoader::Open(const wxString& filename, wxString& Title)
 {
-    bool askForCompiler = false; // @todo : always ask for compiler, but offer to use same for all
+    bool askForCompiler = false;
     bool askForTargets = false;
     switch (cbMessageBox(_("Do you want the imported projects to use the default compiler?\n"
                            "(If you answer No, you will be asked for each and every project"
@@ -59,8 +55,7 @@ bool MSVC7WorkspaceLoader::Open(const wxString& filename, wxString& Title)
             askForCompiler = false; break;
         case wxID_NO:
             askForCompiler = true; break;
-        case wxID_CANCEL: // fall through
-        default:
+        case wxID_CANCEL:
             return false;
     }
     switch (cbMessageBox(_("Do you want to import all configurations (e.g. Debug/Release) from the "
@@ -74,8 +69,7 @@ bool MSVC7WorkspaceLoader::Open(const wxString& filename, wxString& Title)
         case wxID_NO:
             askForTargets = true;
             break;
-        case wxID_CANCEL: // fall through
-        default:
+        case wxID_CANCEL:
             return false;
     }
 
@@ -120,22 +114,15 @@ bool MSVC7WorkspaceLoader::Open(const wxString& filename, wxString& Title)
         line.Trim(true);
         line.Trim(false);
         wxString _version = line.AfterLast(' '); // want the version number
-        if (   (_version != _T("7.00"))
-            && (_version != _T("8.00"))
-            && (_version != _T("9.00"))
-            && (_version != _T("10.00"))
-            && (_version != _T("11.00"))
-            && (_version != _T("12.00")) )
-        {
+        if ((_version != _T("7.00")) && (_version != _T("8.00")))
             Manager::Get()->GetLogManager()->DebugLog(_T("Version not recognized. Will try to parse though..."));
-        }
     }
 
     ImportersGlobals::UseDefaultCompiler = !askForCompiler;
     ImportersGlobals::ImportAllTargets = !askForTargets;
 
-    wxProgressDialog progress(_("Importing MSVC solution"),
-                              _("Please wait while importing MSVC 7+ solution..."),
+    wxProgressDialog progress(_("Importing MSVC 7 solution"),
+                              _("Please wait while importing MSVC 7 solution..."),
                               100, 0, wxPD_AUTO_HIDE | wxPD_APP_MODAL | wxPD_CAN_ABORT);
 
     int count = 0;
@@ -149,11 +136,7 @@ bool MSVC7WorkspaceLoader::Open(const wxString& filename, wxString& Title)
     bool global = false;  // global section or project section?
     wxFileName wfname = filename;
     wfname.Normalize();
-    g_WorkspacePath = wfname.GetPath(wxPATH_GET_VOLUME | wxPATH_GET_SEPARATOR);
-    Manager::Get()->GetLogManager()->DebugLog(_T("Workspace dir: ") + g_WorkspacePath);
-    wxArrayString sUUIDArray;       // store the project UUID which has dependencies
-    wxArrayString sProjectKeyArray; // store the project dependency (UUID)
-
+    Manager::Get()->GetLogManager()->DebugLog(_T("Workspace dir: ") + wfname.GetPath(wxPATH_GET_VOLUME | wxPATH_GET_SEPARATOR));
     while (!file.Eof())
     {
         wxString line = input.ReadLine();
@@ -202,24 +185,13 @@ bool MSVC7WorkspaceLoader::Open(const wxString& filename, wxString& Title)
             ++count;
             wxFileName fname(UnixFilename(prjFile));
             fname.Normalize(wxPATH_NORM_ALL, wfname.GetPath(wxPATH_GET_VOLUME | wxPATH_GET_SEPARATOR), wxPATH_NATIVE);
-            Manager::Get()->GetLogManager()->DebugLog(F(_T("Found project '%s' in '%s'"), prjTitle.wx_str(), fname.GetFullPath().wx_str()));
+            Manager::Get()->GetLogManager()->DebugLog(F(_T("Found project '%s' in '%s'"), prjTitle.c_str(), fname.GetFullPath().c_str()));
 
             int percentage = ((int)file.TellI())*100 / (int)(file.GetLength());
             if (!progress.Update(percentage, _("Importing project: ") + prjTitle))
                 break;
 
-            // project will always be NULL, because the Project Manager use the MIME plugin method "OpenFile"
-            // this method returns only an int.
             project = Manager::Get()->GetProjectManager()->LoadProject(fname.GetFullPath(), false);
-            if (!project)
-            {
-                // try to find the opened project
-                wxFileName sCodeBlockProject(fname);
-                sCodeBlockProject = fname.GetFullPath();
-                sCodeBlockProject.SetExt(FileFilters::CODEBLOCKS_EXT);
-
-                project = Manager::Get()->GetProjectManager()->IsOpen(sCodeBlockProject.GetFullPath());
-            }
             if (!firstproject) firstproject = project;
             if (project) registerProject(uuid, project);
         }
@@ -262,12 +234,7 @@ bool MSVC7WorkspaceLoader::Open(const wxString& filename, wxString& Title)
             {
                 // {F87429BF-4583-4A67-BD6F-6CA8AA27702A} = {F87429BF-4583-4A67-BD6F-6CA8AA27702A}
                 // i.e. both uuid are the dependency
-                // at this step, most of the projects are not yet imported
-                // which means the addDependency will not work
-                // Therefore store the dependencies to add
-                // and add them at the end, when all projects have been registered
-                sUUIDArray.Add(uuid);
-                sProjectKeyArray.Add(keyvalue[1]);
+                addDependency(uuid, keyvalue[1]);
             }
         }
         else if (slnConfSection)
@@ -290,22 +257,15 @@ bool MSVC7WorkspaceLoader::Open(const wxString& filename, wxString& Title)
         }
     }
 
-    // now that all the projects have been imported, add the dependencies
-    Manager::Get()->GetLogManager()->DebugLog(_T("Adding dependencies"));
-    int nMax = sUUIDArray.GetCount();
-    for (int n=0; n<nMax; n++)
-        addDependency(sUUIDArray[n], sProjectKeyArray[n]);
-
     Manager::Get()->GetProjectManager()->SetProject(firstproject);
     updateProjects();
     ImportersGlobals::ResetDefaults();
-    g_WorkspacePath = wxEmptyString; // reset so independently opened projects won't adopt this path
 
     Title = wxFileName(filename).GetName() + _(" workspace");
     return count != 0;
 }
 
-bool MSVC7WorkspaceLoader::Save(cb_unused const wxString& title, cb_unused const wxString& filename)
+bool MSVC7WorkspaceLoader::Save(const wxString& /*title*/, const wxString& /*filename*/)
 {
     // no support for saving solution files (.sln) yet
     return false;

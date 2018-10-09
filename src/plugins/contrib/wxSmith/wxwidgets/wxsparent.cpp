@@ -91,7 +91,6 @@ void wxsParent::UnbindChild(int Index)
         delete Extra[Index];
     }
     Extra.RemoveAt(Index);
-    GetResourceData()->MarkExtraDataChanged();
 }
 
 void wxsParent::UnbindChild(wxsItem* Child)
@@ -104,7 +103,6 @@ void wxsParent::UnbindChild(wxsItem* Child)
         delete Extra[Index];
     }
     Extra.RemoveAt(Index);
-    GetResourceData()->MarkExtraDataChanged();
 }
 
 int wxsParent::MoveChild(int OldIndex,int NewIndex )
@@ -182,7 +180,7 @@ void wxsParent::OnEnumChildProperties(wxsItem* Child,long Flags)
     Child->EnumItemProperties(Flags);
 
     // Adding properties from extra data container when there's extra data
-    // associated. It will be disabled in xml operations since
+    // associated. It will be disabled in xml opearations since
     // it's done on parent's level
     if ( !(Flags&flXml) )
     {

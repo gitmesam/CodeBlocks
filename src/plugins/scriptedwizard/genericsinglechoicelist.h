@@ -6,12 +6,15 @@
 #ifndef GENERICSINGLECHOICELIST_H
 #define GENERICSINGLECHOICELIST_H
 
+#ifdef __BORLANDC__
+    #pragma hdrstop
+#endif
 
-//(*HeadersPCH(GenericSingleChoiceList)
-#include <wx/sizer.h>
-#include <wx/panel.h>
-#include <wx/stattext.h>
+//(*Headers(GenericSingleChoiceList)
 #include <wx/listbox.h>
+#include <wx/panel.h>
+#include <wx/sizer.h>
+#include <wx/stattext.h>
 //*)
 
 class wxArrayString;
@@ -46,8 +49,8 @@ class GenericSingleChoiceList: public wxPanel
 		//*)
 
 		//(*Declarations(GenericSingleChoiceList)
-		wxListBox* GenericChoiceList;
 		wxStaticText* lblDescr;
+		wxListBox* GenericChoiceList;
 		//*)
 
 	private:

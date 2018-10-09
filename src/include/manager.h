@@ -16,18 +16,15 @@
 #endif
 #include <wx/event.h>
 #include <wx/cmdline.h>
-
 #include "settings.h"
 #include "sdk_events.h"
 #include "cbfunctor.h"
-#include "cbexception.h"
 
 // forward decls
 class wxFrame;
 class wxWindow;
 class ProjectManager;
 class EditorManager;
-class DebuggerManager;
 class LogManager;
 class PluginManager;
 class ToolsManager;
@@ -40,56 +37,48 @@ class UserVariableManager;
 class ScriptingManager;
 class ConfigManager;
 class FileManager;
-class ColourManager;
-class CCManager;
-class cbSearchResultsLog;
 
 
 class DLLIMPORT Manager
 {
-    wxFrame*               m_pAppWindow;
-    static bool            m_AppShuttingDown;
-    static bool            m_AppStartedUp;
-    static bool            m_BlockYields;
-    static bool            m_IsBatch;
+    void OnMenu(wxCommandEvent& event);
+    wxFrame* m_pAppWindow;
+    static bool appShuttingDown;
+    static bool blockYields;
+    static bool isBatch;
     static wxCmdLineParser m_CmdLineParser;
 
-     Manager();
+    Manager();
     ~Manager();
 
-    void OnMenu(wxCommandEvent& event);
-
 public:
-    static void SetAppStartedUp(bool app_started_up);
-    static void SetAppShuttingDown(bool app_shutting_down);
     static void SetBatchBuild(bool is_batch);
-    static bool IsBatchBuild() { return m_IsBatch; }
-    /// Blocks/unblocks Manager::Yield(). Be careful when using it. Actually, do *not* use it ;)
+    static bool IsBatchBuild(){ return isBatch; }
+    /// Blocks/unblocks Manager::Yield(). Be carefull when using it. Actually, do *not* use it ;)
     static void BlockYields(bool block);
     /// Whenever you need to call wxYield(), call Manager::Yield(). It's safer.
     static void Yield();
     static void ProcessPendingEvents();
     static void Shutdown();
 
-    bool ProcessEvent(CodeBlocksEvent&       event);
-    bool ProcessEvent(CodeBlocksDockEvent&   event);
+    bool ProcessEvent(CodeBlocksEvent& event);
+    bool ProcessEvent(CodeBlocksDockEvent& event);
     bool ProcessEvent(CodeBlocksLayoutEvent& event);
-    bool ProcessEvent(CodeBlocksLogEvent&    event);
+    bool ProcessEvent(CodeBlocksLogEvent& event);
 
 
     /** Use Manager::Get() to get a pointer to its instance
      * Manager::Get() is guaranteed to never return an invalid pointer.
      */
     static Manager* Get();
-
     /** Never, EVER, call this function! It is the last function called on shutdown.... */
     static void Free();
 
-    wxFrame*  GetAppFrame()  const;
+    wxFrame* GetAppFrame() const;
     wxWindow* GetAppWindow() const;
 
     static bool IsAppShuttingDown();
-    static bool IsAppStartedUp();
+    static bool isappShuttingDown(){return Manager::IsAppShuttingDown();};
 
     /** Functions returning pointers to the respective sub-manager instances.
      * During application startup as well as during runtime, these functions will always return a valid pointer.
@@ -101,110 +90,98 @@ public:
      * The order of destruction is:
      * ----------------------------
      *   ToolsManager,       TemplateManager, PluginManager,
-     *   ScriptingManager,   ProjectManager,  EditorManager,
-     *   PersonalityManager, MacrosManager,   UserVariableManager,
-     *   LogManager
-     *   The ConfigManager is destroyed immediately before the application terminates, so it can be
-     *   considered being omnipresent.
+	 *   ScriptingManager,   ProjectManager,  EditorManager,
+	 *   PersonalityManager, MacrosManager,   UserVariableManager,
+	 *   LogManager
+	 *   The ConfigManager is destroyed immediately before the applicaton terminates, so it can be
+	 *   considered being omnipresent.
      *
      * For plugin developers, this means that most managers (except for the ones you probably don't use anyway)
      * will be available throughout the entire lifetime of your plugins.
      */
 
-    ProjectManager*      GetProjectManager()                          const;
-    EditorManager*       GetEditorManager()                           const;
-    LogManager*          GetLogManager()                              const;
-    PluginManager*       GetPluginManager()                           const;
-    ToolsManager*        GetToolsManager()                            const;
-    MacrosManager*       GetMacrosManager()                           const;
-    PersonalityManager*  GetPersonalityManager()                      const;
-    UserVariableManager* GetUserVariableManager()                     const;
-    ScriptingManager*    GetScriptingManager()                        const;
-    ConfigManager*       GetConfigManager(const wxString& name_space) const;
-    FileManager*         GetFileManager()                             const;
-    DebuggerManager*     GetDebuggerManager()                         const;
-    ColourManager*       GetColourManager()                           const;
-    CCManager*           GetCCManager()                               const;
+    ProjectManager* GetProjectManager() const;
+    EditorManager* GetEditorManager() const;
+    LogManager* GetLogManager() const;
+    PluginManager* GetPluginManager() const;
+    ToolsManager* GetToolsManager() const;
+    MacrosManager* GetMacrosManager() const;
+    PersonalityManager* GetPersonalityManager() const;
+    UserVariableManager* GetUserVariableManager() const;
+    ScriptingManager* GetScriptingManager() const;
+    ConfigManager* GetConfigManager(const wxString& name_space) const;
+    FileManager* GetFileManager() const;
+
 
 
     /////// XML Resource functions ///////
     /// Inits XML Resource system
-    static void InitXRC(bool force=false);
+    static void Initxrc(bool force=false);
     /// Loads XRC file(s) using data_path
-    static void LoadXRC(wxString relpath);
+    static void Loadxrc(wxString relpath);
     static bool LoadResource(const wxString& file);
 
     /// Loads Menubar from XRC
-    static wxMenuBar* LoadMenuBar(wxString resid, bool createonfailure = false);
+    static wxMenuBar* LoadMenuBar(wxString resid,bool createonfailure=false);
     /// Loads Menu from XRC
-    static wxMenu*    LoadMenu(wxString menu_id, bool createonfailure = false);
+    static wxMenu* LoadMenu(wxString menu_id,bool createonfailure=false);
     /// Loads ToolBar from XRC
-    static wxToolBar* LoadToolBar(wxFrame *parent, wxString resid, bool defaultsmall = true);
+    static wxToolBar *LoadToolBar(wxFrame *parent,wxString resid,bool defaultsmall=true);
+    /// Loads ToolBarAddOn from XRC into existing Toolbar
 
     // Do not use this, use Get()
     static Manager* Get(wxFrame* appWindow);
 
-    wxToolBar* CreateEmptyToolbar();
     static void AddonToolBar(wxToolBar* toolBar,wxString resid);
     static bool isToolBar16x16(wxToolBar* toolBar);
 
     static wxCmdLineParser* GetCmdLineParser();
 
-    // event sinks
-    void RegisterEventSink(wxEventType eventType, IEventFunctorBase<CodeBlocksEvent>*       functor);
-    void RegisterEventSink(wxEventType eventType, IEventFunctorBase<CodeBlocksDockEvent>*   functor);
-    void RegisterEventSink(wxEventType eventType, IEventFunctorBase<CodeBlocksLayoutEvent>* functor);
-    void RegisterEventSink(wxEventType eventType, IEventFunctorBase<CodeBlocksLogEvent>*    functor);
-    void RemoveAllEventSinksFor(void* owner);
-
-    /// Returns pointer to the search result logger, might be nullptr or hidden.
-    cbSearchResultsLog* GetSearchResultLogger() const { return m_SearchResultLog; }
-    /// Sets the pointer to the search result logger, users must not call this method.
-    void SetSearchResultLogger(cbSearchResultsLog *log) { m_SearchResultLog = log; }
+	// event sinks
+	void RegisterEventSink(wxEventType eventType, IEventFunctorBase<CodeBlocksEvent>* functor);
+	void RegisterEventSink(wxEventType eventType, IEventFunctorBase<CodeBlocksDockEvent>* functor);
+	void RegisterEventSink(wxEventType eventType, IEventFunctorBase<CodeBlocksLayoutEvent>* functor);
+	void RegisterEventSink(wxEventType eventType, IEventFunctorBase<CodeBlocksLogEvent>* functor);
+	void RemoveAllEventSinksFor(void* owner);
 
 private:
-    // event sinks
-    typedef std::vector< IEventFunctorBase<CodeBlocksEvent>* >       EventSinksArray;
-    typedef std::map< wxEventType, EventSinksArray >                 EventSinksMap;
-    typedef std::vector< IEventFunctorBase<CodeBlocksDockEvent>* >   DockEventSinksArray;
-    typedef std::map< wxEventType, DockEventSinksArray >             DockEventSinksMap;
-    typedef std::vector< IEventFunctorBase<CodeBlocksLayoutEvent>* > LayoutEventSinksArray;
-    typedef std::map< wxEventType, LayoutEventSinksArray >           LayoutEventSinksMap;
-    typedef std::vector< IEventFunctorBase<CodeBlocksLogEvent>* >    LogEventSinksArray;
-    typedef std::map< wxEventType, LogEventSinksArray >              LogEventSinksMap;
+	// event sinks
+	typedef std::vector< IEventFunctorBase<CodeBlocksEvent>* > EventSinksArray;
+	typedef std::map< wxEventType, EventSinksArray > EventSinksMap;
+	typedef std::vector< IEventFunctorBase<CodeBlocksDockEvent>* > DockEventSinksArray;
+	typedef std::map< wxEventType, DockEventSinksArray > DockEventSinksMap;
+	typedef std::vector< IEventFunctorBase<CodeBlocksLayoutEvent>* > LayoutEventSinksArray;
+	typedef std::map< wxEventType, LayoutEventSinksArray > LayoutEventSinksMap;
+	typedef std::vector< IEventFunctorBase<CodeBlocksLogEvent>* > LogEventSinksArray;
+	typedef std::map< wxEventType, LogEventSinksArray > LogEventSinksMap;
 
-    EventSinksMap       m_EventSinks;
-    DockEventSinksMap   m_DockEventSinks;
-    LayoutEventSinksMap m_LayoutEventSinks;
-    LogEventSinksMap    m_LogEventSinks;
-    cbSearchResultsLog *m_SearchResultLog;
+	EventSinksMap m_EventSinks;
+	DockEventSinksMap m_DockEventSinks;
+	LayoutEventSinksMap m_LayoutEventSinks;
+	LogEventSinksMap m_LogEventSinks;
 };
 
-template <class MgrT> class DLLIMPORT Mgr
+template <class MgrT> class Mgr
 {
     static MgrT *instance;
     static bool isShutdown;
-    explicit Mgr(const Mgr<MgrT>&)         { ; };
-    Mgr<MgrT>& operator=(Mgr<MgrT> const&) { ; };
+    explicit Mgr(const Mgr<MgrT>&){};
+    Mgr<MgrT>& operator=(Mgr<MgrT> const&){};
 
 protected:
 
-    Mgr()          { assert(Mgr<MgrT>::instance == nullptr); }
-    virtual ~Mgr() { Mgr<MgrT>::instance = nullptr; }
+    Mgr(){assert(Mgr<MgrT>::instance == 0);}
+    virtual ~Mgr(){Mgr<MgrT>::instance = 0;}
 
 public:
 
-    static bool Valid() { return instance; }
+    static inline bool Valid(){return instance;}
 
-    static MgrT* Get()
+    static inline MgrT* Get()
     {
-        if (instance == nullptr)
-        {
-            if (isShutdown == false)
-                instance = new MgrT();
-            else
-                cbAssert(false && "Calling Get after the subsystem has been shutdown is an error!");
-        }
+        if(instance == 0 && isShutdown == false)
+            instance = new MgrT();
+
         return instance;
     }
 
@@ -212,8 +189,9 @@ public:
     {
         isShutdown = true;
         delete instance;
-        instance = nullptr;
+        instance = 0;
     }
 };
 
 #endif // MANAGER_H
+

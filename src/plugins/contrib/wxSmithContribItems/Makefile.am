@@ -1,74 +1,31 @@
-if ! HAVE_WX29
-TREELIST_INCLUDE=-I$(srcdir)/../wxContribItems/wxTreeList/include
-TREELIST_LA=../wxContribItems/wxTreeList/libwxtreelist.la
-TREELIST_SRC=./wxtreelist/wxsTreeListCtrl.cpp
-TREELIST_HDR=./wxtreelist/wxsTreeListCtrl.h
-else
-TREELIST_DIST=$(srcdir)/wxtreelist/wxsTreeListCtrl.cpp $(srcdir)/wxtreelist/wxsTreeListCtrl.h
-endif
+AM_CPPFLAGS = -DWXMAKINGLIB_PROPGRID
 
-AM_CPPFLAGS = $(WX_CXXFLAGS) \
+INCLUDES = $(WX_CXXFLAGS) \
 		-I$(top_srcdir)/src/include \
-		-I$(top_srcdir)/src/sdk/wxscintilla/include \
-		$(WXPROPGRID_INCLUDE) \
+		-I$(top_srcdir)/src/include/wxFlatNotebook/include \
+		-I$(top_srcdir)/src/include/wxscintilla/include \
 		-I$(top_srcdir)/src/plugins/contrib/wxSmith \
-		-I$(top_srcdir)/src/plugins/contrib/wxSmith/wxwidgets \
-		-I$(top_srcdir)/src/plugins/contrib/wxSmith/wxwidgets/properties \
-		-I$(top_srcdir)/src/plugins/contrib/wxSmith/properties \
-		-I$(srcdir)/../wxContribItems/wxchart/include \
-		-I$(srcdir)/../wxContribItems/wxFlatNotebook/include \
-		-I$(srcdir)/../wxContribItems/wxImagePanel/include \
-		-I$(srcdir)/../wxContribItems/wxthings/include \
-		-I$(srcdir)/../wxContribItems/KWIC/include \
-		$(TREELIST_INCLUDE) \
-		-I$(srcdir)/../wxContribItems/wxSpeedButton \
-		-I$(srcdir)/../wxContribItems/wxled/gizmosled/include \
-		-I$(srcdir)/../wxContribItems/wxled/lcdWindow/include \
-		-I$(srcdir)/../wxContribItems/wxled/led/include \
-		-I$(srcdir)/../wxContribItems/wxled/ledpanel/include \
-		-I$(srcdir)/../wxContribItems/wxmathplot
+		-I$(top_srcdir)/src/plugins/contrib/wxSmith/propgrid/contrib/include \
+		-I$(srcdir)/wxchart/wxchart-1.0/include \
+		-I$(srcdir)/wxthings/wxthings/include
 
+libdir = $(pkgdatadir)/plugins
 
-pluginlibdir = $(pkglibdir)/plugins
+lib_LTLIBRARIES = libwxsmithcontribitems.la
 
-pluginlib_LTLIBRARIES = libwxsmithcontribitems.la
+libwxsmithcontribitems_la_LDFLAGS = -module -version-info 0:1:0 -shared -no-undefined -avoid-version
 
-libwxsmithcontribitems_la_LDFLAGS = @MODULE_SHARED_LDFLAGS@ -version-info 0:1:0 -no-undefined -avoid-version
+libwxsmithcontribitems_la_LIBADD = $(PLUGIN_WX_LIBS) ../../../sdk/libcodeblocks.la \
+		       ../wxSmith/libwxsmithlib.la
 
-libwxsmithcontribitems_la_LIBADD = ../../../sdk/libcodeblocks.la \
-		       ../wxSmith/libwxsmithlib.la \
-			../wxContribItems/wxchart/libwxchartctrl.la \
-			../wxContribItems/wxFlatNotebook/libwxflatnotebook.la \
-			../wxContribItems/wxImagePanel/libwximagepanel.la \
-			../wxContribItems/wxSpeedButton/libwxspeedbutton.la \
-			../wxContribItems/KWIC/libwxkwic.la \
-			$(TREELIST_LA) \
-			../wxContribItems/wxthings/libwxcustombutton.la \
-			../wxContribItems/wxled/libwxled.la \
-			../wxContribItems/wxmathplot/libwxmathplot.la \
-			$(WX_LIBS) \
-			$(CB_TINYXML_LIBS)
-
-EXTRA_DIST = $(srcdir)/wxchart/*.xpm \
+EXTRA_DIST = $(srcdir)/wxchart/wxchart-1.0/include/wx/chartart/*.xpm \
+		$(srcdir)/wxchart/wxchart-1.0/include/wx/chartart/*.bmp \
+		$(srcdir)/wxchart/*.xpm \
 		$(srcdir)/wxchart/*.png \
-		$(srcdir)/wximagebutton/*.xpm \
-		$(srcdir)/wximagepanel/*.xpm \
-		$(srcdir)/wxspeedbutton/*.xpm \
 		$(srcdir)/wxthings/*.xpm \
 		$(srcdir)/wxthings/*.png \
 		$(srcdir)/wxflatnotebook/images/*.xpm \
 		$(srcdir)/wxflatnotebook/images/*.png \
-		$(srcdir)/wxSmithKWIC/images/*.xpm \
-		$(srcdir)/wxtreelist/images/*.xpm \
-		$(TREELIST_DIST) \
-		$(srcdir)/wxgbsizer/images/*.xpm \
-		$(srcdir)/wxled/images/*.xpm \
-		$(srcdir)/wxSmithPlot/images/*.xpm \
-		$(srcdir)/wxSmithPlot/test/*.h \
-		$(srcdir)/wxSmithPlot/test/*.cpp \
-		$(srcdir)/wxSmithPlot/test/resource.rc \
-		$(srcdir)/wxSmithPlot/test/*.cbp \
-		$(srcdir)/wxSmithPlot/test/wxsmith/*.wxs \
 		$(srcdir)/*.cbp \
 		manifest.xml
 
@@ -79,59 +36,54 @@ wxsmithcontribitems.zip: manifest.xml
 	PWD=`pwd` cd $(srcdir) && zip $(PWD)/wxsmithcontribitems.zip manifest.xml > /dev/null
 
 libwxsmithcontribitems_la_SOURCES = \
-./wxflatnotebook/wxsFlatNotebook.cpp \
+./wxchart/wxchart-1.0/src/legendwindow.cpp \
+./wxchart/wxchart-1.0/src/points.cpp \
+./wxchart/wxchart-1.0/src/chartcolors.cpp \
+./wxchart/wxchart-1.0/src/label.cpp \
+./wxchart/wxchart-1.0/src/chartwindow.cpp \
+./wxchart/wxchart-1.0/src/chart.cpp \
+./wxchart/wxchart-1.0/src/piechartpoints.cpp \
+./wxchart/wxchart-1.0/src/xaxis.cpp \
+./wxchart/wxchart-1.0/src/bar3dchartpoints.cpp \
+./wxchart/wxchart-1.0/src/axis.cpp \
+./wxchart/wxchart-1.0/src/xaxiswindow.cpp \
+./wxchart/wxchart-1.0/src/legend.cpp \
+./wxchart/wxchart-1.0/src/yaxiswindow.cpp \
+./wxchart/wxchart-1.0/src/barchartpoints.cpp \
+./wxchart/wxchart-1.0/src/pie3dchartpoints.cpp \
+./wxchart/wxchart-1.0/src/chartctrl.cpp \
+./wxchart/wxchart-1.0/src/yaxis.cpp \
 ./wxchart/wxschart.cpp \
+./wxthings/wxthings/src/toggle.cpp \
 ./wxthings/wxscustombutton.cpp \
-./wximagebutton/wxsimagebutton.cpp \
-./wximagepanel/wxsimagepanel.cpp \
-./wxspeedbutton/wxsSpeedButton.cpp \
-./wxSmithKWIC/wxsangularmeter.cpp \
-./wxSmithKWIC/wxsangularregulator.cpp \
-./wxSmithKWIC/wxsbmpcheckbox.cpp \
-./wxSmithKWIC/wxsbmpswitcher.cpp \
-./wxSmithKWIC/wxslcdclock.cpp \
-./wxSmithKWIC/wxslcddisplay.cpp \
-./wxSmithKWIC/wxslinearmeter.cpp \
-./wxSmithKWIC/wxslinearregulator.cpp \
-$(TREELIST_SRC) \
-./wxgbsizer/wxsGridBagSizer.cpp \
-./wxled/wxsLcdWindow.cpp \
-./wxled/wxsLed.cpp \
-./wxled/wxsLedNumber.cpp \
-./wxled/wxsLedPanel.cpp \
-./wxled/wxsStateLed.cpp \
-./wxSmithPlot/wxsAxis.cpp \
-./wxSmithPlot/wxsMarker.cpp \
-./wxSmithPlot/wxsMathPlot.cpp \
-./wxSmithPlot/wxsText.cpp \
-./wxSmithPlot/wxsVector.cpp \
+./wxflatnotebook/wxsFlatNotebook.cpp \
 ./wxSmithContribItems.cpp
 
 noinst_HEADERS = \
-./wxflatnotebook/wxsFlatNotebook.h \
 ./wxchart/wxschart.h \
+./wxchart/wxchart-1.0/include/wx/yaxis.h \
+./wxchart/wxchart-1.0/include/wx/piechartpoints.h \
+./wxchart/wxchart-1.0/include/wx/label.h \
+./wxchart/wxchart-1.0/include/wx/chartcolors.h \
+./wxchart/wxchart-1.0/include/wx/pie3dchartpoints.h \
+./wxchart/wxchart-1.0/include/wx/points.h \
+./wxchart/wxchart-1.0/include/wx/legend.h \
+./wxchart/wxchart-1.0/include/wx/legendwindow.h \
+./wxchart/wxchart-1.0/include/wx/chartpointstypes.h \
+./wxchart/wxchart-1.0/include/wx/chartwindow.h \
+./wxchart/wxchart-1.0/include/wx/barchartpoints.h \
+./wxchart/wxchart-1.0/include/wx/chartctrl.h \
+./wxchart/wxchart-1.0/include/wx/axis.h \
+./wxchart/wxchart-1.0/include/wx/charttypes.h \
+./wxchart/wxchart-1.0/include/wx/chartdef.h \
+./wxchart/wxchart-1.0/include/wx/xaxiswindow.h \
+./wxchart/wxchart-1.0/include/wx/bar3dchartpoints.h \
+./wxchart/wxchart-1.0/include/wx/yaxiswindow.h \
+./wxchart/wxchart-1.0/include/wx/xaxis.h \
+./wxchart/wxchart-1.0/include/wx/chart.h \
+./wxchart/wxchart-1.0/include/wx/chartpoints.h \
+./wxthings/wxthings/include/wx/things/toggle.h \
+./wxthings/wxthings/include/wx/things/thingdef.h \
 ./wxthings/wxscustombutton.h \
-./wximagebutton/wxsimagebutton.h \
-./wximagepanel/wxsimagepanel.h \
-./wxspeedbutton/wxsSpeedButton.h \
-./wxSmithKWIC/wxsangularmeter.h \
-./wxSmithKWIC/wxsangularregulator.h \
-./wxSmithKWIC/wxsbmpcheckbox.h \
-./wxSmithKWIC/wxsbmpswitcher.h \
-./wxSmithKWIC/wxslcdclock.h \
-./wxSmithKWIC/wxslcddisplay.h \
-./wxSmithKWIC/wxslinearmeter.h \
-./wxSmithKWIC/wxslinearregulator.h \
-$(TREELIST_HDR) \
-./wxgbsizer/wxsGridBagSizer.h \
-./wxled/wxsLcdWindow.h \
-./wxled/wxsLed.h \
-./wxled/wxsLedNumber.h \
-./wxled/wxsLedPanel.h \
-./wxled/wxsStateLed.h \
-./wxSmithPlot/wxsAxis.h \
-./wxSmithPlot/wxsMarker.h \
-./wxSmithPlot/wxsMathPlot.h \
-./wxSmithPlot/wxsText.h \
-./wxSmithPlot/wxsVector.h \
+./wxflatnotebook/wxsFlatNotebook.h \
 ./wxSmithContribItems.h

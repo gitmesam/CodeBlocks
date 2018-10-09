@@ -25,7 +25,7 @@
 
 namespace
 {
-    wxsRegisterItem<wxsChoice> Reg(_T("Choice"),wxsTWidget,_T("Standard"),310);
+    wxsRegisterItem<wxsChoice> Reg(_T("Choice"),wxsTWidget,_T("Standard"),70);
 
     WXS_ST_BEGIN(wxsChoiceStyles,_T(""))
         WXS_ST_CATEGORY("wxChoice")
@@ -64,7 +64,7 @@ void wxsChoice::OnBuildCreatingCode()
                 {
                     Codef(_T("%ASetSelection( "));
                 }
-                Codef(_T("%AAppend(%t)"),ArrayChoices[i].wx_str());
+                Codef(_T("%AAppend(%t)"),ArrayChoices[i].c_str());
                 if ( DefaultSelection == (int)i )
                 {
                     Codef(_T(" )"));
@@ -76,7 +76,6 @@ void wxsChoice::OnBuildCreatingCode()
             return;
         }
 
-        case wxsUnknownLanguage: // fall through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsChoice::OnBuildCreatingCode"),GetLanguage());
@@ -99,7 +98,7 @@ wxObject* wxsChoice::OnBuildPreview(wxWindow* Parent,long Flags)
     return SetupWindow(Preview,Flags);
 }
 
-void wxsChoice::OnEnumWidgetProperties(cb_unused long Flags)
+void wxsChoice::OnEnumWidgetProperties(long Flags)
 {
     WXS_ARRAYSTRING(wxsChoice,ArrayChoices,_("Choices"),_T("content"),_T("item"))
     WXS_LONG(wxsChoice,DefaultSelection,_("Selection"),_T("selection"),-1)

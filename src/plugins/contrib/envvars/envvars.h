@@ -23,6 +23,8 @@ class cbProject;
 #include "configurationpanel.h"
 #include "sdk_events.h"
 
+typedef std::map<cbProject*, wxString> ProjectEnvvarMap;
+
 // ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 
 class EnvVars : public cbPlugin
@@ -50,15 +52,14 @@ protected:
   void     OnProjectClosed(CodeBlocksEvent& event);
 
 private:
-  friend class EnvVarsConfigDlg;
-
-  void DoProjectActivate(cbProject* project);
-
   /// fires when the plugin is attached to the application:
   void     OnAttach();
 
   /// fires when the plugin is released from the application:
   void     OnRelease(bool appShutDown);
+
+  /// configures the plugin
+  int      Configure();
 
   /// returns the configuration priority (when to setup the plugin)
   int      GetConfigurationPriority() const
@@ -76,22 +77,20 @@ private:
                                                               cbProject* project);
 
   /// hooks into the menu build process to allow the plugin to add menu entries
-  void     BuildMenu(wxMenuBar* /*menuBar*/)
+  void     BuildMenu(wxMenuBar* menuBar)
   { return; }
 
   /// hooks into the module menu build process to allow the plugin to add menu entries
-  void     BuildModuleMenu(const ModuleType /*type*/, wxMenu* /*menu*/,
-                           const FileTreeData* /*data */= 0)
+  void     BuildModuleMenu(const ModuleType type, wxMenu* menu,
+                           const FileTreeData* data = 0)
   { return; }
 
   /// hooks into the toolbar build process to allow the plugin to add an own toolbar
-  bool     BuildToolBar(wxToolBar* /*toolBar*/)
+  bool     BuildToolBar(wxToolBar* toolBar)
   { return false; }
 
   /// issues a warning if an activated project has a reference to an envvar set that does not exist
   void     EnvvarSetWarning(const wxString& envvar_set);
-
-  typedef std::map<cbProject*, wxString> ProjectEnvvarMap;
 
   int              m_EnvVarHookID; //!< project loader hook ID
   ProjectEnvvarMap m_ProjectSets;  //!< preferred envvar sets for all projects

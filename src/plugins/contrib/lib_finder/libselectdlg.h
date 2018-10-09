@@ -16,30 +16,30 @@
 * along with wxSmith; if not, write to the Free Software
 * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
 *
-* $Revision$
-* $Id$
-* $HeadURL$
+* $Revision: 4504 $
+* $Id: wxsmithpluginregistrants.cpp 4504 2007-10-02 21:52:30Z byo $
+* $HeadURL: svn+ssh://byo@svn.berlios.de/svnroot/repos/codeblocks/trunk/src/plugins/contrib/wxSmith/plugin/wxsmithpluginregistrants.cpp $
 */
 
 #ifndef LIBSELECTDLG_H
 #define LIBSELECTDLG_H
 
 //(*Headers(LibSelectDlg)
-#include "scrollingdialog.h"
-class wxStaticBoxSizer;
+#include <wx/dialog.h>
 class wxStdDialogButtonSizer;
-class wxCheckListBox;
-class wxBoxSizer;
-class wxStaticText;
-class wxRadioButton;
 class wxCheckBox;
+class wxRadioButton;
+class wxStaticText;
+class wxBoxSizer;
+class wxStaticBoxSizer;
+class wxCheckListBox;
 //*)
 
-class LibSelectDlg: public wxScrollingDialog
+class LibSelectDlg: public wxDialog
 {
 	public:
 
-		LibSelectDlg(wxWindow* parent,const wxArrayString& Names,bool addOnly);
+		LibSelectDlg(wxWindow* parent,const wxArrayString& Names);
 		virtual ~LibSelectDlg();
 
         /** \brief Set list of selected items */
@@ -63,11 +63,11 @@ class LibSelectDlg: public wxScrollingDialog
 	private:
 
 		//(*Declarations(LibSelectDlg)
+		wxStaticText* StaticText1;
+		wxCheckListBox* m_Libraries;
+		wxRadioButton* m_ClearAll;
 		wxCheckBox* m_SetupGlobalVars;
 		wxRadioButton* m_DontClear;
-		wxStaticText* StaticText1;
-		wxRadioButton* m_ClearAll;
-		wxCheckListBox* m_Libraries;
 		wxRadioButton* m_ClearSelected;
 		//*)
 
@@ -83,8 +83,6 @@ class LibSelectDlg: public wxScrollingDialog
 		//(*Handlers(LibSelectDlg)
 		void OnOk(wxCommandEvent& event);
 		//*)
-
-		bool m_AddOnly;
 
 		DECLARE_EVENT_TABLE()
 };

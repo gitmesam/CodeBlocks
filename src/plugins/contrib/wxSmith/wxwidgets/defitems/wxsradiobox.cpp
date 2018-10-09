@@ -27,7 +27,7 @@
 
 namespace
 {
-    wxsRegisterItem<wxsRadioBox> Reg(_T("RadioBox"),wxsTWidget,_T("Standard"),180);
+    wxsRegisterItem<wxsRadioBox> Reg(_T("RadioBox"),wxsTWidget,_T("Standard"),60);
 
     WXS_ST_BEGIN(wxsRadioBoxStyles,_T(""))
         WXS_ST_CATEGORY("wxRadioBox")
@@ -70,10 +70,10 @@ void wxsRadioBox::OnBuildCreatingCode()
             if ( ArrayChoices.GetCount() > 0 )
             {
                 ChoicesName = GetCoderContext()->GetUniqueName(_T("__wxRadioBoxChoices"));
-                Codef(_T("wxString %s[%d] = \n{\n"),ChoicesName.wx_str(),(int)ArrayChoices.GetCount());
+                Codef(_T("wxString %s[%d] = \n{\n"),ChoicesName.c_str(),(int)ArrayChoices.GetCount());
                 for ( size_t i = 0; i < ArrayChoices.GetCount(); ++i )
                 {
-                    Codef(_T("\t%t%s\n"),ArrayChoices[i].wx_str(),((i!=ArrayChoices.GetCount()-1)?_T(","):_T("")));
+                    Codef(_T("\t%t%s\n"),ArrayChoices[i].c_str(),((i!=ArrayChoices.GetCount()-1)?_T(","):_T("")));
                 }
                 Codef(_T("};\n"));
             }
@@ -81,9 +81,9 @@ void wxsRadioBox::OnBuildCreatingCode()
             if ( Dimension < 1 ) Dimension = 1;
 
             Codef(_T("%C(%W, %I, %t, %P, %S, %d, %s, %d, %T, %V, %N);\n"),
-                  Label.wx_str(),ArrayChoices.GetCount(),
-                  (ArrayChoices.IsEmpty()?_T("0"):ChoicesName.wx_str()),
-                  Dimension);
+                        Label.c_str(),ArrayChoices.GetCount(),
+                        (ArrayChoices.IsEmpty()?_T("0"):ChoicesName.c_str()),
+                        Dimension);
 
             if ( DefaultSelection >= 0 && DefaultSelection < (int)ArrayChoices.GetCount() )
             {
@@ -93,7 +93,6 @@ void wxsRadioBox::OnBuildCreatingCode()
             return;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsRadioBox::OnBuildCreatingCode"),GetLanguage());
@@ -112,7 +111,7 @@ wxObject* wxsRadioBox::OnBuildPreview(wxWindow* Parent,long Flags)
     return SetupWindow(Preview,Flags);
 }
 
-void wxsRadioBox::OnEnumWidgetProperties(cb_unused long Flags)
+void wxsRadioBox::OnEnumWidgetProperties(long Flags)
 {
     WXS_SHORT_STRING(wxsRadioBox,Label,_("Label"),_T("label"),_T(""),true)
     WXS_ARRAYSTRING(wxsRadioBox,ArrayChoices,_("Choices"),_T("content"),_T("item"))

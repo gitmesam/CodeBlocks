@@ -27,7 +27,7 @@ inline const TYPE & Get(TypeWrapper<const TYPE &>,HSQUIRRELVM v,int idx) { retur
 DECLARE_INSTANCE_TYPE_NAME_(TYPE,NAME) \
 namespace SqPlus { \
 inline void Push(HSQUIRRELVM v,const TYPE * value) { if (!CreateNativeClassInstance(v,GetTypeName(*value),(TYPE*)value,0)) throw SquirrelError(sqT("Push(): could not create INSTANCE (check registration name)")); } \
-inline void Push(HSQUIRRELVM /*v*/,const TYPE & value) { if (!CreateCopyInstance(GetTypeName(value),value)) throw SquirrelError(sqT("Push(): could not create INSTANCE copy (check registration name)")); } \
+inline void Push(HSQUIRRELVM v,const TYPE & value) { if (!CreateCopyInstance(GetTypeName(value),value)) throw SquirrelError(sqT("Push(): could not create INSTANCE copy (check registration name)")); } \
 inline bool	Match(TypeWrapper<const TYPE &>,HSQUIRRELVM v,int idx) { return GetInstance<TYPE,false>(v,idx) != NULL; } \
 inline const TYPE & Get(TypeWrapper<const TYPE &>,HSQUIRRELVM v,int idx) { return *GetInstance<TYPE,true>(v,idx); } \
 } // nameSpace SqPlus
@@ -46,16 +46,6 @@ static int Call(Callee & callee,RT (Callee::*func)() const,HSQUIRRELVM v,int /*i
   Push(v,ret);
   return 1;
 }
-
-// C::B patch: so it builds on 64bit
-#ifdef _WIN64
-template <typename Callee>
-static int Call(Callee & callee,RT (Callee::*func)() const,HSQUIRRELVM v,SQInteger /*index*/) {
-  RT ret = (callee.*func)();
-  Push(v,ret);
-  return 1;
-}
-#endif
 
 template <typename Callee,typename P1>
 static int Call(Callee & callee,RT (Callee::*func)(P1) const,HSQUIRRELVM v,int index) {
@@ -330,12 +320,12 @@ int Call(Callee & callee,RT (Callee::*func)(P1,P2,P3,P4,P5,P6,P7) const,HSQUIRRE
 
 #ifdef SQ_REG_CONST_STATIC_VAR
 template<typename VarType>
-SQClassDef & staticVar(const VarType * pvar,const SQChar * name_,VarAccessType access=VAR_ACCESS_READ_ONLY) {
+SQClassDef & staticVar(const VarType * pvar,const SQChar * name,VarAccessType access=VAR_ACCESS_READ_ONLY) {
   struct CV {
     const VarType * var;
   } cv; // Cast Variable helper.
   cv.var = pvar;
-  RegisterInstanceVariable(newClass,ClassType<TClassType>::type(),*(VarType **)&cv,name_,VarAccessType(access|VAR_ACCESS_STATIC));
+  RegisterInstanceVariable(newClass,ClassType<TClassType>::type(),*(VarType **)&cv,name,VarAccessType(access|VAR_ACCESS_STATIC));
   return *this;
 } // staticVar
 #endif

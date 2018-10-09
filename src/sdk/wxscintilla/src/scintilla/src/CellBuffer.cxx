@@ -5,241 +5,393 @@
 // Copyright 1998-2001 by Neil Hodgson <neilh@scintilla.org>
 // The License.txt file describes the conditions under which this software may be distributed.
 
-#include <cstddef>
-#include <cstdlib>
-#include <cstring>
-#include <cstdio>
-#include <cstdarg>
-
-#include <stdexcept>
-#include <vector>
-#include <algorithm>
-#include <memory>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdarg.h>
 
 #include "Platform.h"
 
 #include "Scintilla.h"
-#include "Position.h"
-#include "SplitVector.h"
-#include "Partitioning.h"
+#include "SVector.h"
 #include "CellBuffer.h"
-#include "UniConversion.h"
 
-#ifdef SCI_NAMESPACE
-using namespace Scintilla;
-#endif
-
-/* CHANGEBAR begin */
-LineChanges::LineChanges() : collecting(0), edition(0) {
+MarkerHandleSet::MarkerHandleSet() {
+	root = 0;
 }
 
-LineChanges::~LineChanges() {
+MarkerHandleSet::~MarkerHandleSet() {
+	MarkerHandleNumber *mhn = root;
+	while (mhn) {
+		MarkerHandleNumber *mhnToFree = mhn;
+		mhn = mhn->next;
+		delete mhnToFree;
+	}
+	root = 0;
 }
 
-void LineChanges::AdvanceEdition() {
-	edition = (edition + 1) % 0x40000000;
+int MarkerHandleSet::Length() {
+	int c = 0;
+	MarkerHandleNumber *mhn = root;
+	while (mhn) {
+		c++;
+		mhn = mhn->next;
+	}
+	return c;
 }
 
-int LineChanges::GetEdition() const {
-	return edition;
+int MarkerHandleSet::NumberFromHandle(int handle) {
+	MarkerHandleNumber *mhn = root;
+	while (mhn) {
+		if (mhn->handle == handle) {
+			return mhn->number;
+		}
+		mhn = mhn->next;
+	}
+	return - 1;
 }
 
-char *LineChanges::PersistantForm() const {
-	if (collecting)
-		return state.PersistantForm();
-	else
-		return 0;
+int MarkerHandleSet::MarkValue() {
+	unsigned int m = 0;
+	MarkerHandleNumber *mhn = root;
+	while (mhn) {
+		m |= (1 << mhn->number);
+		mhn = mhn->next;
+	}
+	return m;
 }
 
-void LineChanges::SetChanges(const char *changesState) {
-	if (collecting && changesState) {
-		state.FromPersistant(changesState);
-		AdvanceEdition();
+bool MarkerHandleSet::Contains(int handle) {
+	MarkerHandleNumber *mhn = root;
+	while (mhn) {
+		if (mhn->handle == handle) {
+			return true;
+		}
+		mhn = mhn->next;
+	}
+	return false;
+}
+
+bool MarkerHandleSet::InsertHandle(int handle, int markerNum) {
+	MarkerHandleNumber *mhn = new MarkerHandleNumber;
+	if (!mhn)
+		return false;
+	mhn->handle = handle;
+	mhn->number = markerNum;
+	mhn->next = root;
+	root = mhn;
+	return true;
+}
+
+void MarkerHandleSet::RemoveHandle(int handle) {
+	MarkerHandleNumber **pmhn = &root;
+	while (*pmhn) {
+		MarkerHandleNumber *mhn = *pmhn;
+		if (mhn->handle == handle) {
+			*pmhn = mhn->next;
+			delete mhn;
+			return ;
+		}
+		pmhn = &((*pmhn)->next);
 	}
 }
 
-void LineChanges::InsertText(int line, int edition, bool undoing) {
-	if (collecting && !undoing) {
-		int position = line;
-		int fillLength = 1;
-		if (state.FillRange(position, edition, fillLength)) {
-			if (fillLength > 0) {
-				AdvanceEdition();
+bool MarkerHandleSet::RemoveNumber(int markerNum) {
+	bool performedDeletion = false;
+	MarkerHandleNumber **pmhn = &root;
+	while (*pmhn) {
+		MarkerHandleNumber *mhn = *pmhn;
+		if (mhn->number == markerNum) {
+			*pmhn = mhn->next;
+			delete mhn;
+			performedDeletion = true;
+		} else {
+			pmhn = &((*pmhn)->next);
+		}
+	}
+	return performedDeletion;
+}
+
+void MarkerHandleSet::CombineWith(MarkerHandleSet *other) {
+	MarkerHandleNumber **pmhn = &root;
+	while (*pmhn) {
+		pmhn = &((*pmhn)->next);
+	}
+	*pmhn = other->root;
+	other->root = 0;
+}
+
+LineVector::LineVector() {
+	linesData = 0;
+	lines = 0;
+	size = 0;
+	levels = 0;
+	sizeLevels = 0;
+	handleCurrent = 1;
+	growSize = 1000;
+
+	Init();
+}
+
+LineVector::~LineVector() {
+	for (int line = 0; line < lines; line++) {
+		delete linesData[line].handleSet;
+		linesData[line].handleSet = 0;
+	}
+	delete []linesData;
+	linesData = 0;
+	delete []levels;
+	levels = 0;
+}
+
+void LineVector::Init() {
+	for (int line = 0; line < lines; line++) {
+		delete linesData[line].handleSet;
+		linesData[line].handleSet = 0;
+	}
+	delete []linesData;
+	linesData = new LineData[static_cast<int>(growSize)];
+	size = growSize;
+	lines = 1;
+	delete []levels;
+	levels = 0;
+	sizeLevels = 0;
+}
+
+void LineVector::Expand(int sizeNew) {
+	LineData *linesDataNew = new LineData[sizeNew];
+	if (linesDataNew) {
+		for (int i = 0; i < size; i++)
+			linesDataNew[i] = linesData[i];
+		// Do not delete handleSets here as they are transferred to new linesData
+		delete []linesData;
+		linesData = linesDataNew;
+		size = sizeNew;
+	} else {
+		Platform::DebugPrintf("No memory available\n");
+		// TODO: Blow up
+	}
+
+}
+
+void LineVector::ExpandLevels(int sizeNew) {
+	if (sizeNew == -1)
+		sizeNew = size;
+	int *levelsNew = new int[sizeNew];
+	if (levelsNew) {
+		int i = 0;
+		for (; i < sizeLevels; i++)
+			levelsNew[i] = levels[i];
+		for (; i < sizeNew; i++)
+			levelsNew[i] = SC_FOLDLEVELBASE;
+		delete []levels;
+		levels = levelsNew;
+		sizeLevels = sizeNew;
+	} else {
+		Platform::DebugPrintf("No memory available\n");
+		// TODO: Blow up
+	}
+
+}
+
+void LineVector::ClearLevels() {
+	delete []levels;
+	levels = 0;
+	sizeLevels = 0;
+}
+
+void LineVector::InsertValue(int pos, int value) {
+	//Platform::DebugPrintf("InsertValue[%d] = %d\n", pos, value);
+	if ((lines + 2) >= size) {
+		if (growSize * 6 < size)
+			growSize *= 2;
+		Expand(size + growSize);
+		if (levels) {
+			ExpandLevels(size + growSize);
+		}
+	}
+	lines++;
+	for (int i = lines; i > pos; i--) {
+		linesData[i] = linesData[i - 1];
+	}
+	linesData[pos].startPosition = value;
+	linesData[pos].handleSet = 0;
+	if (levels) {
+		for (int j = lines; j > pos; j--) {
+			levels[j] = levels[j - 1];
+		}
+		if (pos == 0) {
+			levels[pos] = SC_FOLDLEVELBASE;
+		} else if (pos == (lines - 1)) {	// Last line will not be a folder
+			levels[pos] = SC_FOLDLEVELBASE;
+		} else {
+			levels[pos] = levels[pos - 1];
+		}
+	}
+}
+
+void LineVector::SetValue(int pos, int value) {
+	//Platform::DebugPrintf("SetValue[%d] = %d\n", pos, value);
+	if ((pos + 2) >= size) {
+		//Platform::DebugPrintf("Resize %d %d\n", size,pos);
+		Expand(pos + growSize);
+		//Platform::DebugPrintf("end Resize %d %d\n", size,pos);
+		lines = pos;
+		if (levels) {
+			ExpandLevels(pos + growSize);
+		}
+	}
+	linesData[pos].startPosition = value;
+}
+
+void LineVector::Remove(int pos) {
+	//Platform::DebugPrintf("Remove %d\n", pos);
+	// Retain the markers from the deleted line by oring them into the previous line
+	if (pos > 0) {
+		MergeMarkers(pos - 1);
+	}
+	for (int i = pos; i < lines; i++) {
+		linesData[i] = linesData[i + 1];
+	}
+	if (levels) {
+		// Move up following lines but merge header flag from this line
+		// to line before to avoid a temporary disappearence causing expansion.
+		int firstHeader = levels[pos] & SC_FOLDLEVELHEADERFLAG;
+		for (int j = pos; j < lines; j++) {
+			levels[j] = levels[j + 1];
+		}
+		if (pos > 0)
+			levels[pos-1] |= firstHeader;
+	}
+	lines--;
+}
+
+int LineVector::LineFromPosition(int pos) {
+	//Platform::DebugPrintf("LineFromPostion %d lines=%d end = %d\n", pos, lines, linesData[lines].startPosition);
+	if (lines == 0)
+		return 0;
+	//Platform::DebugPrintf("LineFromPosition %d\n", pos);
+	if (pos >= linesData[lines].startPosition)
+		return lines - 1;
+	int lower = 0;
+	int upper = lines;
+	do {
+		int middle = (upper + lower + 1) / 2; 	// Round high
+		if (pos < linesData[middle].startPosition) {
+			upper = middle - 1;
+		} else {
+			lower = middle;
+		}
+	} while (lower < upper);
+	//Platform::DebugPrintf("LineFromPostion %d %d %d\n", pos, lower, linesData[lower].startPosition, linesData[lower > 1 ? lower - 1 : 0].startPosition);
+	return lower;
+}
+
+int LineVector::AddMark(int line, int markerNum) {
+	handleCurrent++;
+	if (!linesData[line].handleSet) {
+		// Need new structure to hold marker handle
+		linesData[line].handleSet = new MarkerHandleSet;
+		if (!linesData[line].handleSet)
+			return - 1;
+	}
+	linesData[line].handleSet->InsertHandle(handleCurrent, markerNum);
+
+	return handleCurrent;
+}
+
+void LineVector::MergeMarkers(int pos) {
+	if (linesData[pos + 1].handleSet != NULL) {
+		if (linesData[pos].handleSet == NULL )
+			linesData[pos].handleSet = new MarkerHandleSet;
+		linesData[pos].handleSet->CombineWith(linesData[pos + 1].handleSet);
+		delete linesData[pos + 1].handleSet;
+		linesData[pos + 1].handleSet = NULL;
+	}
+}
+
+void LineVector::DeleteMark(int line, int markerNum, bool all) {
+	if (linesData[line].handleSet) {
+		if (markerNum == -1) {
+			delete linesData[line].handleSet;
+			linesData[line].handleSet = 0;
+		} else {
+			bool performedDeletion = 
+				linesData[line].handleSet->RemoveNumber(markerNum);
+			while (all && performedDeletion) {
+				performedDeletion = 
+					linesData[line].handleSet->RemoveNumber(markerNum);
+			}
+			if (linesData[line].handleSet->Length() == 0) {
+				delete linesData[line].handleSet;
+				linesData[line].handleSet = 0;
 			}
 		}
 	}
 }
 
-void LineChanges::InsertLine(int line, int edition, bool undoing) {
-	if (collecting && !undoing) {
-		state.InsertSpace(line, 1);
-		int linePosition = line;
-		int fillLength = 1;
-		if (state.FillRange(linePosition, edition, fillLength))
-			AdvanceEdition();
+void LineVector::DeleteMarkFromHandle(int markerHandle) {
+	int line = LineFromHandle(markerHandle);
+	if (line >= 0) {
+		linesData[line].handleSet->RemoveHandle(markerHandle);
+		if (linesData[line].handleSet->Length() == 0) {
+			delete linesData[line].handleSet;
+			linesData[line].handleSet = 0;
+		}
 	}
 }
 
-void LineChanges::RemoveLine(int line, bool undoing) {
-	if (collecting && !undoing) {
-		state.DeleteRange(line, 1);
-		AdvanceEdition();
+int LineVector::LineFromHandle(int markerHandle) {
+	for (int line = 0; line < lines; line++) {
+		if (linesData[line].handleSet) {
+			if (linesData[line].handleSet->Contains(markerHandle)) {
+				return line;
+			}
+		}
 	}
+	return - 1;
 }
-
-void LineChanges::EnableChangeCollection(bool collecting_, int lines) {
-	collecting = collecting_;
-	if (collecting) {
-		state.InsertSpace(0, lines);
-	}
-}
-
-void LineChanges::ClearChanged() {
-	if (collecting) {
-		int position = 0;
-		int length = state.Length();
-		if (state.FillRange(position, 0, length))
-			AdvanceEdition();
-	}
-}
-
-int LineChanges::GetChanged(int line) const {
-	if (collecting) {
-		return state.ValueAt(line);
-	}
-	return 0;
-}
-/* CHANGEBAR end */
-
-LineVector::LineVector() : starts(256), perLine(0) {
-	Init();
-}
-
-LineVector::~LineVector() {
-	starts.DeleteAll();
-}
-
-void LineVector::Init() {
-	starts.DeleteAll();
-	if (perLine) {
-		perLine->Init();
-	}
-}
-
-void LineVector::SetPerLine(PerLine *pl) {
-	perLine = pl;
-}
-
-/* CHANGEBAR begin */
-void LineVector::InsertText(Sci::Line line, Sci::Position delta, int edition, bool undoing, bool lineUnchanged) {
-/* CHANGEBAR end */
-	starts.InsertText(line, delta);
-/* CHANGEBAR begin */
-	// Line stays unchanged if inserted/deleted "something\n" at line start
-	// or "\nsomething" at line end
-	if (!lineUnchanged) {
-		changes.InsertText(line, edition, undoing);
-	}
-/* CHANGEBAR end */
-}
-
-/* CHANGEBAR begin */
-void LineVector::InsertLine(Sci::Line line, Sci::Position position, bool lineStart, int edition, bool undoing) {
-/* CHANGEBAR end */
-	starts.InsertPartition(line, position);
-	if (perLine) {
-		if ((line > 0) && lineStart)
-			line--;
-		perLine->InsertLine(line);
-	}
-/* CHANGEBAR begin */
-	changes.InsertLine(line, edition, undoing);
-/* CHANGEBAR end */
-}
-
-void LineVector::SetLineStart(Sci::Line line, Sci::Position position) {
-	starts.SetPartitionStartPosition(line, position);
-}
-
-/* CHANGEBAR begin */
-void LineVector::RemoveLine(Sci::Line line, bool undoing) {
-/* CHANGEBAR end */
-	starts.RemovePartition(line);
-	if (perLine) {
-		perLine->RemoveLine(line);
-	}
-/* CHANGEBAR begin */
-	changes.RemoveLine(line, undoing);
-/* CHANGEBAR end */
-}
-
-Sci::Line LineVector::LineFromPosition(Sci::Position pos) const {
-	return starts.PartitionFromPosition(pos);
-}
-/* CHANGEBAR begin */
-void LineVector::EnableChangeCollection(bool changesCollecting_) {
-    DeleteChangeCollection();
-    changes.EnableChangeCollection(changesCollecting_, Lines());
-}
-
-void LineVector::DeleteChangeCollection() {
-    changes.ClearChanged();
-}
-
-int LineVector::GetChanged(Sci::Line line) const {
-    return changes.GetChanged(line);
-}
-
-int LineVector::GetChangesEdition() const {
-    return changes.GetEdition();
-}
-
-void LineVector::SetSavePoint() {
-    changes.AdvanceEdition();
-}
-
-char *LineVector::PersistantForm() const {
-    return changes.PersistantForm();
-}
-
-void LineVector::SetChanges(const char *changesState) {
-    changes.SetChanges(changesState);
-}
-/* CHANGEBAR end */
 
 Action::Action() {
 	at = startAction;
 	position = 0;
+	data = 0;
 	lenData = 0;
-	mayCoalesce = false;
-}
-
-Action::Action(Action &&other) {
-	at = other.at;
-	position = other.position;
-	data = std::move(other.data);
-	lenData = other.lenData;
-	mayCoalesce = other.mayCoalesce;
 }
 
 Action::~Action() {
+	Destroy();
 }
 
-void Action::Create(actionType at_, Sci::Position position_, const char *data_, Sci::Position lenData_, bool mayCoalesce_) {
-	data = nullptr;
+void Action::Create(actionType at_, int position_, char *data_, int lenData_, bool mayCoalesce_) {
+	delete []data;
 	position = position_;
 	at = at_;
-	if (lenData_) {
-		data = std::unique_ptr<char []>(new char[lenData_]);
-		memcpy(&data[0], data_, lenData_);
-	}
+	data = data_;
 	lenData = lenData_;
 	mayCoalesce = mayCoalesce_;
 }
 
-void Action::Clear() {
-	data = nullptr;
-	lenData = 0;
+void Action::Destroy() {
+	delete []data;
+	data = 0;
+}
+
+void Action::Grab(Action *source) {
+	delete []data;
+
+	position = source->position;
+	at = source->at;
+	data = source->data;
+	lenData = source->lenData;
+	mayCoalesce = source->mayCoalesce;
+
+	// Ownership of source data transferred to this
+	source->position = 0;
+	source->at = startAction;
+	source->data = 0;
+	source->lenData = 0;
+	source->mayCoalesce = true;
 }
 
 // The undo history stores a sequence of user operations that represent the user's view of the
@@ -262,97 +414,68 @@ void Action::Clear() {
 
 UndoHistory::UndoHistory() {
 
-	actions.resize(3);
+	lenActions = 100;
+	actions = new Action[lenActions];
 	maxAction = 0;
 	currentAction = 0;
 	undoSequenceDepth = 0;
 	savePoint = 0;
-	tentativePoint = -1;
-/* CHANGEBAR begin */
-	savePointEffective = 0;
-
-	changeActions = 0;
-/* CHANGEBAR end */
 
 	actions[currentAction].Create(startAction);
 }
 
 UndoHistory::~UndoHistory() {
-/* CHANGEBAR begin */
-	DeleteChangeHistory();
-/* CHANGEBAR end */
+	delete []actions;
+	actions = 0;
 }
 
 void UndoHistory::EnsureUndoRoom() {
 	// Have to test that there is room for 2 more actions in the array
 	// as two actions may be created by the calling function
-	if (static_cast<size_t>(currentAction) >= (actions.size() - 2)) {
+	if (currentAction >= (lenActions - 2)) {
 		// Run out of undo nodes so extend the array
-		actions.resize(actions.size() * 2);
-
-/* CHANGEBAR begin */
-		if (changeActions) {
-            int lenActionsNew = actions.size();
-			int **changeActionsNew = new int *[lenActionsNew];
-			if (!changeActionsNew)
-				return;
-			for (int i=0;i<lenActionsNew;i++) {
-				changeActionsNew[i] = (i < lenActionsNew/2) ? changeActions[i] : 0;
-			}
-			delete []changeActions;
-			changeActions = changeActionsNew;
-		}
-/* CHANGEBAR end */
+		int lenActionsNew = lenActions * 2;
+		Action *actionsNew = new Action[lenActionsNew];
+		if (!actionsNew)
+			return ;
+		for (int act = 0; act <= currentAction; act++)
+			actionsNew[act].Grab(&actions[act]);
+		delete []actions;
+		lenActions = lenActionsNew;
+		actions = actionsNew;
 	}
 }
 
-/* CHANGEBAR begin */
-const char * UndoHistory::AppendAction(actionType at, Sci::Position position, const char *data, Sci::Position lengthData,
-	bool &startSequence, char *persistantChanges, bool mayCoalesce) {
-/* CHANGEBAR end */
+void UndoHistory::AppendAction(actionType at, int position, char *data, int lengthData) {
 	EnsureUndoRoom();
 	//Platform::DebugPrintf("%% %d action %d %d %d\n", at, position, lengthData, currentAction);
 	//Platform::DebugPrintf("^ %d action %d %d\n", actions[currentAction - 1].at,
 	//	actions[currentAction - 1].position, actions[currentAction - 1].lenData);
 	if (currentAction < savePoint) {
-/* CHANGEBAR begin */
-		savePointEffective = currentAction;
-/* CHANGEBAR end */
 		savePoint = -1;
 	}
-	int oldCurrentAction = currentAction;
 	if (currentAction >= 1) {
 		if (0 == undoSequenceDepth) {
 			// Top level actions may not always be coalesced
-			int targetAct = -1;
-			const Action *actPrevious = &(actions[currentAction + targetAct]);
-			// Container actions may forward the coalesce state of Scintilla Actions.
-			while ((actPrevious->at == containerAction) && actPrevious->mayCoalesce) {
-				targetAct--;
-				actPrevious = &(actions[currentAction + targetAct]);
-			}
+			Action &actPrevious = actions[currentAction - 1];
 			// See if current action can be coalesced into previous action
 			// Will work if both are inserts or deletes and position is same
-			if ((currentAction == savePoint) || (currentAction == tentativePoint)) {
+			if (at != actPrevious.at) {
+				currentAction++;
+			} else if (currentAction == savePoint) {
+				currentAction++;
+			} else if ((at == insertAction) &&
+			           (position != (actPrevious.position + actPrevious.lenData))) {
+				// Insertions must be immediately after to coalesce
 				currentAction++;
 			} else if (!actions[currentAction].mayCoalesce) {
 				// Not allowed to coalesce if this set
 				currentAction++;
-			} else if (!mayCoalesce || !actPrevious->mayCoalesce) {
-				currentAction++;
-			} else if (at == containerAction || actions[currentAction].at == containerAction) {
-				;	// A coalescible containerAction
-			} else if ((at != actPrevious->at) && (actPrevious->at != startAction)) {
-				currentAction++;
-			} else if ((at == insertAction) &&
-			           (position != (actPrevious->position + actPrevious->lenData))) {
-				// Insertions must be immediately after to coalesce
-				currentAction++;
 			} else if (at == removeAction) {
-				if ((lengthData == 1) || (lengthData == 2)) {
-					if ((position + lengthData) == actPrevious->position) {
+				if ((lengthData == 1) || (lengthData == 2)){
+					if ((position + lengthData) == actPrevious.position) {
 						; // Backspace -> OK
-					} else if (position == actPrevious->position) {
+					} else if (position == actPrevious.position) {
 						; // Delete -> OK
 					} else {
 						// Removals must be at same position to coalesce
@@ -363,7 +486,7 @@ const char * UndoHistory::AppendAction(actionType at, Sci::Position position, co
 					currentAction++;
 				}
 			} else {
-				// Action coalesced.
+				//Platform::DebugPrintf("action coalesced\n");
 			}
 
 		} else {
@@ -374,21 +497,10 @@ const char * UndoHistory::AppendAction(actionType at, Sci::Position position, co
 	} else {
 		currentAction++;
 	}
-	startSequence = oldCurrentAction != currentAction;
-	const int actionWithData = currentAction;
-	actions[currentAction].Create(at, position, data, lengthData, mayCoalesce);
-
-/* CHANGEBAR begin */
-	if (changeActions) {
-		delete []changeActions[currentAction];
-		changeActions[currentAction] = (int *)persistantChanges;
-	}
-/* CHANGEBAR end */
-
+	actions[currentAction].Create(at, position, data, lengthData);
 	currentAction++;
 	actions[currentAction].Create(startAction);
 	maxAction = currentAction;
-	return actions[actionWithData].data.get();
 }
 
 void UndoHistory::BeginUndoAction() {
@@ -405,7 +517,6 @@ void UndoHistory::BeginUndoAction() {
 }
 
 void UndoHistory::EndUndoAction() {
-	PLATFORM_ASSERT(undoSequenceDepth > 0);
 	EnsureUndoRoom();
 	undoSequenceDepth--;
 	if (0 == undoSequenceDepth) {
@@ -424,77 +535,19 @@ void UndoHistory::DropUndoSequence() {
 
 void UndoHistory::DeleteUndoHistory() {
 	for (int i = 1; i < maxAction; i++)
-		actions[i].Clear();
+		actions[i].Destroy();
 	maxAction = 0;
 	currentAction = 0;
 	actions[currentAction].Create(startAction);
 	savePoint = 0;
-	tentativePoint = -1;
-/* CHANGEBAR begin */
-	savePointEffective = 0;
-/* CHANGEBAR end */
 }
-
-/* CHANGEBAR begin */
-void UndoHistory::DeleteChangeHistory() {
-    if (changeActions) {
-        for (std::vector<Action>::size_type i=0;i<actions.size();i++) {
-            delete []changeActions[i];
-        }
-        delete []changeActions;
-        changeActions = 0;
-    }
-}
-
-void UndoHistory::EnableChangeHistory(bool enable) {
-    if (enable) {
-        if (!changeActions) {
-            changeActions = new int *[actions.size()];
-            for (std::vector<Action>::size_type i=0;i<actions.size();i++) {
-                changeActions[i] = 0;
-            }
-        }
-    } else {
-        DeleteChangeHistory();
-    }
-}
-/* CHANGEBAR end */
 
 void UndoHistory::SetSavePoint() {
 	savePoint = currentAction;
-/* CHANGEBAR begin */
-	savePointEffective = currentAction;
-/* CHANGEBAR end */
 }
 
 bool UndoHistory::IsSavePoint() const {
 	return savePoint == currentAction;
-}
-
-/* CHANGEBAR begin */
-bool UndoHistory::BeforeSavePointEffective(int action) const {
-	return action <= savePointEffective;
-}
-/* CHANGEBAR end */
-
-void UndoHistory::TentativeStart() {
-	tentativePoint = currentAction;
-}
-
-void UndoHistory::TentativeCommit() {
-	tentativePoint = -1;
-	// Truncate undo history
-	maxAction = currentAction;
-}
-
-int UndoHistory::TentativeSteps() {
-	// Drop any trailing startAction
-	if (actions[currentAction].at == startAction && currentAction > 0)
-		currentAction--;
-	if (tentativePoint >= 0)
-		return currentAction - tentativePoint;
-	else
-		return -1;
 }
 
 bool UndoHistory::CanUndo() const {
@@ -522,24 +575,18 @@ void UndoHistory::CompletedUndoStep() {
 	currentAction--;
 }
 
-/* CHANGEBAR begin */
-char *UndoHistory::GetChangesStep() const {
-	return changeActions ? (char *)changeActions[currentAction] : 0;
-}
-/* CHANGEBAR end */
-
 bool UndoHistory::CanRedo() const {
 	return maxAction > currentAction;
 }
 
 int UndoHistory::StartRedo() {
 	// Drop any leading startAction
-	if (currentAction < maxAction && actions[currentAction].at == startAction)
+	if (actions[currentAction].at == startAction && currentAction < maxAction)
 		currentAction++;
 
 	// Count the steps in this action
 	int act = currentAction;
-	while (act < maxAction && actions[act].at != startAction) {
+	while (actions[act].at != startAction && act < maxAction) {
 		act++;
 	}
 	return act - currentAction;
@@ -553,191 +600,221 @@ void UndoHistory::CompletedRedoStep() {
 	currentAction++;
 }
 
-/* CHANGEBAR begin */
-int UndoHistory::Edition() const {
-	return currentAction;
-}
-/* CHANGEBAR end */
-
-CellBuffer::CellBuffer() {
+CellBuffer::CellBuffer(int initialLength) {
+	body = new char[initialLength];
+	size = initialLength;
+	length = 0;
+	part1len = 0;
+	gaplen = initialLength;
+	part2body = body + gaplen;
 	readOnly = false;
-	utf8LineEnds = 0;
 	collectingUndo = true;
+	growSize = 4000;
 }
 
 CellBuffer::~CellBuffer() {
+	delete []body;
+	body = 0;
 }
 
-char CellBuffer::CharAt(Sci::Position position) const {
-	return substance.ValueAt(position);
-}
-
-void CellBuffer::GetCharRange(char *buffer, Sci::Position position, Sci::Position lengthRetrieve) const {
-	if (lengthRetrieve <= 0)
-		return;
-	if (position < 0)
-		return;
-	if ((position + lengthRetrieve) > substance.Length()) {
-		Platform::DebugPrintf("Bad GetCharRange %d for %d of %d\n", position,
-		                      lengthRetrieve, substance.Length());
-		return;
+void CellBuffer::GapTo(int position) {
+	if (position == part1len)
+		return ;
+	if (position < part1len) {
+		int diff = part1len - position;
+		//Platform::DebugPrintf("Move gap backwards to %d diff = %d part1len=%d length=%d \n", position,diff, part1len, length);
+		for (int i = 0; i < diff; i++)
+			body[part1len + gaplen - i - 1] = body[part1len - i - 1];
+	} else {	// position > part1len
+		int diff = position - part1len;
+		//Platform::DebugPrintf("Move gap forwards to %d diff =%d\n", position,diff);
+		for (int i = 0; i < diff; i++)
+			body[part1len + i] = body[part1len + gaplen + i];
 	}
-	substance.GetRange(buffer, position, lengthRetrieve);
+	part1len = position;
+	part2body = body + gaplen;
 }
 
-char CellBuffer::StyleAt(Sci::Position position) const {
-	return style.ValueAt(position);
+void CellBuffer::RoomFor(int insertionLength) {
+	//Platform::DebugPrintf("need room %d %d\n", gaplen, insertionLength);
+	if (gaplen <= insertionLength) {
+		//Platform::DebugPrintf("need room %d %d\n", gaplen, insertionLength);
+		if (growSize * 6 < size)
+			growSize *= 2;
+		int newSize = size + insertionLength + growSize;
+		Allocate(newSize);
+	}
 }
 
-void CellBuffer::GetStyleRange(unsigned char *buffer, Sci::Position position, Sci::Position lengthRetrieve) const {
+// To make it easier to write code that uses ByteAt, a position outside the range of the buffer
+// can be retrieved. All characters outside the range have the value '\0'.
+char CellBuffer::ByteAt(int position) {
+	if (position < part1len) {
+		if (position < 0) {
+			return '\0';
+		} else {
+			return body[position];
+		}
+	} else {
+		if (position >= length) {
+			return '\0';
+		} else {
+			return part2body[position];
+		}
+	}
+}
+
+void CellBuffer::SetByteAt(int position, char ch) {
+
+	if (position < 0) {
+		//Platform::DebugPrintf("Bad position %d\n",position);
+		return ;
+	}
+	if (position >= length + 11) {
+		Platform::DebugPrintf("Very Bad position %d of %d\n", position, length);
+		//exit(2);
+		return ;
+	}
+	if (position >= length) {
+		//Platform::DebugPrintf("Bad position %d of %d\n",position,length);
+		return ;
+	}
+
+	if (position < part1len) {
+		body[position] = ch;
+	} else {
+		part2body[position] = ch;
+	}
+}
+
+char CellBuffer::CharAt(int position) {
+	return ByteAt(position*2);
+}
+
+void CellBuffer::GetCharRange(char *buffer, int position, int lengthRetrieve) {
 	if (lengthRetrieve < 0)
-		return;
+		return ;
 	if (position < 0)
-		return;
-	if ((position + lengthRetrieve) > style.Length()) {
-		Platform::DebugPrintf("Bad GetStyleRange %d for %d of %d\n", position,
-		                      lengthRetrieve, style.Length());
-		return;
+		return ;
+	int bytePos = position * 2;
+	if ((bytePos + lengthRetrieve * 2) > length) {
+		Platform::DebugPrintf("Bad GetCharRange %d for %d of %d\n", bytePos,
+		                      lengthRetrieve, length);
+		return ;
 	}
-	style.GetRange(reinterpret_cast<char *>(buffer), position, lengthRetrieve);
+	GapTo(0); 	// Move the buffer so its easy to subscript into it
+	char *pb = part2body + bytePos;
+	while (lengthRetrieve--) {
+		*buffer++ = *pb;
+		pb += 2;
+	}
 }
 
-const char *CellBuffer::BufferPointer() {
-	return substance.BufferPointer();
+char CellBuffer::StyleAt(int position) {
+	return ByteAt(position*2 + 1);
 }
 
-const char *CellBuffer::RangePointer(Sci::Position position, Sci::Position rangeLength) {
-	return substance.RangePointer(position, rangeLength);
-}
-
-Sci::Position CellBuffer::GapPosition() const {
-	return substance.GapPosition();
-}
-
-// The char* returned is to an allocation owned by the undo history
-const char *CellBuffer::InsertString(Sci::Position position, const char *s, Sci::Position insertLength, bool &startSequence) {
+const char *CellBuffer::InsertString(int position, char *s, int insertLength) {
+	char *data = 0;
 	// InsertString and DeleteChars are the bottleneck though which all changes occur
-	const char *data = s;
 	if (!readOnly) {
 		if (collectingUndo) {
 			// Save into the undo/redo stack, but only the characters - not the formatting
 			// This takes up about half load time
-/* CHANGEBAR begin */
-			char *persistantForm = lv.PersistantForm();
-			data = uh.AppendAction(insertAction, position, s, insertLength, startSequence, persistantForm);
-/* CHANGEBAR end */
+			data = new char[insertLength / 2];
+			for (int i = 0; i < insertLength / 2; i++) {
+				data[i] = s[i * 2];
+			}
+			uh.AppendAction(insertAction, position / 2, data, insertLength / 2);
 		}
 
-/* CHANGEBAR begin */
-		BasicInsertString(position, s, insertLength, false);
-/* CHANGEBAR end */
+		BasicInsertString(position, s, insertLength);
 	}
 	return data;
 }
 
-bool CellBuffer::SetStyleAt(Sci::Position position, char styleValue) {
-	const char curVal = style.ValueAt(position);
-	if (curVal != styleValue) {
-		style.SetValueAt(position, styleValue);
+bool CellBuffer::SetStyleAt(int position, char style, char mask) {
+	style &= mask;
+	char curVal = ByteAt(position * 2 + 1);
+	if ((curVal & mask) != style) {
+		SetByteAt(position*2 + 1, static_cast<char>((curVal & ~mask) | style));
 		return true;
 	} else {
 		return false;
 	}
 }
 
-bool CellBuffer::SetStyleFor(Sci::Position position, Sci::Position lengthStyle, char styleValue) {
+bool CellBuffer::SetStyleFor(int position, int lengthStyle, char style, char mask) {
+	int bytePos = position * 2 + 1;
 	bool changed = false;
 	PLATFORM_ASSERT(lengthStyle == 0 ||
-		(lengthStyle > 0 && lengthStyle + position <= style.Length()));
+		(lengthStyle > 0 && lengthStyle + position < length));
 	while (lengthStyle--) {
-		const char curVal = style.ValueAt(position);
-		if (curVal != styleValue) {
-			style.SetValueAt(position, styleValue);
+		char curVal = ByteAt(bytePos);
+		if ((curVal & mask) != style) {
+			SetByteAt(bytePos, static_cast<char>((curVal & ~mask) | style));
 			changed = true;
 		}
-		position++;
+		bytePos += 2;
 	}
 	return changed;
 }
 
-// The char* returned is to an allocation owned by the undo history
-const char *CellBuffer::DeleteChars(Sci::Position position, Sci::Position deleteLength, bool &startSequence) {
+const char *CellBuffer::DeleteChars(int position, int deleteLength) {
 	// InsertString and DeleteChars are the bottleneck though which all changes occur
 	PLATFORM_ASSERT(deleteLength > 0);
-	const char *data = 0;
+	char *data = 0;
 	if (!readOnly) {
 		if (collectingUndo) {
 			// Save into the undo/redo stack, but only the characters - not the formatting
-			// The gap would be moved to position anyway for the deletion so this doesn't cost extra
-			data = substance.RangePointer(position, deleteLength);
-/* CHANGEBAR begin */
-			char *persistantForm = lv.PersistantForm();
-			data = uh.AppendAction(removeAction, position, data, deleteLength, startSequence, persistantForm);
-/* CHANGEBAR end */
+			data = new char[deleteLength / 2];
+			for (int i = 0; i < deleteLength / 2; i++) {
+				data[i] = ByteAt(position + i * 2);
+			}
+			uh.AppendAction(removeAction, position / 2, data, deleteLength / 2);
 		}
 
-/* CHANGEBAR begin */
-		BasicDeleteChars(position, deleteLength, false);
-/* CHANGEBAR end */
+		BasicDeleteChars(position, deleteLength);
 	}
 	return data;
 }
 
-Sci::Position CellBuffer::Length() const {
-	return substance.Length();
+int CellBuffer::ByteLength() {
+	return length;
 }
 
-void CellBuffer::Allocate(Sci::Position newSize) {
-	substance.ReAllocate(newSize);
-	style.ReAllocate(newSize);
+int CellBuffer::Length() {
+	return ByteLength() / 2;
 }
 
-void CellBuffer::SetLineEndTypes(int utf8LineEnds_) {
-	if (utf8LineEnds != utf8LineEnds_) {
-		utf8LineEnds = utf8LineEnds_;
-/* CHANGEBAR begin */
-		ResetLineEnds(false);
-/* CHANGEBAR end */
+void CellBuffer::Allocate(int newSize) {
+	if (newSize > length) {
+		GapTo(length);
+		char *newBody = new char[newSize];
+		memcpy(newBody, body, length);
+		delete []body;
+		body = newBody;
+		gaplen += newSize - size;
+		part2body = body + gaplen;
+		size = newSize;
 	}
 }
 
-bool CellBuffer::ContainsLineEnd(const char *s, Sci::Position length) const {
-	unsigned char chBeforePrev = 0;
-	unsigned char chPrev = 0;
-	for (Sci::Position i = 0; i < length; i++) {
-		const unsigned char ch = s[i];
-		if ((ch == '\r') || (ch == '\n')) {
-			return true;
-		} else if (utf8LineEnds) {
-			const unsigned char back3[3] = { chBeforePrev, chPrev, ch };
-			if (UTF8IsSeparator(back3) || UTF8IsNEL(back3 + 1)) {
-				return true;
-			}
-		}
-		chBeforePrev = chPrev;
-		chPrev = ch;
-	}
-	return false;
+int CellBuffer::Lines() {
+	//Platform::DebugPrintf("Lines = %d\n", lv.lines);
+	return lv.lines;
 }
 
-void CellBuffer::SetPerLine(PerLine *pl) {
-	lv.SetPerLine(pl);
-}
-
-Sci::Line CellBuffer::Lines() const {
-	return lv.Lines();
-}
-
-Sci::Position CellBuffer::LineStart(Sci::Line line) const {
+int CellBuffer::LineStart(int line) {
 	if (line < 0)
 		return 0;
-	else if (line >= Lines())
+	else if (line > lv.lines)
 		return Length();
 	else
-		return lv.LineStart(line);
+		return lv.linesData[line].startPosition;
 }
 
-bool CellBuffer::IsReadOnly() const {
+bool CellBuffer::IsReadOnly() {
 	return readOnly;
 }
 
@@ -747,270 +824,160 @@ void CellBuffer::SetReadOnly(bool set) {
 
 void CellBuffer::SetSavePoint() {
 	uh.SetSavePoint();
-/* CHANGEBAR begin */
-	lv.SetSavePoint();
-/* CHANGEBAR end */
 }
 
-bool CellBuffer::IsSavePoint() const {
+bool CellBuffer::IsSavePoint() {
 	return uh.IsSavePoint();
 }
 
-void CellBuffer::TentativeStart() {
-	uh.TentativeStart();
+int CellBuffer::AddMark(int line, int markerNum) {
+	if ((line >= 0) && (line < lv.lines)) {
+		return lv.AddMark(line, markerNum);
+	}
+	return - 1;
 }
 
-void CellBuffer::TentativeCommit() {
-	uh.TentativeCommit();
+void CellBuffer::DeleteMark(int line, int markerNum) {
+	if ((line >= 0) && (line < lv.lines)) {
+		lv.DeleteMark(line, markerNum, false);
+	}
 }
 
-int CellBuffer::TentativeSteps() {
-	return uh.TentativeSteps();
+void CellBuffer::DeleteMarkFromHandle(int markerHandle) {
+	lv.DeleteMarkFromHandle(markerHandle);
 }
 
-bool CellBuffer::TentativeActive() const {
-	return uh.TentativeActive();
+int CellBuffer::GetMark(int line) {
+	if ((line >= 0) && (line < lv.lines) && (lv.linesData[line].handleSet))
+		return lv.linesData[line].handleSet->MarkValue();
+	return 0;
+}
+
+void CellBuffer::DeleteAllMarks(int markerNum) {
+	for (int line = 0; line < lv.lines; line++) {
+		lv.DeleteMark(line, markerNum, true);
+	}
+}
+
+int CellBuffer::LineFromHandle(int markerHandle) {
+	return lv.LineFromHandle(markerHandle);
 }
 
 // Without undo
 
-/* CHANGEBAR begin */
-void CellBuffer::InsertLine(Sci::Line line, Sci::Position position, bool lineStart, int edition, bool undoing) {
-	lv.InsertLine(line, position, lineStart, edition, undoing);
-/* CHANGEBAR end */
-}
-
-/* CHANGEBAR begin */
-void CellBuffer::RemoveLine(Sci::Line line, bool undoing) {
-	lv.RemoveLine(line, undoing);
-/* CHANGEBAR end */
-}
-
-bool CellBuffer::UTF8LineEndOverlaps(Sci::Position position) const {
-	const unsigned char bytes[] = {
-		static_cast<unsigned char>(substance.ValueAt(position-2)),
-		static_cast<unsigned char>(substance.ValueAt(position-1)),
-		static_cast<unsigned char>(substance.ValueAt(position)),
-		static_cast<unsigned char>(substance.ValueAt(position+1)),
-	};
-	return UTF8IsSeparator(bytes) || UTF8IsSeparator(bytes+1) || UTF8IsNEL(bytes+1);
-}
-
-/* CHANGEBAR begin */
-void CellBuffer::ResetLineEnds(bool undoing) {
-/* CHANGEBAR end */
-	// Reinitialize line data -- too much work to preserve
-	lv.Init();
-
-	Sci::Position position = 0;
-	Sci::Position length = Length();
-	Sci::Line lineInsert = 1;
-	bool atLineStart = true;
-/* CHANGEBAR begin */
-	lv.InsertText(lineInsert-1, length, uh.Edition(), undoing, false);
-/* CHANGEBAR end */
-	unsigned char chBeforePrev = 0;
-	unsigned char chPrev = 0;
-	for (Sci::Position i = 0; i < length; i++) {
-		const unsigned char ch = substance.ValueAt(position + i);
-		if (ch == '\r') {
-/* CHANGEBAR begin */
-			InsertLine(lineInsert, (position + i) + 1, atLineStart, uh.Edition(), undoing);
-/* CHANGEBAR end */
-			lineInsert++;
-		} else if (ch == '\n') {
-			if (chPrev == '\r') {
-				// Patch up what was end of line
-				lv.SetLineStart(lineInsert - 1, (position + i) + 1);
-			} else {
-/* CHANGEBAR begin */
-				InsertLine(lineInsert, (position + i) + 1, atLineStart, uh.Edition(), undoing);
-/* CHANGEBAR end */
-				lineInsert++;
-			}
-		} else if (utf8LineEnds) {
-			const unsigned char back3[3] = {chBeforePrev, chPrev, ch};
-			if (UTF8IsSeparator(back3) || UTF8IsNEL(back3+1)) {
-/* CHANGEBAR begin */
-				InsertLine(lineInsert, (position + i) + 1, atLineStart, uh.Edition(), undoing);
-/* CHANGEBAR end */
-				lineInsert++;
-			}
-		}
-		chBeforePrev = chPrev;
-		chPrev = ch;
-	}
-}
-
-/* CHANGEBAR begin */
-void CellBuffer::BasicInsertString(Sci::Position position, const char *s, Sci::Position insertLength, bool undoing) {
-	bool atFileEnd = position == substance.Length();
-/* CHANGEBAR end */
+void CellBuffer::BasicInsertString(int position, char *s, int insertLength) {
+	//Platform::DebugPrintf("Inserting at %d for %d\n", position, insertLength);
 	if (insertLength == 0)
-		return;
+		return ;
 	PLATFORM_ASSERT(insertLength > 0);
+	RoomFor(insertLength);
+	GapTo(position);
 
-	const unsigned char chAfter = substance.ValueAt(position);
-	bool breakingUTF8LineEnd = false;
-	if (utf8LineEnds && UTF8IsTrailByte(chAfter)) {
-		breakingUTF8LineEnd = UTF8LineEndOverlaps(position);
-	}
+	memcpy(body + part1len, s, insertLength);
+	length += insertLength;
+	part1len += insertLength;
+	gaplen -= insertLength;
+	part2body = body + gaplen;
 
-	substance.InsertFromArray(position, s, 0, insertLength);
-	style.InsertValue(position, insertLength, 0);
-
-	Sci::Line lineInsert = lv.LineFromPosition(position) + 1;
-	bool atLineStart = lv.LineStart(lineInsert-1) == position;
+	int lineInsert = lv.LineFromPosition(position / 2) + 1;
 	// Point all the lines after the insertion point further along in the buffer
-/* CHANGEBAR begin */
-	bool atLineEnd = (lv.LineStart(lineInsert) == position+1) || atFileEnd;
-	bool lineUnchanged = (atLineStart && (s[insertLength-1] == '\n')) ||
-		(atLineEnd && (s[0] == '\r' || s[0] == '\n'));
-	lv.InsertText(lineInsert-1, insertLength, uh.Edition(), undoing, lineUnchanged);
-/* CHANGEBAR end */
-	unsigned char chBeforePrev = substance.ValueAt(position - 2);
-	unsigned char chPrev = substance.ValueAt(position - 1);
+	for (int lineAfter = lineInsert; lineAfter <= lv.lines; lineAfter++) {
+		lv.linesData[lineAfter].startPosition += insertLength / 2;
+	}
+	char chPrev = ' ';
+	if ((position - 2) >= 0)
+		chPrev = ByteAt(position - 2);
+	char chAfter = ' ';
+	if ((position + insertLength) < length)
+		chAfter = ByteAt(position + insertLength);
 	if (chPrev == '\r' && chAfter == '\n') {
+		//Platform::DebugPrintf("Splitting a crlf pair at %d\n", lineInsert);
 		// Splitting up a crlf pair at position
-/* CHANGEBAR begin */
-		InsertLine(lineInsert, position, false, uh.Edition(), undoing);
-/* CHANGEBAR end */
+		lv.InsertValue(lineInsert, position / 2);
 		lineInsert++;
 	}
-	if (breakingUTF8LineEnd) {
-/* CHANGEBAR begin */
-		RemoveLine(lineInsert, undoing);
-/* CHANGEBAR end */
-	}
-	unsigned char ch = ' ';
-	for (Sci::Position i = 0; i < insertLength; i++) {
+	char ch = ' ';
+	for (int i = 0; i < insertLength; i += 2) {
 		ch = s[i];
 		if (ch == '\r') {
-/* CHANGEBAR begin */
-			InsertLine(lineInsert, (position + i) + 1, atLineStart, uh.Edition(), undoing);
-/* CHANGEBAR end */
+			//Platform::DebugPrintf("Inserting cr at %d\n", lineInsert);
+			lv.InsertValue(lineInsert, (position + i) / 2 + 1);
 			lineInsert++;
 		} else if (ch == '\n') {
 			if (chPrev == '\r') {
+				//Platform::DebugPrintf("Patching cr before lf at %d\n", lineInsert-1);
 				// Patch up what was end of line
-				lv.SetLineStart(lineInsert - 1, (position + i) + 1);
+				lv.SetValue(lineInsert - 1, (position + i) / 2 + 1);
 			} else {
-/* CHANGEBAR begin */
-				InsertLine(lineInsert, (position + i) + 1, atLineStart, uh.Edition(), undoing);
-/* CHANGEBAR end */
-				lineInsert++;
-			}
-		} else if (utf8LineEnds) {
-			const unsigned char back3[3] = {chBeforePrev, chPrev, ch};
-			if (UTF8IsSeparator(back3) || UTF8IsNEL(back3+1)) {
-/* CHANGEBAR begin */
-				InsertLine(lineInsert, (position + i) + 1, atLineStart, uh.Edition(), undoing);
-/* CHANGEBAR end */
+				//Platform::DebugPrintf("Inserting lf at %d\n", lineInsert);
+				lv.InsertValue(lineInsert, (position + i) / 2 + 1);
 				lineInsert++;
 			}
 		}
-		chBeforePrev = chPrev;
 		chPrev = ch;
 	}
-	// Joining two lines where last insertion is cr and following substance starts with lf
+	// Joining two lines where last insertion is cr and following text starts with lf
 	if (chAfter == '\n') {
 		if (ch == '\r') {
+			//Platform::DebugPrintf("Joining cr before lf at %d\n", lineInsert-1);
 			// End of line already in buffer so drop the newly created one
-/* CHANGEBAR begin */
-			RemoveLine(lineInsert - 1, undoing);
-/* CHANGEBAR end */
-		}
-	} else if (utf8LineEnds && !UTF8IsAscii(chAfter)) {
-		// May have end of UTF-8 line end in buffer and start in insertion
-		for (int j = 0; j < UTF8SeparatorLength-1; j++) {
-			const unsigned char chAt = substance.ValueAt(position + insertLength + j);
-			const unsigned char back3[3] = {chBeforePrev, chPrev, chAt};
-			if (UTF8IsSeparator(back3)) {
-/* CHANGEBAR begin */
-				InsertLine(lineInsert, (position + insertLength + j) + 1, atLineStart, uh.Edition(), undoing);
-/* CHANGEBAR end */
-				lineInsert++;
-			}
-			if ((j == 0) && UTF8IsNEL(back3+1)) {
-/* CHANGEBAR begin */
-				InsertLine(lineInsert, (position + insertLength + j) + 1, atLineStart, uh.Edition(), undoing);
-/* CHANGEBAR end */
-				lineInsert++;
-			}
-			chBeforePrev = chPrev;
-			chPrev = chAt;
+			lv.Remove(lineInsert - 1);
 		}
 	}
 }
 
-/* CHANGEBAR begin */
-void CellBuffer::BasicDeleteChars(Sci::Position position, Sci::Position deleteLength, bool undoing) {
-/* CHANGEBAR end */
+void CellBuffer::BasicDeleteChars(int position, int deleteLength) {
+	//Platform::DebugPrintf("Deleting at %d for %d\n", position, deleteLength);
 	if (deleteLength == 0)
-		return;
+		return ;
 
-	if ((position == 0) && (deleteLength == substance.Length())) {
+	if ((position == 0) && (deleteLength == length)) {
 		// If whole buffer is being deleted, faster to reinitialise lines data
 		// than to delete each line.
+		//printf("Whole buffer being deleted\n");
 		lv.Init();
-/* CHANGEBAR begin */
-		lv.InsertText(0, 0, uh.Edition(), undoing, false);
-/* CHANGEBAR end */
 	} else {
 		// Have to fix up line positions before doing deletion as looking at text in buffer
 		// to work out which lines have been removed
 
-		Sci::Line lineRemove = lv.LineFromPosition(position) + 1;
-/* CHANGEBAR begin */
-		bool atLineEnd = (lv.LineStart(lineRemove) == position+1);
-		char chAfter = substance.ValueAt(position + deleteLength);
-		bool lineUnchanged = (atLineEnd && (chAfter == '\r' || chAfter == '\n'));
-		lv.InsertText(lineRemove-1, - (deleteLength), uh.Edition(), undoing, lineUnchanged);
-/* CHANGEBAR end */
-		const unsigned char chPrev = substance.ValueAt(position - 1);
-		const unsigned char chBefore = chPrev;
-		unsigned char chNext = substance.ValueAt(position);
+		int lineRemove = lv.LineFromPosition(position / 2) + 1;
+		// Point all the lines after the insertion point further along in the buffer
+		for (int lineAfter = lineRemove; lineAfter <= lv.lines; lineAfter++) {
+			lv.linesData[lineAfter].startPosition -= deleteLength / 2;
+		}
+		char chPrev = ' ';
+		if (position >= 2)
+			chPrev = ByteAt(position - 2);
+		char chBefore = chPrev;
+		char chNext = ' ';
+		if (position < length)
+			chNext = ByteAt(position);
 		bool ignoreNL = false;
 		if (chPrev == '\r' && chNext == '\n') {
+			//Platform::DebugPrintf("Deleting lf after cr, move line end to cr at %d\n", lineRemove);
 			// Move back one
-			lv.SetLineStart(lineRemove, position);
+			lv.SetValue(lineRemove, position / 2);
 			lineRemove++;
 			ignoreNL = true; 	// First \n is not real deletion
 		}
-		if (utf8LineEnds && UTF8IsTrailByte(chNext)) {
-			if (UTF8LineEndOverlaps(position)) {
-/* CHANGEBAR begin */
-				RemoveLine(lineRemove, undoing);
-/* CHANGEBAR end */
-			}
-		}
 
-		unsigned char ch = chNext;
-		for (Sci::Position i = 0; i < deleteLength; i++) {
-			chNext = substance.ValueAt(position + i + 1);
+		char ch = chNext;
+		for (int i = 0; i < deleteLength; i += 2) {
+			chNext = ' ';
+			if ((position + i + 2) < length)
+				chNext = ByteAt(position + i + 2);
+			//Platform::DebugPrintf("Deleting %d %x\n", i, ch);
 			if (ch == '\r') {
 				if (chNext != '\n') {
-/* CHANGEBAR begin */
-					RemoveLine(lineRemove, undoing);
-/* CHANGEBAR end */
+					//Platform::DebugPrintf("Removing cr end of line\n");
+					lv.Remove(lineRemove);
 				}
 			} else if (ch == '\n') {
 				if (ignoreNL) {
 					ignoreNL = false; 	// Further \n are real deletions
 				} else {
-/* CHANGEBAR begin */
-					RemoveLine(lineRemove, undoing);
-/* CHANGEBAR end */
-				}
-			} else if (utf8LineEnds) {
-				if (!UTF8IsAscii(ch)) {
-					const unsigned char next3[3] = {ch, chNext,
-						static_cast<unsigned char>(substance.ValueAt(position + i + 2))};
-					if (UTF8IsSeparator(next3) || UTF8IsNEL(next3)) {
-/* CHANGEBAR begin */
-						RemoveLine(lineRemove, undoing);
-/* CHANGEBAR end */
-					}
+					//Platform::DebugPrintf("Removing lf end of line\n");
+					lv.Remove(lineRemove);
 				}
 			}
 
@@ -1018,19 +985,20 @@ void CellBuffer::BasicDeleteChars(Sci::Position position, Sci::Position deleteLe
 		}
 		// May have to fix up end if last deletion causes cr to be next to lf
 		// or removes one of a crlf pair
-/* CHANGEBAR begin */
-		// const char chAfter = substance.ValueAt(position + deleteLength);
-/* CHANGEBAR end */
+		char chAfter = ' ';
+		if ((position + deleteLength) < length)
+			chAfter = ByteAt(position + deleteLength);
 		if (chBefore == '\r' && chAfter == '\n') {
+			//d.printf("Joining cr before lf at %d\n", lineRemove);
 			// Using lineRemove-1 as cr ended line before start of deletion
-/* CHANGEBAR begin */
-			RemoveLine(lineRemove - 1, undoing);
-/* CHANGEBAR end */
-			lv.SetLineStart(lineRemove - 1, position + 1);
+			lv.Remove(lineRemove - 1);
+			lv.SetValue(lineRemove - 1, position / 2 + 1);
 		}
 	}
-	substance.DeleteRange(position, deleteLength);
-	style.DeleteRange(position, deleteLength);
+	GapTo(position);
+	length -= deleteLength;
+	gaplen += deleteLength;
+	part2body = body + gaplen;
 }
 
 bool CellBuffer::SetUndoCollection(bool collectUndo) {
@@ -1039,7 +1007,7 @@ bool CellBuffer::SetUndoCollection(bool collectUndo) {
 	return collectingUndo;
 }
 
-bool CellBuffer::IsCollectingUndo() const {
+bool CellBuffer::IsCollectingUndo() {
 	return collectingUndo;
 }
 
@@ -1051,38 +1019,11 @@ void CellBuffer::EndUndoAction() {
 	uh.EndUndoAction();
 }
 
-void CellBuffer::AddUndoAction(Sci::Position token, bool mayCoalesce) {
-	bool startSequence;
-/* CHANGEBAR begin */
-	char *persistantForm = lv.PersistantForm();
-	uh.AppendAction(containerAction, token, 0, 0, startSequence, persistantForm, mayCoalesce);
-/* CHANGEBAR end */
-}
-
-/* CHANGEBAR begin */
-void CellBuffer::DeleteUndoHistory(bool collectChangeHistory) {
-/* CHANGEBAR end */
+void CellBuffer::DeleteUndoHistory() {
 	uh.DeleteUndoHistory();
-/* CHANGEBAR begin */
-	uh.EnableChangeHistory(collectChangeHistory);
-	lv.EnableChangeCollection(collectChangeHistory);
-/* CHANGEBAR end */
 }
 
-/* CHANGEBAR begin */
-bool CellBuffer::SetChangeCollection(bool collectChange) {
-	uh.EnableChangeHistory(collectChange);
-	lv.EnableChangeCollection(collectChange);
-	return collectChange;
-}
-
-void CellBuffer::DeleteChangeCollection() {
-	uh.DeleteChangeHistory();
-	lv.DeleteChangeCollection();
-}
-/* CHANGEBAR end */
-
-bool CellBuffer::CanUndo() const {
+bool CellBuffer::CanUndo() {
 	return uh.CanUndo();
 }
 
@@ -1095,28 +1036,22 @@ const Action &CellBuffer::GetUndoStep() const {
 }
 
 void CellBuffer::PerformUndoStep() {
-/* CHANGEBAR begin */
-	const char *changesState = uh.GetChangesStep();
-	lv.SetChanges(changesState);
-/* CHANGEBAR end */
 	const Action &actionStep = uh.GetUndoStep();
 	if (actionStep.at == insertAction) {
-		if (substance.Length() < actionStep.lenData) {
-			throw std::runtime_error(
-				"CellBuffer::PerformUndoStep: deletion must be less than document length.");
-		}
-/* CHANGEBAR begin */
-		BasicDeleteChars(actionStep.position, actionStep.lenData, true);
-/* CHANGEBAR end */
+		BasicDeleteChars(actionStep.position*2, actionStep.lenData*2);
 	} else if (actionStep.at == removeAction) {
-/* CHANGEBAR begin */
-		BasicInsertString(actionStep.position, actionStep.data.get(), actionStep.lenData, true);
-/* CHANGEBAR end */
+		char *styledData = new char[actionStep.lenData * 2];
+		for (int i = 0; i < actionStep.lenData; i++) {
+			styledData[i*2] = actionStep.data[i];
+			styledData[i*2 + 1] = 0;
+		}
+		BasicInsertString(actionStep.position*2, styledData, actionStep.lenData*2);
+		delete []styledData;
 	}
 	uh.CompletedUndoStep();
 }
 
-bool CellBuffer::CanRedo() const {
+bool CellBuffer::CanRedo() {
 	return uh.CanRedo();
 }
 
@@ -1131,34 +1066,55 @@ const Action &CellBuffer::GetRedoStep() const {
 void CellBuffer::PerformRedoStep() {
 	const Action &actionStep = uh.GetRedoStep();
 	if (actionStep.at == insertAction) {
-/* CHANGEBAR begin */
-		BasicInsertString(actionStep.position, actionStep.data.get(), actionStep.lenData, false);
-/* CHANGEBAR end */
+		char *styledData = new char[actionStep.lenData * 2];
+		for (int i = 0; i < actionStep.lenData; i++) {
+			styledData[i*2] = actionStep.data[i];
+			styledData[i*2 + 1] = 0;
+		}
+		BasicInsertString(actionStep.position*2, styledData, actionStep.lenData*2);
+		delete []styledData;
 	} else if (actionStep.at == removeAction) {
-/* CHANGEBAR begin */
-		BasicDeleteChars(actionStep.position, actionStep.lenData, false);
-/* CHANGEBAR end */
+		BasicDeleteChars(actionStep.position*2, actionStep.lenData*2);
 	}
 	uh.CompletedRedoStep();
-/* CHANGEBAR begin */
-	if (IsSavePoint()) {
-		lv.SetSavePoint();
+}
+
+int CellBuffer::SetLineState(int line, int state) {
+	int stateOld = lineStates[line];
+	lineStates[line] = state;
+	return stateOld;
+}
+
+int CellBuffer::GetLineState(int line) {
+	return lineStates[line];
+}
+
+int CellBuffer::GetMaxLineState() {
+	return lineStates.Length();
+}
+
+int CellBuffer::SetLevel(int line, int level) {
+	int prev = 0;
+	if ((line >= 0) && (line < lv.lines)) {
+		if (!lv.levels) {
+			lv.ExpandLevels();
+		}
+		prev = lv.levels[line];
+		if (lv.levels[line] != level) {
+			lv.levels[line] = level;
+		}
 	}
-/* CHANGEBAR end */
+	return prev;
 }
 
-/* CHANGEBAR begin */
-int CellBuffer::GetChanged(int line) const {
-	int changed = lv.GetChanged(line);
-	if (changed == 0)
-		return 0;
-	else if (uh.BeforeSavePointEffective(changed))
-		return 2;
-	else
-		return 1;
+int CellBuffer::GetLevel(int line) {
+	if (lv.levels && (line >= 0) && (line < lv.lines)) {
+		return lv.levels[line];
+	} else {
+		return SC_FOLDLEVELBASE;
+	}
 }
 
-int CellBuffer::GetChangesEdition() const {
-    return lv.GetChangesEdition();
+void CellBuffer::ClearLevels() {
+	lv.ClearLevels();
 }
-/* CHANGEBAR end */

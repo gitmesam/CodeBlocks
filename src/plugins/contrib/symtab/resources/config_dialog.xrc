@@ -1,6 +1,6 @@
-<?xml version="1.0" encoding="utf-8" ?>
-<resource xmlns="http://www.wxwidgets.org/wxxrc" version="2.5.3.0">
-  <object class="wxScrollingDialog" name="dlgSymTabConfig">
+<?xml version="1.0" encoding="utf-8"?>
+<resource>
+  <object class="wxDialog" name="dlgSymTabConfig">
     <object class="wxBoxSizer">
       <orient>wxVERTICAL</orient>
       <object class="sizeritem">
@@ -111,14 +111,6 @@
                               </object>
                               <option>1</option>
                               <flag>wxLEFT|wxALIGN_CENTRE</flag>
-                              <border>8</border>
-                            </object>
-                            <object class="sizeritem">
-                              <object class="wxCheckBox" name="chkIncludeSo">
-                                <label>*.so</label>
-                              </object>
-                              <option>1</option>
-                              <flag>wxLEFT|wxRIGHT|wxALIGN_CENTRE</flag>
                               <border>8</border>
                             </object>
                             <object class="sizeritem">

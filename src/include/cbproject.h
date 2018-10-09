@@ -16,10 +16,8 @@
 #include "compiletargetbase.h"
 #include "cbplugin.h"
 #include "projectbuildtarget.h"
-#include "projectmanager.h"
 
 #include <map>
-#include <vector>
 
 // forward decl
 class cbProject;
@@ -51,7 +49,7 @@ class DLLIMPORT FileTreeData : public MiscTreeItemData
         FileTreeData(cbProject* project, FileTreeDataKind kind = ftdkUndefined)
             : m_Index(-1),
             m_Project(project),
-            m_file(nullptr),
+            m_file(0),
             m_kind(kind)
         {}
 
@@ -82,9 +80,9 @@ class DLLIMPORT FileTreeData : public MiscTreeItemData
   */
 enum PCHMode
 {
-    pchSourceDir = 0, /// In a dir (named by the PCH) on the same level as the source header (default).
-    pchObjectDir,     /// In the objects output dir, along with other object files.
-    pchSourceFile     /// In a file alongside the source header (with .gch appended).
+    pchSourceDir = 0,   /// In a dir (named by the PCH) on the same level as the source header (default).
+    pchObjectDir,       /// In the objects output dir, along with other object files.
+    pchSourceFile,      /// In a file alongside the source header (with .gch appended).
 };
 
 /** @brief Represents a Code::Blocks project.
@@ -99,10 +97,19 @@ class DLLIMPORT cbProject : public CompileTargetBase
         /// Constructor
         cbProject(const wxString& filename = wxEmptyString);
         /// Destructor
-        ~cbProject() override;
+        ~cbProject();
 
         /** @return True if the project fully loaded, false if not. */
         bool IsLoaded() const { return m_Loaded; }
+
+        /** (Re)build the project tree.
+          * @param tree The wxTreeCtrl to use.
+          * @param root The tree item to use as root. The project is built as a child of this item.
+          * @param categorize If true, use virtual folders like "Sources", "Headers", etc.
+          * @param useFolders If true, create folders as needed. If false, the list is flat.
+          * @param fgam If not NULL, use these file groups and masks for virtual folders.
+          */
+        void BuildTree(wxTreeCtrl* tree, const wxTreeItemId& root, bool categorize, bool useFolders, FilesGroupsAndMasks* fgam = 0L);
 
         /** This resets the project to a clear state. Like it's just been new'ed. */
         void ClearAllProperties();
@@ -117,12 +124,12 @@ class DLLIMPORT cbProject : public CompileTargetBase
         wxString GetCommonTopLevelPath() const;
 
         /** @return True if the project is modified in any way. */
-        bool GetModified() const override;
+        bool GetModified() const;
 
         /** Mark the project as modified or not.
           * @param modified If true, the project is marked as modified. If false, as not-modified.
           */
-        void SetModified(bool modified = true) override;
+        void SetModified(bool modified = true);
 
         /** Access a file of the project.
           * @param index The index of the file. Must be greater or equal than zero and less than GetFilesCount().
@@ -139,7 +146,7 @@ class DLLIMPORT cbProject : public CompileTargetBase
         ProjectFile* GetFileByFilename(const wxString& filename, bool isRelative = true, bool isUnixFilename = false);
 
         /** @return The number of files in the project. */
-        int GetFilesCount(){ return m_Files.size(); }
+        int GetFilesCount(){ return m_Files.GetCount(); }
 
         /** Set the Makefile filename used when exporting a Makefile for the project,
           * or when using a custom Makefile to build the project.
@@ -157,24 +164,6 @@ class DLLIMPORT cbProject : public CompileTargetBase
 
         /** @return True if the project is using a custom Makefile for compilation, false if not. */
         bool IsMakefileCustom(){ return m_CustomMakefile; }
-
-        /** Allow the specification of specific execution directory if the project use a custom Makefile.
-          * Defaults to the projects base path, if no custom makefile is used.
-          * @param dir The directory the custom Makefile should be executed from.
-          */
-        void SetMakefileExecutionDir(const wxString& dir);
-
-        /** @return The execution directory for the custom Makefile.
-          * Defaults to the projects base path, if no custom makefile is used.
-          */
-        wxString GetMakefileExecutionDir();
-
-        /** @return Either the execution directory for the custom Makefile or
-          * the projects base path.
-          * Defaults to the projects base path, if no custom makefile is used.
-          * Used to unify the call to the function.
-          */
-        wxString GetExecutionDir();
 
         /** Is there a build target (virtual or real) by @c name?
           * @param name The build target's name.
@@ -197,7 +186,7 @@ class DLLIMPORT cbProject : public CompileTargetBase
         void SetDefaultExecuteTarget(const wxString& name);
 
         /** @return The number of build targets this project contains. */
-        int GetBuildTargetsCount() { return m_Targets.GetCount(); }
+        int GetBuildTargetsCount(){ return m_Targets.GetCount(); }
 
         /** Access a build target.
           * @param index The build target index. Must be greater or equal to zero and less than GetBuildTargetsCount().
@@ -305,13 +294,10 @@ class DLLIMPORT cbProject : public CompileTargetBase
           */
         void SetModeForPCH(PCHMode mode){ m_PCHMode = mode; SetModified(true); }
 
-        void SetCompilerID(const wxString& id) override; // overriden
+        void SetCompilerID(const wxString& id); // overriden
 
         /** @return The root item of this project in the project manager's tree. */
         wxTreeItemId GetProjectNode(){ return m_ProjectNode; }
-
-        /** Sets the root item of this item, should not be called by user's code! */
-        void SetProjectNode(wxTreeItemId node) { m_ProjectNode = node; }
 
         /** Act like closing all project files, but don't do it.
           * Used to check if any of the project files need saving.
@@ -322,39 +308,39 @@ class DLLIMPORT cbProject : public CompileTargetBase
         /** Close all project files.
           * @param dontsave If true, no project file will be saved even if modified.
           * If false, any modified file will be saved (default).
-          * @return True if successful, false otherwise.
+          * @return True if succesfull, false otherwise.
           */
         bool CloseAllFiles(bool dontsave=false);
 
         /** Save all project files.
-          * @return True if successful, false otherwise.
+          * @return True if succesfull, false otherwise.
           */
         bool SaveAllFiles();
 
         /** Save the project.
-          * @return True if successful, false otherwise.
+          * @return True if succesfull, false otherwise.
           */
         bool Save();
 
         /** Save the project under a different name.
           * A dialog pops up for the user to choose a new filename for the project.
-          * @return True if successful, false otherwise.
+          * @return True if succesfull, false otherwise.
           */
         bool SaveAs();
 
         /** Save the project's layout.
           * Layout is the list of open project files, which one is active,
           * where the cursor is located on each one of those, etc.
-          * @return True if successful, false otherwise.
+          * @return True if succesfull, false otherwise.
           */
         bool SaveLayout();
 
         /** Load the project's layout.
           * @see SaveLayout() for info.
-          * @return True if successful, false otherwise.
+          * @return True if succesfull, false otherwise.
           */
         bool LoadLayout();
-
+        
         /** Notify that file(s) will be added shortly.
           * This function should be called before calling AddFile().
           * When done calling AddFile() as many times as needed, call
@@ -363,7 +349,7 @@ class DLLIMPORT cbProject : public CompileTargetBase
           * This sequence of function calls ensures proper events dispatching.
           * This function broadcasts the cbEVT_PROJECT_BEGIN_ADD_FILES event.
           */
-        void BeginAddFiles();
+		void BeginAddFiles();
 
         /** Notify that file(s) addition finished.
           * This function should be called when done calling AddFile() as many times as needed.
@@ -372,7 +358,7 @@ class DLLIMPORT cbProject : public CompileTargetBase
           * This function broadcasts the cbEVT_PROJECT_END_ADD_FILES event.
           * @see BeginAddFiles().
           */
-        void EndAddFiles();
+		void EndAddFiles();
 
         /** Notify that file(s) will be removed shortly.
           * This function should be called before calling RemoveFile().
@@ -382,7 +368,7 @@ class DLLIMPORT cbProject : public CompileTargetBase
           * This sequence of function calls ensures proper events dispatching.
           * This function broadcasts the cbEVT_PROJECT_BEGIN_REMOVE_FILES event.
           */
-        void BeginRemoveFiles();
+		void BeginRemoveFiles();
 
         /** Notify that file(s) removal finished.
           * This function should be called when done calling RemoveFile() as many times as needed.
@@ -391,7 +377,7 @@ class DLLIMPORT cbProject : public CompileTargetBase
           * This function broadcasts the cbEVT_PROJECT_END_REMOVE_FILES event.
           * @see BeginRemoveFiles().
           */
-        void EndRemoveFiles();
+		void EndRemoveFiles();
 
         /** Add a file to the project.
           * This variation, takes a target name as first parameter.
@@ -416,39 +402,32 @@ class DLLIMPORT cbProject : public CompileTargetBase
         ProjectFile* AddFile(int targetIndex, const wxString& filename, bool compile = true, bool link = true, unsigned short int weight = 50);
 
         /** Remove a file from the project.
+          * @param index The index of the file.
+          * @return True if @c index was valid, false if not.
+          */
+        bool RemoveFile(int index);
+
+        /** Remove a file from the project.
           * @param pf The pointer to ProjectFile.
           * @return True if @c pf was a valid project file, false if not.
           */
         bool RemoveFile(ProjectFile* pf);
 
-        struct Glob
-        {
-            wxString m_Path;
-            wxString m_WildCard;
-            bool m_Recursive;
-            Glob(const wxString& path, const wxString& wildCard, bool recursive) : m_Path(path), m_WildCard(wildCard), m_Recursive(recursive) {}
-        };
-
-        /** Set the globs to the project, this are directory paths do retrieve files from to be added to the project, the path can be searched recursively
-          * @param globs the globs to add to the project.
+        /** Display the project options dialog.
+          * @return True if the dialog was closed with "OK", false if closed with "Cancel".
           */
-        void SetGlobs(const std::vector<Glob>& globs);
-
-        /** Retrieve the current globs from the project
-          * @return globs the globs to add to the project.
-          */
-        std::vector<Glob> GetGlobs() const;
+        bool ShowOptions();
 
         /** Convenience function for remembering the project's tree state when refreshing it.
           * @return An array of strings containing the tree-path names of expanded nodes.
           */
-        const wxArrayString& ExpandedNodes() { return m_ExpandedNodes; }
+        const wxArrayString& ExpandedNodes(){ return m_ExpandedNodes; }
 
         /** Convenience function for remembering the project's tree state when refreshing it.
           * Adds an expanded node in this internal list.
           * @param path The tree-path to add.
           */
-        void AddExpandedNode(const wxString& path) { m_ExpandedNodes.Add(path); }
+        void AddExpandedNode(const wxString& path){ m_ExpandedNodes.Add(path); }
 
         /** Convenience function for remembering the project's tree state when refreshing it.
           * @param tree The tree control to save its expanded state.
@@ -471,11 +450,17 @@ class DLLIMPORT cbProject : public CompileTargetBase
           */
         int SelectTarget(int initial = -1, bool evenIfOne = false);
 
+        /** Rename the project's title in the tree.
+          * @param newname The new title for the project.
+          * @note This does *not* actually alter the project's title. It just changes it on the tree.
+          */
+        void RenameInTree(const wxString &newname);
+
         /** Get a pointer to the currently compiling target.
           * @return While the project is being built, this function returns the currently building
           * target. For all other times, NULL is returned.
           */
-        ProjectBuildTarget* GetCurrentlyCompilingTarget() { return m_CurrentlyCompilingTarget; }
+        ProjectBuildTarget* GetCurrentlyCompilingTarget(){ return m_CurrentlyCompilingTarget; }
 
         /** Set the currently compiling target.
           * @note This function is for internal use by compilers only.
@@ -548,22 +533,36 @@ class DLLIMPORT cbProject : public CompileTargetBase
           */
         bool CanAddToVirtualBuildTarget(const wxString& alias, const wxString& target);
 
+        /** Request if a specific tree node can be dragged.
+          *
+          * @note Called by ProjectManager.
+          * @return True if it is allowed to drag this node, false not.
+          */
+        bool CanDragNode(wxTreeCtrl* tree, wxTreeItemId node);
+
+        /** Notify that a specific tree node has been dragged.
+          *
+          * @note Called by ProjectManager.
+          * @return True if succeeded, false if not.
+          */
+        bool NodeDragged(wxTreeCtrl* tree, wxTreeItemId from, wxTreeItemId to);
+
+        /** Notify that a virtual folder has been added.
+          * @return True if it is allowed, false if not. */
+        bool VirtualFolderAdded(wxTreeCtrl* tree, wxTreeItemId parent_node, const wxString& virtual_folder);
+
+        /** Notify that a virtual folder has been deleted. */
+        void VirtualFolderDeleted(wxTreeCtrl* tree, wxTreeItemId node);
+
+        /** Notify that a virtual folder has been renamed.
+          * @return True if the renaming is allowed, false if not. */
+        bool VirtualFolderRenamed(wxTreeCtrl* tree, wxTreeItemId node, const wxString& new_name);
+
         /** Get a list of the virtual folders. Normally used by the project loader only.*/
         const wxArrayString& GetVirtualFolders() const;
 
         /** Set the virtual folders list. Normally used by the project loader only. */
         void SetVirtualFolders(const wxArrayString& folders);
-
-        /** Appends a new virtual folder to the end of the list only if it doesn't exists.
-          * @return True if folder has been appended, false if not. */
-        bool AppendUniqueVirtualFolder(const wxString &folder);
-
-        /** Remove all virtual folders starting with folder. */
-        void RemoveVirtualFolders(const wxString &folder);
-
-        /** Replaced the oldFolder with newFolder or appends newFolder to the end of the list
-          * if oldFolder is not found.*/
-        void ReplaceVirtualFolder(const wxString &oldFolder, const wxString &newFolder);
 
         /** Returns the last modification time for the file. Used to detect modifications outside the Program. */
         wxDateTime GetLastModificationTime() const { return m_LastModified; }
@@ -615,18 +614,6 @@ class DLLIMPORT cbProject : public CompileTargetBase
           */
         bool GetShowNotesOnLoad() const;
 
-        /** Set check for externally modified files.
-          *
-          * @param True if check for externally modified files is set, false if not.
-          */
-        void SetCheckForExternallyModifiedFiles(bool check);
-
-        /** Get check for externally modified files.
-          *
-          * @return True if check for externally modified files is set, false if not.
-          */
-        bool GetCheckForExternallyModifiedFiles() const;
-
         /** Show project notes now.
           *
           * @param nonEmptyOnly If true, show notes only if non-empty.
@@ -642,8 +629,8 @@ class DLLIMPORT cbProject : public CompileTargetBase
           * It sends additional notification event to plugins
           * and than calls base function.
           */
-        void SetTitle(const wxString& title) override;
-
+        virtual void SetTitle(const wxString& title);
+        
         /** Access the \<Extensions\> XML node of this project
           *
           * This function is for advanced users only. Use at your own risk
@@ -653,7 +640,7 @@ class DLLIMPORT cbProject : public CompileTargetBase
           * @note This function will never return NULL.
           */
         virtual TiXmlNode* GetExtensionsNode();
-
+        
         /** Convenience function (mainly for scripts) to add nodes/attributes
           * under the \<Extensions\> node.
           *
@@ -673,71 +660,59 @@ class DLLIMPORT cbProject : public CompileTargetBase
           * instead of re-using the existing one (if any).
           */
         virtual void AddToExtensions(const wxString& stringDesc);
-
+        
         /** Internal use only.
           * Updates the internal hashmap of project files.
           */
         virtual void ProjectFileRenamed(ProjectFile* pf);
 
-        /** Provides an easy way to iterate all the files belonging in this target.
-          * @return A list of files belonging in this target.
-          */
-        virtual FilesList& GetFilesList(){ return m_Files; }
-
     private:
         void Open();
         void ExpandVirtualBuildTargetGroup(const wxString& alias, wxArrayString& result) const;
+        wxTreeItemId AddTreeNode(wxTreeCtrl* tree, const wxString& text, const wxTreeItemId& parent, bool useFolders, FileTreeData::FileTreeDataKind folders_kind, bool compiles, int image, FileTreeData* data = 0L);
+        wxTreeItemId FindNodeToInsertAfter(wxTreeCtrl* tree, const wxString& text, const wxTreeItemId& parent, bool in_folders); // alphabetical sorting
         ProjectBuildTarget* AddDefaultBuildTarget();
         int IndexOfBuildTargetName(const wxString& targetName) const;
         wxString CreateUniqueFilename();
         void NotifyPlugins(wxEventType type, const wxString& targetName = wxEmptyString, const wxString& oldTargetName = wxEmptyString);
+        void CopyTreeNodeRecursively(wxTreeCtrl* tree, const wxTreeItemId& item, const wxTreeItemId& new_parent);
 
         // properties
         VirtualBuildTargetsMap m_VirtualTargets;
-        BuildTargets           m_Targets;
-        wxString               m_ActiveTarget;
-        wxString               m_LastSavedActiveTarget;
-        wxString               m_DefaultExecuteTarget;
-        wxString               m_Makefile;
-        bool                   m_CustomMakefile;
-        mutable wxString       m_MakefileExecutionDir;
+        BuildTargets m_Targets;
+        wxString m_ActiveTarget;
+        wxString  m_LastSavedActiveTarget;
+        wxString m_DefaultExecuteTarget;
+        wxString m_Makefile;
+        bool m_CustomMakefile;
 
-        std::vector<Glob> m_Globs;
-        FilesList         m_Files;
-        ProjectFileArray  m_FileArray;
-        wxArrayString     m_ExpandedNodes;
-        wxArrayString     m_SelectedNodes;
-        bool              m_Loaded;
-        wxTreeItemId      m_ProjectNode;
+        FilesList m_Files;
+        wxArrayString m_ExpandedNodes;
+        bool m_Loaded;
+        wxTreeItemId m_ProjectNode;
 
         wxArrayString m_VirtualFolders; // not saved, just used throughout cbProject's lifetime
 
-        bool     m_CurrentlyLoading;
+        bool m_CurrentlyLoading;
         wxString m_CommonTopLevelPath;
         wxString m_BasePath;
 
         PCHMode m_PCHMode;
 
         // hashmap for fast searches in cbProject::GetFileByFilename()
-        ProjectFiles        m_ProjectFilesMap; // keeps UnixFilename(ProjectFile::relativeFilename)
+        ProjectFiles m_ProjectFilesMap; // keeps UnixFilename(ProjectFile::relativeFilename)
         ProjectBuildTarget* m_CurrentlyCompilingTarget;
 
         wxDateTime m_LastModified;
 
-        bool     m_ExtendedObjectNamesGeneration;
+        bool m_ExtendedObjectNamesGeneration;
         wxString m_Notes;
-        bool     m_AutoShowNotesOnLoad;
-        bool     m_CheckForExternallyModifiedFiles;
-
+        bool m_AutoShowNotesOnLoad;
+        
         // copy of <Extensions> element, in case certain plugins are disabled
         // so that the contents are not lost
         TiXmlElement* m_pExtensionsElement;
 };
-
-/// Returns a string valid to be used as LD_LIBRARY_PATH (or equivalent).
-DLLIMPORT wxString cbGetDynamicLinkerPathForTarget(cbProject *project, ProjectBuildTarget* target);
-/// Merges to LD_LIBRARY_PATH/PATH strings together to form a new valid string.
-DLLIMPORT wxString cbMergeLibPaths(const wxString &oldPath, const wxString &newPath);
 
 #endif // CBPROJECT_H
 

@@ -7,7 +7,7 @@
 #define SYMTABEXEC_H
 
 #include <wx/arrstr.h>
-#include "scrollingdialog.h"
+#include <wx/dialog.h>
 #include <wx/string.h>
 
 struct struct_config
@@ -41,13 +41,13 @@ class wxWindow;
 class wxListEvent;
 class wxCommandEvent;
 
-class SymTabExecDlg : public wxScrollingDialog
+class SymTabExecDlg : public wxDialog
 {
 /* ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- */
 public:
 /* ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- */
-              SymTabExecDlg(wxWindow* parent_in) :
-                parent(parent_in), SymTabExecDlgLoaded(false),
+              SymTabExecDlg(wxWindow* parent) :
+                parent(parent), SymTabExecDlgLoaded(false),
                 m_ListCtrl(0L), m_TextHelp(0L),
                 m_TextMisc(0L) {}
   virtual    ~SymTabExecDlg();
@@ -55,6 +55,7 @@ public:
   int         Execute  (struct_config config);
 
   // The following needs to be public (used by a global wxCALLBACK method)
+  wxListCtrl* GetListCtrl()      { return m_ListCtrl;        };
   int         GetSortColumn()    { return ms_iSortColumn;    };
   int         GetSortAscending() { return ms_bSortAscending; };
 

@@ -28,17 +28,10 @@
 #include "wxsflags.h"
 #include "../wxscoder.h"
 
-#include <algorithm>
 #include <globals.h>
 #include <logmanager.h>
 #include <wx/clipbrd.h>
-#include <tinywxuni.h>
-
-#if defined(__WXMSW__) && defined(LoadImage)
-    // Fix Windows winuser.h Header define of LoadImage.
-    #undef LoadImage
-#endif
-
+#include <tinyxml/tinywxuni.h>
 
 using namespace wxsFlags;
 
@@ -56,7 +49,6 @@ wxsItemResData::wxsItemResData(
     const wxString& ClassType,
     wxsCodingLang Language,
     bool UseForwardDeclarations,
-    bool WithTranslation,
     wxsResourceItemId TreeId,
     wxsItemEditor* Editor,
     wxsItemResFunctions* Functions):
@@ -64,7 +56,6 @@ wxsItemResData::wxsItemResData(
         m_SrcFileName(SrcFileName),
         m_HdrFileName(HdrFileName),
         m_XrcFileName(XrcFileName),
-        m_Translation(WithTranslation),
         m_ClassName(ClassName),
         m_ClassType(ClassType),
         m_Language(Language),
@@ -277,20 +268,20 @@ bool wxsItemResData::LoadInMixedMode()
         {
             IdToXmlMapT IdToXmlMap;
 
-            TiXmlElement* _Object = Extra->FirstChildElement("object");
-            while ( _Object )
+            TiXmlElement* Object = Extra->FirstChildElement("object");
+            while ( Object )
             {
-                wxString IdName = cbC2U(_Object->Attribute("name"));
+                wxString IdName = cbC2U(Object->Attribute("name"));
                 if ( !IdName.empty() )
                 {
-                    IdToXmlMap[IdName] = _Object;
+                    IdToXmlMap[IdName] = Object;
                 }
-                else if ( _Object->Attribute("root") )
+                else if ( Object->Attribute("root") )
                 {
                     // Empty id simulates root node
-                    IdToXmlMap[_T("")] = _Object;
+                    IdToXmlMap[_T("")] = Object;
                 }
-                _Object = _Object->NextSiblingElement("object");
+                Object = Object->NextSiblingElement("object");
             }
 
             UpdateExtraDataReq(m_RootItem,IdToXmlMap);
@@ -415,9 +406,6 @@ bool wxsItemResData::Save()
 
         case flSource:
             return SaveInSourceMode();
-
-        default:
-            break;
     }
 
     return false;
@@ -531,9 +519,6 @@ void wxsItemResData::RebuildFiles()
             RebuildSourceCode();
             RebuildXrcFile();
             break;
-
-        default:
-            break;
     }
 }
 
@@ -600,8 +585,7 @@ void wxsItemResData::RebuildSourceCode()
             }
 
             // Add some initial headers
-            if (m_Translation)
-                Context.AddHeader(_T("<wx/intl.h>"),_T(""),hfLocal|hfInPCH);
+            Context.AddHeader(_T("<wx/intl.h>"),_T(""),hfLocal|hfInPCH);
             Context.AddHeader(_T("<wx/string.h>"),_T(""),hfLocal|hfInPCH);
             if ( m_PropertiesFilter & flMixed )
             {
@@ -704,7 +688,6 @@ void wxsItemResData::RebuildSourceCode()
             break;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsItemResData::RebuildSourceCode"),m_Language);
@@ -713,32 +696,15 @@ void wxsItemResData::RebuildSourceCode()
 
 }
 
-/// Turn a string set into a sorted list and then generate a string from it in the form of prefix+item+suffix.
-/// The sorting is needed to prevent reshuffling of items when the hash function of the set changes, thus the generated
-/// code is always the same.
-wxString GenerateCodeFromSet(const wxsCoderContext::wxStringSet &set, const wxString &prefix, const wxString &suffix)
-{
-    std::vector<wxString> array;
-    array.reserve(set.size());
-    for (const wxString &item : set)
-        array.push_back(item);
-
-    std::sort(array.begin(), array.end());
-    wxString Code;
-    for (const wxString &item : array)
-    {
-        Code += prefix;
-        Code += item;
-        Code += suffix;
-    }
-    return Code;
-}
-
 wxString wxsItemResData::DeclarationsCode(wxsCoderContext* Ctx)
 {
     // Enumerate all class members
     wxString Code = _T("\n");
-    Code += GenerateCodeFromSet(Ctx->m_GlobalDeclarations, wxEmptyString, wxT("\n"));
+    for ( wxsCoderContext::wxStringSet::iterator i = Ctx->m_GlobalDeclarations.begin(); i!=Ctx->m_GlobalDeclarations.end(); ++i )
+    {
+        Code += *i;
+        Code += _T("\n");
+    }
     return Code;
 }
 
@@ -759,7 +725,11 @@ wxString wxsItemResData::InitializeCode(wxsCoderContext* Ctx)
     wxString Code = _T("\n");
 
     // First there are local variables
-    Code += GenerateCodeFromSet(Ctx->m_LocalDeclarations, wxEmptyString, wxT("\n"));
+    for ( wxsCoderContext::wxStringSet::iterator i = Ctx->m_LocalDeclarations.begin(); i!=Ctx->m_LocalDeclarations.end(); ++i )
+    {
+        Code += *i;
+        Code += _T("\n");
+    }
 
     if ( Code.Length()>1 )
     {
@@ -804,16 +774,35 @@ wxString wxsItemResData::HeadersCode(wxsCoderContext* Ctx)
 {
     wxString Code;
     // Enumerate global includes (those in header file)
-    Code += GenerateCodeFromSet(Ctx->m_GlobalHeaders, wxT("\n#include "), wxEmptyString);
-    Code += GenerateCodeFromSet(Ctx->m_ForwardDeclarations, wxT("\nclass "), wxT(";"));
+    for ( wxsCoderContext::wxStringSet::iterator i = Ctx->m_GlobalHeaders.begin(); i!=Ctx->m_GlobalHeaders.end(); ++i )
+    {
+        Code += _T("\n#include ");
+        Code += *i;
+    }
+    for ( wxsCoderContext::wxStringSet::iterator i = Ctx->m_ForwardDeclarations.begin(); i!=Ctx->m_ForwardDeclarations.end(); ++i )
+    {
+        Code += _T("\nclass ");
+        Code += *i;
+        Code += _T(";");
+    }
     return Code + _T("\n");
 }
 
 wxString wxsItemResData::HeadersNoPCHCode(wxsCoderContext* Ctx)
 {
     wxString Code;
-    Code += GenerateCodeFromSet(Ctx->m_GlobalHeadersNonPCH, wxT("\n#include "), wxEmptyString);
-    Code += GenerateCodeFromSet(Ctx->m_ForwardDeclarationsNonPCH, wxT("\nclass "), wxT(";"));
+    // Enumerate global includes (those in header file)
+    for ( wxsCoderContext::wxStringSet::iterator i = Ctx->m_GlobalHeadersNonPCH.begin(); i!=Ctx->m_GlobalHeadersNonPCH.end(); ++i )
+    {
+        Code += _T("\n#include ");
+        Code += *i;
+    }
+    for ( wxsCoderContext::wxStringSet::iterator i = Ctx->m_ForwardDeclarationsNonPCH.begin(); i!=Ctx->m_ForwardDeclarationsNonPCH.end(); ++i )
+    {
+        Code += _T("\nclass ");
+        Code += *i;
+        Code += _T(";");
+    }
     return Code + _T("\n");
 }
 
@@ -821,12 +810,30 @@ wxString wxsItemResData::HeadersAllCode(wxsCoderContext* Ctx)
 {
     wxString Code;
     // Enumerate global includes (those in header file)
-    Code += GenerateCodeFromSet(Ctx->m_GlobalHeaders, wxT("\n#include "), wxEmptyString);
-    Code += GenerateCodeFromSet(Ctx->m_GlobalHeadersNonPCH, wxT("\n#include "), wxEmptyString);
-    // Enumerate all forward declarations
-    Code += GenerateCodeFromSet(Ctx->m_ForwardDeclarations, wxT("\nclass "), wxT(";"));
-    Code += GenerateCodeFromSet(Ctx->m_ForwardDeclarationsNonPCH, wxT("\nclass "), wxT(";"));
+    for ( wxsCoderContext::wxStringSet::iterator i = Ctx->m_GlobalHeaders.begin(); i!=Ctx->m_GlobalHeaders.end(); ++i )
+    {
+        Code += _T("\n#include ");
+        Code += *i;
+    }
+    for ( wxsCoderContext::wxStringSet::iterator i = Ctx->m_GlobalHeadersNonPCH.begin(); i!=Ctx->m_GlobalHeadersNonPCH.end(); ++i )
+    {
+        Code += _T("\n#include ");
+        Code += *i;
+    }
 
+    // Enumerate all forward declarations
+    for ( wxsCoderContext::wxStringSet::iterator i = Ctx->m_ForwardDeclarations.begin(); i!=Ctx->m_ForwardDeclarations.end(); ++i )
+    {
+        Code += _T("\nclass ");
+        Code += *i;
+        Code += _T(";");
+    }
+    for ( wxsCoderContext::wxStringSet::iterator i = Ctx->m_ForwardDeclarationsNonPCH.begin(); i!=Ctx->m_ForwardDeclarationsNonPCH.end(); ++i )
+    {
+        Code += _T("\nclass ");
+        Code += *i;
+        Code += _T(";");
+    }
     return Code + _T("\n");
 }
 
@@ -844,15 +851,27 @@ wxString wxsItemResData::InternalHeadersCode(wxsCoderContext* Ctx)
 wxString wxsItemResData::InternalHeadersNoPCHCode(wxsCoderContext* Ctx)
 {
     wxString Code;
-    Code += GenerateCodeFromSet(Ctx->m_LocalHeadersNonPCH, wxT("\n#include "), wxEmptyString);
+    for ( wxsCoderContext::wxStringSet::iterator i = Ctx->m_LocalHeadersNonPCH.begin(); i!=Ctx->m_LocalHeadersNonPCH.end(); ++i )
+    {
+        Code += _T("\n#include ");
+        Code += *i;
+    }
     return Code + _T("\n");
 }
 
 wxString wxsItemResData::InternalHeadersAllCode(wxsCoderContext* Ctx)
 {
     wxString Code;
-    Code += GenerateCodeFromSet(Ctx->m_LocalHeaders, wxT("\n#include "), wxEmptyString);
-    Code += GenerateCodeFromSet(Ctx->m_LocalHeadersNonPCH, wxT("\n#include "), wxEmptyString);
+    for ( wxsCoderContext::wxStringSet::iterator i = Ctx->m_LocalHeaders.begin(); i!=Ctx->m_LocalHeaders.end(); ++i )
+    {
+        Code += _T("\n#include ");
+        Code += *i;
+    }
+    for ( wxsCoderContext::wxStringSet::iterator i = Ctx->m_LocalHeadersNonPCH.begin(); i!=Ctx->m_LocalHeadersNonPCH.end(); ++i )
+    {
+        Code += _T("\n#include ");
+        Code += *i;
+    }
     return Code + _T("\n");
 }
 
@@ -873,8 +892,8 @@ bool wxsItemResData::RebuildXrcFile()
 {
     // First - opening file
     TiXmlDocument Doc;
-    TiXmlElement* Resources = nullptr;
-    TiXmlElement* Object = nullptr;
+    TiXmlElement* Resources;
+    TiXmlElement* Object;
 
     if ( TinyXML::LoadDocument(m_XrcFileName,&Doc) )
     {
@@ -927,7 +946,6 @@ void wxsItemResData::BeginChange()
     {
         StoreTreeExpandState();
         wxsResourceTree::Get()->BlockSelect();
-        m_ExtraIsInvalid = false;
     }
 }
 
@@ -947,9 +965,6 @@ void wxsItemResData::EndChange()
         }
         if ( ValidateRootSelection() )
         {
-            if (m_ExtraIsInvalid && m_Editor)
-                m_Editor->RebuildQuickProps(m_RootSelection);
-
             m_RootSelection->NotifyPropertyChange(false);
         }
         else
@@ -964,11 +979,6 @@ void wxsItemResData::EndChange()
         RebuildTree();
         wxsResourceTree::Get()->UnblockSelect();
     }
-}
-
-void wxsItemResData::MarkExtraDataChanged()
-{
-    m_ExtraIsInvalid = true;
 }
 
 bool wxsItemResData::ValidateRootSelection()

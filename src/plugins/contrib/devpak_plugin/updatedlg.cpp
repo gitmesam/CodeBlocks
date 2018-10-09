@@ -31,7 +31,7 @@ int idPopupDownload = wxNewId();
 int idPopupDownloadAndInstall = wxNewId();
 int idPopupUninstall = wxNewId();
 
-BEGIN_EVENT_TABLE(UpdateDlg, wxScrollingDialog)
+BEGIN_EVENT_TABLE(UpdateDlg, wxDialog)
     EVT_UPDATE_UI(-1, UpdateDlg::OnUpdateUI)
     EVT_TREE_SEL_CHANGED(XRCID("tvCategories"), UpdateDlg::OnTreeSelChanged)
     EVT_LIST_ITEM_SELECTED(XRCID("lvFiles"), UpdateDlg::OnFileSelected)
@@ -62,7 +62,7 @@ UpdateDlg::UpdateDlg(wxWindow* parent)
     m_Net(this, idNet, _T("http://devpaks.sourceforge.net/"))
 {
 	//ctor
-	wxXmlResource::Get()->LoadObject(this, parent, _T("MainFrame"),_T("wxScrollingDialog"));
+	wxXmlResource::Get()->LoadDialog(this, parent, _T("MainFrame"));
 	CreateListColumns();
     FillServers();
 	UpdateStatus(_("Ready"), 0);
@@ -79,7 +79,7 @@ void UpdateDlg::EndModal(int retCode)
 {
     if (!m_Net.IsConnected() || retCode != wxID_CANCEL)
     {
-        wxScrollingDialog::EndModal(retCode);
+        wxDialog::EndModal(retCode);
         return;
     }
 
@@ -94,13 +94,11 @@ void UpdateDlg::CreateListColumns()
     lst->InsertColumn(1, _("Version"));
     lst->InsertColumn(2, _("Installed"));
     lst->InsertColumn(3, _("Size"), wxLIST_FORMAT_RIGHT);
-    lst->InsertColumn(4, _("Rev"));
 
-    lst->SetColumnWidth(0, lst->GetSize().x - (64 * 3 + 40) - 6 ); // 1st column takes all remaining space
+    lst->SetColumnWidth(0, lst->GetSize().x - (64 * 3) - 2); // 1st column takes all remaining space
     lst->SetColumnWidth(1, 64);
     lst->SetColumnWidth(2, 64);
     lst->SetColumnWidth(3, 64);
-    lst->SetColumnWidth(4, 40);
 }
 
 void UpdateDlg::AddRecordToList(UpdateRec* rec)
@@ -113,18 +111,6 @@ void UpdateDlg::AddRecordToList(UpdateRec* rec)
     lst->SetItem(idx, 1, rec->version);
     lst->SetItem(idx, 2, rec->installed_version);
     lst->SetItem(idx, 3, rec->size);
-    lst->SetItem(idx, 4, rec->revision);
-}
-
-wxString UpdateDlg::GetListColumnText(int idx, int col) {
-    wxListCtrl* lst = XRCCTRL(*this, "lvFiles", wxListCtrl);
-    int index = idx == -1 ? lst->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED) : idx;
-    wxListItem info;
-    info.SetId(index);
-    info.SetColumn(col);
-    info.SetMask(wxLIST_MASK_TEXT);
-    lst->GetItem(info);
-    return info.GetText();
 }
 
 void UpdateDlg::SetListColumnText(int idx, int col, const wxString& text)
@@ -407,9 +393,7 @@ UpdateRec* UpdateDlg::GetRecFromListView()
     if (index == -1)
         return 0;
     wxString title = lst->GetItemText(index);
-    wxString version = GetListColumnText(index, 1);
-    wxString revision = GetListColumnText(index, 4);
-    return FindRec(title, version, revision, m_Recs, m_RecsCount);
+    return FindRecByTitle(title, m_Recs, m_RecsCount);
 }
 
 void UpdateDlg::DownloadFile(bool dontInstall)

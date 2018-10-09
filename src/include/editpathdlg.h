@@ -6,10 +6,10 @@
 #ifndef EDITPATHDLG_H
 #define EDITPATHDLG_H
 
-#include "scrollingdialog.h"
+#include <wx/dialog.h>
 #include <wx/intl.h>
 
-class DLLIMPORT EditPathDlg : public wxScrollingDialog
+class EditPathDlg : public wxDialog
 {
 	public:
 		EditPathDlg(wxWindow* parent,
@@ -21,28 +21,21 @@ class DLLIMPORT EditPathDlg : public wxScrollingDialog
                 const bool allowMultiSel = false,  // whether to allow for multiple files selection
                 const wxString& filter = _("All files(*)|*"));  // wildcard for files
 
-		~EditPathDlg() override;
+		virtual ~EditPathDlg();
 		EditPathDlg& operator=(const EditPathDlg&){ return *this; } // just to satisfy script bindings (never used)
 
 		const wxString& GetPath(){ return m_Path; }
-    void EndModal(int retCode) override;
+        void EndModal(int retCode);
 
 	protected:
-        void OnUpdateUI(wxUpdateUIEvent& event);
         void OnBrowse(wxCommandEvent& event);
-        void OnOther(wxCommandEvent& event);
+        void OnUpdateUI(wxUpdateUIEvent& event);
 
         wxString m_Path;
-        wxString m_Message;
-        wxString m_Basepath;
-        wxString m_Filter;
-        bool     m_WantDir;
-        bool     m_AllowMultiSel;
-        bool     m_AskMakeRelative;
-        bool     m_ShowCreateDirButton;
+        wxString m_Message, m_Basepath, m_Filter;
+        bool     m_WantDir, m_AllowMultiSel, m_AskMakeRelative, m_ShowCreateDirButton;
 
 	private:
-
         DECLARE_EVENT_TABLE();
 };
 

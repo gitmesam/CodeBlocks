@@ -6,14 +6,15 @@
 #ifndef ENVIRONMENTSETTINGSDLG_H
 #define ENVIRONMENTSETTINGSDLG_H
 
-#include <scrollingdialog.h>
+#include <wx/dialog.h>
 #include <pluginmanager.h>
 
-class wxAuiDockArt;
+#include "aui_compat.h"
+
 class wxListbookEvent;
 class wxCheckListBox;
 
-class EnvironmentSettingsDlg : public wxScrollingDialog
+class EnvironmentSettingsDlg : public wxDialog
 {
 	public:
 		EnvironmentSettingsDlg(wxWindow* parent, wxAuiDockArt* art);
@@ -24,37 +25,21 @@ class EnvironmentSettingsDlg : public wxScrollingDialog
         void OnPageChanged(wxListbookEvent& event);
         void OnSetAssocs(wxCommandEvent& event);
         void OnManageAssocs(wxCommandEvent& event);
+        void OnNbDefaults(wxCommandEvent& event);
         void OnChooseColour(wxCommandEvent& event);
-        void OnResetDefaultColours(wxCommandEvent& event);
-        void OnUseIpcCheck(wxCommandEvent& event);
+        void OnUpdateUI(wxUpdateUIEvent& event);
         void OnPlaceCheck(wxCommandEvent& event);
         void OnHeadCheck(wxCommandEvent& event);
         void OnAutoHide(wxCommandEvent& event);
         void OnI18NCheck(wxCommandEvent& event);
         void OnSettingsIconsSize(wxCommandEvent& event);
-        void OnDblClickMaximizes(wxCommandEvent& event);
-        void OnMousewheelModifier(wxKeyEvent& event);
-        void OnUseTabMousewheel(wxCommandEvent& event);
-
-        void OnChooseAppColourCategory(wxCommandEvent &event);
-        void OnChooseAppColourItem(wxCommandEvent &event);
-        void OnClickAppColour(wxCommandEvent &event);
 	private:
         void AddPluginPanels();
         void LoadListbookImages();
         void UpdateListbookImages();
 
-        void FillApplicationColours();
-        void WriteApplicationColours();
-        wxString AnnoyingDlgReturnToString(const wxString& caption);
-        wxString StringToAnnoyingDlgReturn(const wxString& caption);
-    private:
         wxAuiDockArt* m_pArt;
         ConfigurationPanelsArray m_PluginPanels;
-        std::map<wxString, wxColour> m_ChangedAppColours;
-        std::map<wxString, wxString> m_AnnoyingDlgReturnMap;
-        wxImageList* m_pImageList;
-
         DECLARE_EVENT_TABLE()
 };
 

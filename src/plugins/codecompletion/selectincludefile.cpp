@@ -7,46 +7,52 @@
  * $HeadURL$
  */
 
-#include "prep.h"
 #include "selectincludefile.h"
-
 #include <wx/xrc/xmlres.h>
 #include <wx/arrstr.h>
 
-BEGIN_EVENT_TABLE(SelectIncludeFile,wxScrollingDialog)
-    EVT_LISTBOX_DCLICK(XRCID("ID_LBX_INCLUDE_FILES"),SelectIncludeFile::OnOk)
-    EVT_BUTTON(XRCID("ID_BTN_OK"),SelectIncludeFile::OnOk)
-    EVT_BUTTON(XRCID("ID_BTN_CANCEL"),SelectIncludeFile::OnCancel)
+BEGIN_EVENT_TABLE(SelectIncludeFile,wxDialog)
+	//(*EventTable(SelectIncludeFile)
+	EVT_LISTBOX_DCLICK(XRCID("ID_LISTBOX1"),SelectIncludeFile::OnOk)
+	EVT_BUTTON(XRCID("wxID_CANCEL"),SelectIncludeFile::OnOk)
+	EVT_BUTTON(XRCID("ID_BUTTON1"),SelectIncludeFile::OnCancel)
+	//*)
 END_EVENT_TABLE()
 
-SelectIncludeFile::SelectIncludeFile(wxWindow* parent, cb_unused wxWindowID id) // TODO: verify if class def shouldn't be different
+SelectIncludeFile::SelectIncludeFile(wxWindow* parent,wxWindowID id)
 {
-    wxXmlResource::Get()->LoadObject(this,parent,_T("SelectIncludeFile"),_T("wxScrollingDialog"));
-    LstIncludeFiles = XRCCTRL(*this,"ID_LBX_INCLUDE_FILES",wxListBox);
+	//(*Initialize(SelectIncludeFile)
+	wxXmlResource::Get()->LoadDialog(this,parent,_T("SelectIncludeFile"));
+	ListBox1 = XRCCTRL(*this,"ID_LISTBOX1",wxListBox);
+	//*)
 }
 
 SelectIncludeFile::~SelectIncludeFile()
 {
 }
 
-void SelectIncludeFile::OnOk(cb_unused wxCommandEvent& event)
-{
-    int pos = LstIncludeFiles->GetSelection();
-    if (pos != wxNOT_FOUND)
-        m_SelectedIncludeFile = LstIncludeFiles->GetString(pos);
-    else
-        m_SelectedIncludeFile.Clear();
 
-    EndModal(wxID_OK);
-}
-
-void SelectIncludeFile::OnCancel(cb_unused wxCommandEvent& event)
+void SelectIncludeFile::OnOk(wxCommandEvent& event)
 {
-    EndModal(wxID_CANCEL);
-}
+	int pos = ListBox1->GetSelection();
+	if(pos != wxNOT_FOUND)
+	{
+		m_SelectedIncludeFile = ListBox1->GetString(pos);
+	}
+	else
+	{
+		m_SelectedIncludeFile.Clear();
+	}
+	EndModal(wxID_OK);
+} // end of OnOk
+
+void SelectIncludeFile::OnCancel(wxCommandEvent& event)
+{
+	EndModal(wxID_CANCEL);
+} // end of OnCancel
 
 void SelectIncludeFile::AddListEntries(const wxArrayString& IncludeFiles)
 {
-    LstIncludeFiles->InsertItems(IncludeFiles, 0);
-    LstIncludeFiles->SetSelection(0);
-}
+	ListBox1->InsertItems(IncludeFiles, 0);
+	ListBox1->SetSelection(0);
+} // end of AddListEntry

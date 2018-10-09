@@ -91,8 +91,6 @@ class wxsCorrector
         /** \brief Function checking and fixing if necessary identifier */
         bool FixIdName(wxString& Id);
 
-        bool IsWxWidgetsIdPrefix(const wxString& Id);
-
         void RebuildSetsReq(wxsItem* Item,wxsItem* Exclude);
         bool FixAfterLoadCheckNames(wxsItem* Item);
         bool FillEmpty(wxsItem* Item);

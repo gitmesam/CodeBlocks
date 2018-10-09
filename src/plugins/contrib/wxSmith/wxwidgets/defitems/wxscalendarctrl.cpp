@@ -1,5 +1,4 @@
-/**  \file wxscalendarctrl.cpp
-*
+/*
 * This file is part of wxSmith plugin for Code::Blocks Studio
 * Copyright (C) 2006-2007  Bartlomiej Swiecki
 *
@@ -22,11 +21,12 @@
 */
 
 #include "wxscalendarctrl.h"
+
 #include <wx/calctrl.h>
 
 namespace
 {
-    wxsRegisterItem<wxsCalendarCtrl> Reg(_T("CalendarCtrl"),wxsTWidget,_T("Advanced"),150);
+    wxsRegisterItem<wxsCalendarCtrl> Reg(_T("CalendarCtrl"),wxsTWidget,_T("Standard"),30);
 
     WXS_ST_BEGIN(wxsCalendarCtrlStyles,_T(""))
         WXS_ST_CATEGORY("wxCalendarCtrl")
@@ -73,7 +73,6 @@ void wxsCalendarCtrl::OnBuildCreatingCode()
             return;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsCalendarCtrl::OnBuildCreatingCode"),GetLanguage());
@@ -87,6 +86,6 @@ wxObject* wxsCalendarCtrl::OnBuildPreview(wxWindow* Parent,long Flags)
     return SetupWindow(Preview,Flags);
 }
 
-void wxsCalendarCtrl::OnEnumWidgetProperties(cb_unused long Flags)
+void wxsCalendarCtrl::OnEnumWidgetProperties(long Flags)
 {
 }

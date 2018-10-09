@@ -47,34 +47,37 @@ void CompilerQueue::Add(CompilerCommand* cmd)
     if (cmd)
     {
         if (cmd->dir.IsEmpty() && cmd->project)
-            cmd->dir = cmd->project->GetExecutionDir();
+            cmd->dir = cmd->project->GetBasePath();
         m_Commands.Append(cmd);
     }
 }
 
 void CompilerQueue::Add(CompilerQueue* queue)
 {
-    for (CompilerCommands::iterator it = queue->m_Commands.begin(); it != queue->m_Commands.end(); ++it)
+    wxCompilerCommandsNode* node = queue->m_Commands.GetFirst();
+    while (node)
     {
-        if (*it)
-            Add(new CompilerCommand(**it));
+        if (node->GetData())
+            Add(new CompilerCommand(*(node->GetData())));
+        node = node->GetNext();
     }
 }
 
 CompilerCommand* CompilerQueue::Peek()
 {
-    if (m_Commands.empty())
-        return nullptr;
-    else
-        return m_Commands.front();
+    wxCompilerCommandsNode* node = m_Commands.GetFirst();
+    if (!node)
+        return 0;
+    return node->GetData();
 }
 
 CompilerCommand* CompilerQueue::Next()
 {
-    if (m_Commands.empty())
-        return nullptr;
-    CompilerCommand* cmd = m_Commands.front();
-    m_Commands.pop_front();
+    wxCompilerCommandsNode* node = m_Commands.GetFirst();
+    if (!node)
+        return 0;
+    CompilerCommand* cmd = node->GetData();
+    m_Commands.Erase(node);
     m_LastWasRun = cmd ? cmd->isRun : false;
     return cmd;
 }

@@ -31,7 +31,7 @@ static wxUint32 *GetCRC32Table( wxUint32 *crc_table )
         // Allocate memory
         crc_table = new wxUint32[256];
 
-        // Was the allocation successful?
+        // Was the allocation succesfull?
         if ( crc_table )
         {
             // Generate the crc table
@@ -67,7 +67,7 @@ wxUint32 wxCrc32::FromString(const wxString& text)
     wxUint32 crc = 0;
     unsigned int i = 0;
 
-    if (!text.IsEmpty())
+    if (text)
     {
         // Get the crc table, on first call, generate, otherwise do nothing
         crc_table = GetCRC32Table( crc_table ) ;
@@ -78,11 +78,7 @@ wxUint32 wxCrc32::FromString(const wxString& text)
             // Calculate the checksum
             crc = 0xFFFFFFFFUL;
             while (text[i])
-            #if wxCHECK_VERSION(3, 0, 0)
-                { crc = (crc>>8) ^ crc_table[ (crc^(text[i++].GetValue())) & 0xFF ]; }
-            #else
                 { crc = (crc>>8) ^ crc_table[ (crc^(text[i++])) & 0xFF ]; }
-            #endif
 
             crc ^= 0xFFFFFFFFUL ;
         }

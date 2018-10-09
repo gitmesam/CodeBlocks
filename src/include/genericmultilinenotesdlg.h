@@ -6,19 +6,19 @@
 #ifndef GENERICMULTILINENOTESDLG_H
 #define GENERICMULTILINENOTESDLG_H
 
-#include "scrollingdialog.h"
+#include <wx/dialog.h>
 #include <wx/intl.h>
 
 
-class GenericMultiLineNotesDlg : public wxScrollingDialog
+class GenericMultiLineNotesDlg : public wxDialog
 {
     public:
         GenericMultiLineNotesDlg(wxWindow* parent, const wxString& caption = _("Notes"), const wxString& notes = wxEmptyString, bool readOnly = true);
-        ~GenericMultiLineNotesDlg() override;
+        virtual ~GenericMultiLineNotesDlg();
 		GenericMultiLineNotesDlg& operator=(const GenericMultiLineNotesDlg&){ return *this; } // just to satisfy script bindings (never used)
 
         const wxString& GetNotes(){ return m_Notes; }
-        void EndModal(int retCode) override;
+        void EndModal(int retCode);
     protected:
         wxString m_Notes;
         bool m_ReadOnly;

@@ -29,11 +29,10 @@ wxString wxsDimensionData::GetPixelsCode(wxsCoderContext* Context)
     {
         case wxsCPP:
         {
-            if ( !DialogUnits ) return wxString::Format(_T("%ld"),Value);
-            return wxString::Format(_T("wxDLG_UNIT(%s,wxSize(%ld,0)).GetWidth()"),Context->m_WindowParent.c_str(),Value);
+            if ( !DialogUnits ) return wxString::Format(_T("%d"),Value);
+            return wxString::Format(_T("wxDLG_UNIT(%s,wxSize(%d,0)).GetWidth()"),Context->m_WindowParent.c_str(),Value);
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsDimensionData::GetPixelsCode"),Context->m_Language);
@@ -78,8 +77,8 @@ wxsDimensionProperty::wxsDimensionProperty(
 void wxsDimensionProperty::PGCreate(wxsPropertyContainer* Object,wxPropertyGridManager* Grid,wxPGId Parent)
 {
     wxPGId DUId;
-    PGRegister(Object,Grid,Grid->AppendIn(Parent,NEW_IN_WXPG14X wxIntProperty(GetPGName(),wxPG_LABEL,VALUE)),DIM_VALUE);
-    PGRegister(Object,Grid,DUId = Grid->AppendIn(Parent,NEW_IN_WXPG14X wxBoolProperty(PGDUName,wxPG_LABEL,UNITS)),DIM_UNITS);
+    PGRegister(Object,Grid,Grid->AppendIn(Parent,wxIntProperty(GetPGName(),wxPG_LABEL,VALUE)),DIM_VALUE);
+    PGRegister(Object,Grid,DUId = Grid->AppendIn(Parent,wxBoolProperty(PGDUName,wxPG_LABEL,UNITS)),DIM_UNITS);
     Grid->SetPropertyAttribute(DUId,wxPG_BOOL_USE_CHECKBOX,1L,wxPG_RECURSE);
 }
 
@@ -94,9 +93,6 @@ bool wxsDimensionProperty::PGRead(wxsPropertyContainer* Object,wxPropertyGridMan
         case DIM_UNITS:
             UNITS = Grid->GetPropertyValue(Id).GetBool();
             return true;
-
-        default:
-            break;
     }
     return false;
 }
@@ -112,9 +108,6 @@ bool wxsDimensionProperty::PGWrite(wxsPropertyContainer* Object,wxPropertyGridMa
         case DIM_UNITS:
             Grid->SetPropertyValue(Id,UNITS);
             return true;
-
-        default:
-            break;
     }
     return false;
 }
@@ -154,7 +147,7 @@ bool wxsDimensionProperty::XmlWrite(wxsPropertyContainer* Object,TiXmlElement* E
 {
     if ( VALUE != DefaultValue || UNITS != DefaultDialogUnits )
     {
-        wxString Buffer = wxString::Format(_T("%ld"),VALUE);
+        wxString Buffer = wxString::Format(_T("%d"),VALUE);
         if ( UNITS )
         {
             Buffer.Append(_T("d"));

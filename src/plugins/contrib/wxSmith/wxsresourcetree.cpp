@@ -30,11 +30,6 @@
 #include "configmanager.h"
 #include "globals.h"
 
-#if defined(__WXMSW__) && defined(LoadImage)
-    // Fix Windows winuser.h Header define of LoadImage.
-    #undef LoadImage
-#endif
-
 namespace
 {
     class wxsResourceTreeProjectData: public wxsResourceTreeItemData

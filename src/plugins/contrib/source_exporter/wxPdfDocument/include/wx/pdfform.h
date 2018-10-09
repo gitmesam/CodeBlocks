@@ -10,14 +10,10 @@
 
 /// \file pdfform.h Interface of the wxPdfDocument form field handling
 
-#ifndef _PDF_FORM_H_
-#define _PDF_FORM_H_
+#ifndef _PDFFORM_H_
+#define _PDFFORM_H_
 
 // wxWidgets headers
-#include <wx/arrstr.h>
-#include <wx/string.h>
-
-// wxPdfDocument headers
 #include "wx/pdfdocdef.h"
 
 /// Object types
@@ -42,37 +38,21 @@ class WXDLLIMPEXP_PDFDOC wxPdfIndirectObject
 {
 public:
   /// Constructor
-  /**
-  * \param objectId the object number
-  * \param generationId the generation number
-  */
   wxPdfIndirectObject(int objectId, int generationId);
 
   /// Destructor
   virtual ~wxPdfIndirectObject();
 
   /// Get type of this object
-  /**
-  * \return the type of the object
-  */
   wxPdfObjectType GetType() { return m_type; }
 
   /// Set type of object
-  /**
-  * \param type the type of the object
-  */
   void SetType(wxPdfObjectType type) { m_type = type; }
 
   /// Get identifier of this object
-  /**
-  * \return the object number
-  */
   int GetObjectId() { return m_objectId; }
 
   /// Get generation identifier of this object
-  /**
-  * \return the generation number
-  */
   int GetGenerationId() { return m_generationId; }
 
 private:
@@ -82,50 +62,26 @@ private:
 };
 
 /// Base class for annotation objects (For internal use only)
-class WXDLLIMPEXP_PDFDOC wxPdfAnnotationObject : public wxPdfIndirectObject
+class wxPdfAnnotationObject : public wxPdfIndirectObject
 {
 public:
-  /// Constructor
-  /**
-  * \param objectId the object number
-  * \param generationId the generation number
-  */
   wxPdfAnnotationObject(int objectId, int generationId);
   
-  /// Destructor
   ~wxPdfAnnotationObject();
 
   /// Set the associated rectangular area
-  /**
-  * \param x offset in x direction 
-  * \param y offset in y direction
-  * \param width the width of the annotation 
-  * \param height the height of the annotation
-  */
   void SetRectangle(double x, double y, double width, double height);
 
   /// Get the X offset
-  /**
-  * \return the x offset
-  */
   double GetX() { return m_x; }
 
   /// Get the Y offset
-  /**
-  * \return the y offset
-  */
   double GetY() { return m_y; }
 
   /// Get the width
-  /**
-  * \return the width
-  */
   double GetWidth() { return m_w; }
 
   /// Get the height
-  /**
-  * \return the height
-  */
   double GetHeight() { return m_h; }
 
 private:
@@ -136,14 +92,10 @@ private:
 };
 
 /// Base class for PDF form fields (For internal use only)
-class WXDLLIMPEXP_PDFDOC wxPdfAnnotationWidget : public wxPdfAnnotationObject
+class wxPdfAnnotationWidget : public wxPdfAnnotationObject
 {
 public:
   /// Constructor
-  /**
-  * \param objectId the object number
-  * \param generationId the generation number
-  */
   wxPdfAnnotationWidget(int objectId, int generationId = 0);
   
   /// Destructor
@@ -155,23 +107,23 @@ public:
   /// Get form field name
   wxString GetName() { return m_name; }
 
-  /// Set border colour representation of form field
-  void SetBorderColour(const wxString& borderColour) { m_borderColour = borderColour; }
+  /// Set border color representation of form field
+  void SetBorderColor(const wxString& borderColor) { m_borderColor = borderColor; }
   
-  /// Get border colour representation of form field
-  wxString GetBorderColour() { return m_borderColour; }
+  /// Get border color representation of form field
+  wxString GetBorderColor() { return m_borderColor; }
 
-  /// Set background colour representation of form field
-  void SetBackgroundColour(const wxString& backgroundColour) { m_backgroundColour = backgroundColour; }
+  /// Set background color representation of form field
+  void SetBackgroundColor(const wxString& backgroundColor) { m_backgroundColor = backgroundColor; }
   
-  /// Get background colour representation of form field
-  wxString GetBackgroundColour() { return m_backgroundColour; }
+  /// Get background color representation of form field
+  wxString GetBackgroundColor() { return m_backgroundColor; }
 
-  /// Set text colour representation of form field
-  void SetTextColour(const wxString& textColour) { m_textColour = textColour; }
+  /// Set text color representation of form field
+  void SetTextColor(const wxString& textColor) { m_textColor = textColor; }
   
-  /// Get text colour representation of form field
-  wxString GetTextColour() { return m_textColour; }
+  /// Get text color representation of form field
+  wxString GetTextColor() { return m_textColor; }
 
   /// Set border style of form field
   void SetBorderStyle(const wxString& borderStyle) { m_borderStyle = borderStyle; }
@@ -186,16 +138,16 @@ public:
   double GetBorderWidth() { return m_borderWidth; }
 
 private:
-  wxString m_name;              ///< name of form field
-  wxString m_borderColour;      ///< border colour representation
-  wxString m_backgroundColour;  ///< background colour representation
-  wxString m_textColour;        ///< text colour representation
-  double   m_borderWidth;       ///< border width in points
-  wxString m_borderStyle;       ///< border style
+  wxString m_name;             ///< name of form field
+  wxString m_borderColor;      ///< border color representation
+  wxString m_backgroundColor;  ///< background color representation
+  wxString m_textColor;        ///< text color representation
+  double   m_borderWidth;      ///< border width in points
+  wxString m_borderStyle;      ///< border style
 };
 
 /// Class representing check box form fields (For internal use only)
-class WXDLLIMPEXP_PDFDOC wxPdfCheckBox : public wxPdfAnnotationWidget
+class wxPdfCheckBox : public wxPdfAnnotationWidget
 {
 public:
   /// Constructor
@@ -215,7 +167,7 @@ private:
 };
 
 /// Class representing combo box form field (For internal use only)
-class WXDLLIMPEXP_PDFDOC wxPdfComboBox : public wxPdfAnnotationWidget
+class wxPdfComboBox : public wxPdfAnnotationWidget
 {
 public:
   /// Constructor
@@ -245,7 +197,7 @@ private:
 };
 
 /// Class representing push button form field (For internal use only)
-class WXDLLIMPEXP_PDFDOC wxPdfPushButton : public wxPdfAnnotationWidget
+class wxPdfPushButton : public wxPdfAnnotationWidget
 {
 public:
   /// Constructor
@@ -282,10 +234,10 @@ private:
 };
 
 // Forward declaration of radio button group
-class WXDLLIMPEXP_FWD_PDFDOC wxPdfRadioGroup;
+class wxPdfRadioGroup;
 
 /// Class representing radio button form field (For internal use only)
-class WXDLLIMPEXP_PDFDOC wxPdfRadioButton : public wxPdfAnnotationWidget
+class wxPdfRadioButton : public wxPdfAnnotationWidget
 {
 public:
   /// Constructor
@@ -309,7 +261,7 @@ private:
 };
 
 /// Class representing radio button groups (For internal use only)
-class WXDLLIMPEXP_PDFDOC wxPdfRadioGroup : public wxPdfIndirectObject
+class wxPdfRadioGroup : public wxPdfIndirectObject
 {
 public:
   /// Constructor
@@ -325,7 +277,7 @@ public:
   wxString GetName() { return m_groupName; }
 
   /// Get the number of buttons in the group
-  unsigned int GetCount() { return (unsigned int) m_radios.GetCount(); }
+  int GetCount() { return m_radios.GetCount(); }
   
   /// Get the array of buttons in the group
   wxArrayPtrVoid GetKids() { return m_radios; }
@@ -336,7 +288,7 @@ private:
 };
 
 /// Class representing text form fields (For internal use only)
-class WXDLLIMPEXP_PDFDOC wxPdfTextField : public wxPdfAnnotationWidget
+class wxPdfTextField : public wxPdfAnnotationWidget
 {
 public:
   /// Constructor

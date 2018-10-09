@@ -15,9 +15,9 @@
 
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
-	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+	Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
-// RCS-ID: $Id$
+// RCS-ID: $Id: snippetproperty.cpp 106 2007-12-01 18:31:55Z Pecan $
 // ----------------------------------------------------------------------------
 //  SnippetProperty.cpp                                         //(pecan 2006/9/12)
 // ----------------------------------------------------------------------------
@@ -31,20 +31,23 @@
     #include <wx/filename.h>
     #include <wx/dnd.h>
 
-//-#if defined(BUILDING_PLUGIN)
+#if defined(BUILDING_PLUGIN)
     #include "sdk.h"
-//-#endif
+#endif
 
 #include "codesnippetswindow.h"
 #include "snippetitemdata.h"
 #include "menuidentifiers.h"
+#include "messagebox.h"
 #include "snippetsconfig.h"
 #include "snippetproperty.h"
-////-#include "defsext.h"
-////-#include "dragscrollevent.h"
-#include "version.h"
-//#include "wxscintilla/include/wx/wxscintilla.h"   //svn5785
-#include <wx/wxscintilla.h>                         //svn5785
+
+    // FIXME: this stuff should be allocated in an Edit class
+    // wxScintila (Edit) stuff
+    //! global print data, to remember settings during the session
+    wxPrintData *g_printData = (wxPrintData*) 0;
+    wxPageSetupData *g_pageSetupData = (wxPageSetupData*) 0;
+    bool g_bPrinterIsSetup = false;
 
    BEGIN_EVENT_TABLE(SnippetProperty, SnippetPropertyForm)
     EVT_BUTTON(wxID_OK,             SnippetProperty::OnOk)
@@ -73,8 +76,6 @@ bool SnippetDropTarget::OnDropText(wxCoord x, wxCoord y, const wxString& data)
 // ----------------------------------------------------------------------------
 {
     // Put dragged text into SnippetTextCtrl
-
-    wxUnusedVar(x); wxUnusedVar(y);
     #ifdef LOGGING
      LOGIT( _T("Dragged Data[%s]"), data.GetData() );
     #endif //LOGGING
@@ -92,13 +93,7 @@ SnippetProperty::SnippetProperty(wxTreeCtrl* pTree, wxTreeItemId itemId, wxSemap
 // ----------------------------------------------------------------------------
     :SnippetPropertyForm(pTree->GetParent(),-1,wxT("Snippet Properties"))
 {
-    InitSnippetProperty( pTree, itemId, pWaitSem );
-}
-// ----------------------------------------------------------------------------
-void SnippetProperty::InitSnippetProperty(wxTreeCtrl* pTree, wxTreeItemId itemId, wxSemaphore* pWaitSem)
-// ----------------------------------------------------------------------------
-{
-    // ctor initialization
+    // ctor
 
     // The scintilla Editor is allocated by SnippetPropertyForm
 
@@ -115,23 +110,16 @@ void SnippetProperty::InitSnippetProperty(wxTreeCtrl* pTree, wxTreeItemId itemId
     m_TreeItemId = itemId;
 
     // Initialize the properties fields
-    m_ItemLabelTextCtrl->SetValue( pTree->GetItemText(itemId) );
-    m_ItemLabelTextCtrl->Connect(wxEVT_COMMAND_TEXT_ENTER,
-        wxCommandEventHandler( SnippetProperty::OnOk ), NULL, this );
-
-    m_SnippetEditCtrl->SetText( wxT("Enter text or Filename") );
+    m_ItemLabelTextCtrl->   SetValue( pTree->GetItemText(itemId) );
+    m_SnippetEditCtrl->     SetText( wxT("Enter text or Filename") );
     m_SnippetEditCtrl->SetFocus();
 
-	wxColour txtBackground = m_ItemLabelTextCtrl->GetBackgroundColour();
-    //m_SnippetEditCtrl->SetBackgroundColour(txtBackground);
-    m_SnippetEditCtrl->StyleSetBackground (wxSCI_STYLE_DEFAULT, txtBackground);
-    m_SnippetEditCtrl->StyleClearAll();
 
 	// Get the item
-	if (( m_pSnippetDataItem = (SnippetTreeItemData*)(pTree->GetItemData(itemId))))
+	if (( m_pSnippetDataItem = (SnippetItemData*)(pTree->GetItemData(itemId))))
 	{
 		// Check that we're using the correct item type
-		if (m_pSnippetDataItem->GetType() != SnippetTreeItemData::TYPE_SNIPPET)
+		if (m_pSnippetDataItem->GetType() != SnippetItemData::TYPE_SNIPPET)
 		{
 		    // This shouldn't happen since the context menu only shows
 		    // properties on TYPE_SNIPPET
@@ -139,30 +127,34 @@ void SnippetProperty::InitSnippetProperty(wxTreeCtrl* pTree, wxTreeItemId itemId
 			return;
 		}
 
-        wxString snippetText = m_pSnippetDataItem->GetSnippetString() ;
+        wxString snippetText = m_pSnippetDataItem->GetSnippet() ;
         if ( not snippetText.IsEmpty() )
         {
             GetSnippetEditCtrl()-> SetText( snippetText );
-            GetSnippetEditCtrl()->SetSavePoint();
             // SetText() marked the file as modified
             // Unmarked it by saving to a dummy file
-            //#if defined(__WXMSW__)
-            //    m_SnippetEditCtrl->SaveFile(wxT("nul"));
-            //#else
-            //    m_SnippetEditCtrl->SaveFile(wxT("/dev/null"));
-            //#endif
+            #if defined(__WXMSW__)
+                m_SnippetEditCtrl->SaveFile(wxT("nul"));
+            #else
+                m_SnippetEditCtrl->SaveFile(wxT("/dev/null"));
+            #endif
             // reset the undo history to avoid undoing to a blank page
             m_SnippetEditCtrl->EmptyUndoBuffer();
         }//if
 
 
         // reset horiz scroll max width
-        //-m_nScrollWidthMax = GetSnippetEditCtrl()->GetLongestLinePixelWidth();
-        //-GetSnippetEditCtrl()->SetScrollWidth(m_nScrollWidthMax);
+        m_nScrollWidthMax = GetSnippetEditCtrl()->GetLongestLinePixelWidth();
+        GetSnippetEditCtrl()->SetScrollWidth(m_nScrollWidthMax);
 
 	}//if
 
 	SetDropTarget(new SnippetDropTarget(this));
+
+    // EVT_CHAR events
+    m_SnippetEditCtrl->Connect(wxEVT_KEY_DOWN,
+                     wxKeyEventHandler(SnippetProperty::OnKeyDownEvent),
+                     0, this);
 
 }//SnippetProperty ctor
 // ----------------------------------------------------------------------------
@@ -170,33 +162,75 @@ SnippetProperty::~SnippetProperty()
 // ----------------------------------------------------------------------------
 {
     //dtor
+    m_SnippetEditCtrl->Disconnect(wxEVT_KEY_DOWN,
+                     wxKeyEventHandler(SnippetProperty::OnKeyDownEvent),
+                     0, this);
+
 }
 // ----------------------------------------------------------------------------
 // edit events
+// ----------------------------------------------------------------------------
+void SnippetProperty::OnKeyDownEvent (wxKeyEvent& event)
+// ----------------------------------------------------------------------------
+{
+    // pass cut/copy/paste/select/undo/redo on to scintilla
+    if ( not event.ControlDown() ) {event.Skip(); return;}
+    if ( event.ShiftDown() ) {event.Skip(); return;}
+
+    wxCommandEvent ev;
+    ev.SetEventType(wxEVT_COMMAND_MENU_SELECTED);
+    switch (event.GetKeyCode() )
+    {
+        case 'X': case 'x':
+            ev.SetId(wxID_CUT); break;
+        case 'C': case 'c':
+            ev.SetId(wxID_COPY); break;
+        case 'V': case 'v':
+            ev.SetId(wxID_PASTE); break;
+        case 'A': case 'a':
+            ev.SetId(wxID_SELECTALL); break;
+        case 'L': case 'l':
+            ev.SetId(myID_SELECTLINE); break;
+        case 'Y': case 'y':
+            ev.SetId(wxID_REDO); break;
+        case 'Z': case 'z':
+            ev.SetId(wxID_UNDO); break;
+
+        default: event.Skip(); return;
+    }
+
+    if (m_SnippetEditCtrl) m_SnippetEditCtrl->ProcessEvent (ev);
+
+}
+
+// ----------------------------------------------------------------------------
+void SnippetProperty::OnEditEvent (wxCommandEvent &event)
+// ----------------------------------------------------------------------------
+{
+     LOGIT( _T("SnippetProperty::OnEditEvent") );
+    if (m_SnippetEditCtrl) m_SnippetEditCtrl->ProcessEvent (event);
+}
 // ----------------------------------------------------------------------------
 //  Dialog events
 // ----------------------------------------------------------------------------
 void SnippetProperty::OnOk(wxCommandEvent& event)
 // ----------------------------------------------------------------------------
 {
-    wxUnusedVar(event);
-
      LOGIT( _T("SnippetProperty::OnOK") );
     // set data to edited snippet
-    m_pSnippetDataItem->SetSnippetString( m_SnippetEditCtrl->GetText() );
+    m_pSnippetDataItem->SetSnippet( m_SnippetEditCtrl->GetText() );
     // label may have been edited
     m_pTreeCtrl->SetItemText( m_TreeItemId, m_ItemLabelTextCtrl->GetValue() );
     if (m_pWaitingSemaphore) m_pWaitingSemaphore->Post();
-    m_retCode = wxID_OK;
+    this->EndModal(wxID_OK);
 }
 // ----------------------------------------------------------------------------
 void SnippetProperty::OnCancel(wxCommandEvent& event)
 // ----------------------------------------------------------------------------
 {
-    wxUnusedVar(event);
-    LOGIT( _T("SnippetProperty::OnCancel") );
+     LOGIT( _T("SnippetProperty::OnCancel") );
     if (m_pWaitingSemaphore) m_pWaitingSemaphore->Post();
-    m_retCode = wxID_CANCEL;
+    this->EndModal(wxID_CANCEL);
 }
 // ----------------------------------------------------------------------------
 void SnippetProperty::OnSnippetButton(wxCommandEvent& event)
@@ -204,7 +238,6 @@ void SnippetProperty::OnSnippetButton(wxCommandEvent& event)
 {
     // Snippet button clicked from OpenAsFile context menu
 
-    wxUnusedVar(event);
     if ( GetActiveMenuId() == idMnuConvertToFileLink )
     {       // let user choose a file to hold snippet
         wxString ChosenFileName = wxFileSelector(wxT("Choose a Link target"));
@@ -216,14 +249,13 @@ void SnippetProperty::OnSnippetButton(wxCommandEvent& event)
     // Snippet button clicked from menubar edit(Menu) or properties context(Mnu)
     if ( ( g_activeMenuId == idMnuProperties ) //note: mnu vs menu
         //-#if defined(__WXMSW__) && !defined(BUILDING_PLUGIN)
-        //-#if !defined(BUILDING_PLUGIN)
-        //-    || ( g_activeMenuId == idMenuProperties)
-        //-#endif
+        #if !defined(BUILDING_PLUGIN)
+            || ( g_activeMenuId == idMenuProperties)
+        #endif
         )
     {
         if ( GetConfig()->SettingsExternalEditor.IsEmpty())
-        {
-            wxMessageBox(wxT("Use Menu/Settings/Options to specify an external editor.") );
+        {   messageBox(wxT("Use Menu/Settings/Options to specify an external editor.") );
             return;
         }
             // let user edit the snippet text
@@ -235,6 +267,7 @@ void SnippetProperty::OnSnippetButton(wxCommandEvent& event)
         else InvokeEditOnSnippetText();
 
     }//fi
+    return;
 }
 // ----------------------------------------------------------------------------
 void SnippetProperty::OnFileSelectButton(wxCommandEvent& event)
@@ -242,11 +275,12 @@ void SnippetProperty::OnFileSelectButton(wxCommandEvent& event)
 {
     // Properties File Select button clicked
 
-    wxUnusedVar(event);
     // let choose a file name to insert into snippet property
     wxString ChosenFileName = wxFileSelector(wxT("Choose a file"));
     if (not ChosenFileName.IsEmpty())
         m_SnippetEditCtrl-> SetText( ChosenFileName );
+    return;
+
 }//OnFileSelectButton
 // ----------------------------------------------------------------------------
 void SnippetProperty::InvokeEditOnSnippetText()
@@ -262,22 +296,15 @@ void SnippetProperty::InvokeEditOnSnippetText()
         wxFile tmpFile( tmpFileName.GetFullPath(), wxFile::write);
         if (not tmpFile.IsOpened() )
         {
-            // Let user know that attempt to edit file failed
-            wxMessageBox(wxT("Open failed for:")+tmpFileName.GetFullPath());
+            //wxMessageBox(wxT("Open failed for:")+tmpFileName.GetFullPath());
+            messageBox(wxT("Open failed for:")+tmpFileName.GetFullPath());
             return ;
         }
-        wxString snippetData( GetSnippetString() );
+        wxString snippetData( GetSnippet() );
         tmpFile.Write( csU2C(snippetData), snippetData.Length());
         tmpFile.Close();
             // Invoke the external editor on the temporary file
             // file name must be surrounded with quotes when using wxExecute
-        wxString externalEditor = GetConfig()->SettingsExternalEditor;
-        if ( externalEditor == _T("Enter filename of external editor") )
-        {
-            wxMessageBox(wxT("No external editor specified.\n Check settings.\n"));
-            return;
-        }
-        //wxString execString = GetConfig()->SettingsExternalEditor + wxT(" \"") + tmpFileName.GetFullPath() + wxT("\"");
         wxString execString = GetConfig()->SettingsExternalEditor + wxT(" \"") + tmpFileName.GetFullPath() + wxT("\"");
 
         #ifdef LOGGING
@@ -289,8 +316,7 @@ void SnippetProperty::InvokeEditOnSnippetText()
             // Read the edited data back into the snippet text
         tmpFile.Open(tmpFileName.GetFullPath(), wxFile::read);
         if (not tmpFile.IsOpened() )
-        {
-            wxMessageBox(wxT("Abort. Error reading temp data file."));
+        {   messageBox(wxT("Abort.Error reading temp data file."));
             return;
         }
         unsigned long fileSize = tmpFile.Length();
@@ -303,7 +329,7 @@ void SnippetProperty::InvokeEditOnSnippetText()
         char pBuf[fileSize+1];
         size_t nResult = tmpFile.Read( pBuf, fileSize );
         if ( wxInvalidOffset == (int)nResult )
-            wxMessageBox(wxT("InvokeEditOnSnippetText()\nError reading temp file"));
+            messageBox(wxT("InvokeEditOnSnippetText()\nError reading temp file"));
         pBuf[fileSize] = 0;
         tmpFile.Close();
 
@@ -352,4 +378,76 @@ void SnippetProperty::InvokeEditOnSnippetFile()
      LOGIT( _T("InvokeEditOnSnippetFile[%s]"), execString.GetData() );
     #endif //LOGGING
     ::wxExecute( execString);
+    return;
 }//InvokeEditOnSnippetFile
+// ----------------------------------------------------------------------------
+void SnippetProperty::OnLeaveWindow(wxMouseEvent& event)
+// ----------------------------------------------------------------------------
+{
+    // If mouse is dragging out of window with a text selection,
+    // create a drag source of the selected text.
+    // -----------------------
+    // LEAVE_WINDOW
+    // -----------------------
+
+    #ifdef LOGGING
+     //LOGIT( _T("SnippetProperty:MOUSE EVT_LEAVE_WINDOW") );
+    #endif //LOGGING
+
+    // Left mouse key must be down (dragging)
+    if (not event.LeftIsDown() ) {event.Skip();return;}
+
+    // check if data is available
+    wxString selectedData = m_SnippetEditCtrl->GetSelectedText();
+    if ( selectedData.IsEmpty()) {event.Skip();return;}
+
+    // we now have data, create both a simple text and filename drop source
+    wxTextDataObject* textData = new wxTextDataObject();
+    wxFileDataObject* fileData = new wxFileDataObject();
+        // fill text and file sources with snippet
+    wxDropSource textSource( *textData, (wxWindow*)event.GetEventObject() );
+    textData->SetText( selectedData );
+    wxDropSource fileSource( *fileData, (wxWindow*)event.GetEventObject() );
+    fileData->AddFile( (selectedData.Len() > 128) ? wxString(wxEmptyString) : selectedData );
+        // set composite data object to contain both text and file data
+    wxDataObjectComposite *data = new wxDataObjectComposite();
+    data->Add( (wxDataObjectSimple*)textData );
+    data->Add( (wxDataObjectSimple*)fileData, true ); // set file data as preferred
+        // create the drop source containing both data types
+    wxDropSource source( *data, (wxWindow*)event.GetEventObject()  );
+
+    #ifdef LOGGING
+     LOGIT( _T("DropSource Text[%s],File[%s]"),
+                textData->GetText().GetData(),
+                fileData->GetFilenames().Item(0).GetData() );
+    #endif //LOGGING
+        // allow both copy and move
+    int flags = 0;
+    flags |= wxDrag_AllowMove;
+    // do the dragNdrop
+    wxDragResult result = source.DoDragDrop(flags);
+    // report the results
+    #if LOGGING
+        wxString pc;
+        switch ( result )
+        {
+            case wxDragError:   pc = _T("Error!");    break;
+            case wxDragNone:    pc = _T("Nothing");   break;
+            case wxDragCopy:    pc = _T("Copied");    break;
+            case wxDragMove:    pc = _T("Moved");     break;
+            case wxDragCancel:  pc = _T("Cancelled"); break;
+            default:            pc = _T("Huh?");      break;
+        }
+        LOGIT( wxT("SnippetProperty::OnLeftDown DoDragDrop returned[%s]"),pc.GetData() );
+    #else
+        wxUnusedVar(result);
+    #endif // wxUSE_STATUSBAR
+
+
+    delete textData; //wxTextDataObject
+    delete fileData; //wxFileDataObject
+
+    event.Skip();
+    return;
+
+}

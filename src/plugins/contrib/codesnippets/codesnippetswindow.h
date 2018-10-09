@@ -15,9 +15,9 @@
 
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
-	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+	Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
-// RCS-ID: $Id$
+// RCS-ID: $Id: codesnippetswindow.h 105 2007-11-16 19:50:44Z Pecan $
 
 #ifndef CODESNIPPETSWINDOW_H
 #define CODESNIPPETSWINDOW_H
@@ -26,7 +26,7 @@
 #include <wx/string.h>
 #include <wx/treectrl.h>
 #include <wx/datetime.h>
-#include "scrollingdialog.h"
+#include <wx/dialog.h>
 
 #include "snippetsconfig.h"
 #include "codesnippetstreectrl.h"
@@ -43,6 +43,7 @@ class CodeSnippetsWindow : public wxPanel
 {
 	// Ugly as hell but this how it needs to be done
 	friend class SnippetsDropTarget;
+	friend class CodeSnippetsAppFrame;
 	friend class CodeSnippets;
 
 	public:
@@ -63,18 +64,14 @@ class CodeSnippetsWindow : public wxPanel
         wxImageList*            GetSnipImageList(){ return GetConfig()->GetSnipImages()->GetSnipImageList();}
 
         bool GetFileChanged( )
-            {return GetSnippetsTreeCtrl() && GetSnippetsTreeCtrl()->GetFileChanged();}
+            {return GetSnippetsTreeCtrl()->GetFileChanged();}
         bool SetFileChanged( bool truefalse )
             {return GetSnippetsTreeCtrl()->SetFileChanged(truefalse);}
 
-        wxString GetSnippetString() { return GetSnippetsTreeCtrl()->GetSnippetString();}
-        wxString GetSnippetString( wxTreeItemId itemId ) { return GetSnippetsTreeCtrl()->GetSnippetString(itemId);}
+        wxString GetSnippet() { return GetSnippetsTreeCtrl()->GetSnippet();}
+        wxString GetSnippet( wxTreeItemId itemId ) { return GetSnippetsTreeCtrl()->GetSnippet(itemId);}
         wxTreeItemId GetAssociatedItemID(){return GetSnippetsTreeCtrl()->GetAssociatedItemID();}
-        void SetAssociatedItemID(wxTreeItemId id){GetSnippetsTreeCtrl()->SetAssociatedItemID(id);}
 
-        bool IsEditingLabel() {return m_bIsEditingLabel;}
-        void IsEditingLabel( bool trueorfalse) { m_bIsEditingLabel = trueorfalse;}
-        bool IsAppendingFile(){return m_AppendItemsFromFile;}
 
 	private:
 		void InitDlg();
@@ -85,10 +82,7 @@ class CodeSnippetsWindow : public wxPanel
         void CheckForExternallyModifiedFiles();
         void ShowSnippetsAbout(wxString buildInfo);
 		wxTreeItemId SearchSnippet(const wxString& searchTerms, const wxTreeItemId& node);
-		bool IsTreeBusy(){
-		    if (not GetSnippetsTreeCtrl()) return true; //debugging
-		    return GetSnippetsTreeCtrl()->IsTreeBusy();
-        }//IsTreeBusy
+		bool IsTreeBusy(){return GetSnippetsTreeCtrl()->IsTreeBusy();}
 
 		wxTextCtrl*             m_SearchSnippetCtrl;
 		wxButton*               m_SearchCfgBtn;
@@ -97,9 +91,7 @@ class CodeSnippetsWindow : public wxPanel
 //-		SearchConfiguration     m_SearchConfig;
 		bool                    m_isCheckingForExternallyModifiedFiles;
         TiXmlDocument*          pTiXmlDoc;
-        bool                    m_bIsEditingLabel;
 
-        //-Utils utils;
 
 		void OnSearchCfg(wxCommandEvent& event);
 		void OnSearch(wxCommandEvent& event);
@@ -131,16 +123,12 @@ class CodeSnippetsWindow : public wxPanel
         void OnMnuSaveSnippetAsFileLink(wxCommandEvent& event);
         void OnMnuSettings(wxCommandEvent& event);
         void OnMnuAbout(wxCommandEvent& event);
-        void OnMnuTest(wxCommandEvent& event);
         void OnShutdown(wxCloseEvent& event);
         void OnMnuCopy(wxCommandEvent& event);
         void OnMnuPaste(wxCommandEvent& event);
         void OnMnuFileBackup(wxCommandEvent& event);
         void OnClose(wxCloseEvent& event); //never occurs
         void OnIdle(wxIdleEvent& event);
-        void OnMnuSearchExtended(wxCommandEvent& event);
-        void OnLeaveWindow (wxMouseEvent &event);
-        void OnEnterWindow (wxMouseEvent &event);
 
 		DECLARE_EVENT_TABLE()
 };

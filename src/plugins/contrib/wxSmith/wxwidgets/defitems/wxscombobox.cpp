@@ -1,5 +1,4 @@
-/** \file wxscombobox.cpp
-*
+/*
 * This file is part of wxSmith plugin for Code::Blocks Studio
 * Copyright (C) 2006-2007  Bartlomiej Swiecki
 *
@@ -24,11 +23,9 @@
 #include <wx/combobox.h>
 #include "wxscombobox.h"
 
-#include <prep.h>
-
 namespace
 {
-    wxsRegisterItem<wxsComboBox> Reg(_T("ComboBox"),wxsTWidget,_T("Standard"),290);
+    wxsRegisterItem<wxsComboBox> Reg(_T("ComboBox"),wxsTWidget,_T("Standard"),70);
 
 
     WXS_ST_BEGIN(wxsComboBoxStyles,_T(""))
@@ -37,15 +34,12 @@ namespace
         WXS_ST(wxCB_SORT)
         WXS_ST(wxCB_READONLY)
         WXS_ST(wxCB_DROPDOWN)
-        WXS_ST(wxTE_PROCESS_ENTER)
         WXS_ST_DEFAULTS()
     WXS_ST_END()
 
     WXS_EV_BEGIN(wxsComboBoxEvents)
-        WXS_EVI(EVT_COMBOBOX,wxEVT_COMMAND_COMBOBOX_SELECTED,wxCommandEvent,Selected)
-        WXS_EVI(EVT_COMBOBOX_DROPDOWN,wxEVT_COMMAND_COMBOBOX_DROPDOWN,wxCommandEvent,Dropdown)  // added in 3.0
-        WXS_EVI(EVT_COMBOBOX_CLOSEUP,wxEVT_COMMAND_COMBOBOX_CLOSEUP,wxCommandEvent,CloseUp)     // added in 3.0
-        WXS_EVI(EVT_TEXT,wxEVT_COMMAND_TEXT_UPDATED,wxCommandEvent,TextUpdated)
+        WXS_EVI(EVT_COMBOBOX,wxEVT_COMMAND_COMBOBOX_SELECTED,wxCommandEvent,Select)
+        WXS_EVI(EVT_TEXT,wxEVT_COMMAND_TEXT_UPDATED,wxCommandEvent,Text)
         WXS_EVI(EVT_TEXT_ENTER,wxEVT_COMMAND_TEXT_ENTER,wxCommandEvent,TextEnter)
     WXS_EV_END()
 }
@@ -74,7 +68,7 @@ void wxsComboBox::OnBuildCreatingCode()
                 {
                     Codef(_T("%ASetSelection( "));;
                 }
-                Codef( _T("%AAppend(%t)"), ArrayChoices[i].wx_str());
+                Codef( _T("%AAppend(%t)"), ArrayChoices[i].c_str());
                 if ( DefaultSelection == (int)i )
                 {
                     Codef(_T(" )"));
@@ -86,7 +80,6 @@ void wxsComboBox::OnBuildCreatingCode()
             return;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsComboBox::OnBuildCreatingCode"),GetLanguage());
@@ -110,7 +103,7 @@ wxObject* wxsComboBox::OnBuildPreview(wxWindow* Parent,long Flags)
     return SetupWindow(Preview,Flags);
 }
 
-void wxsComboBox::OnEnumWidgetProperties(cb_unused long Flags)
+void wxsComboBox::OnEnumWidgetProperties(long Flags)
 {
     WXS_ARRAYSTRING(wxsComboBox,ArrayChoices,_("Choices"),_T("content"),_T("item"))
     WXS_LONG(wxsComboBox,DefaultSelection,_("Selection"),_T("selection"),-1)

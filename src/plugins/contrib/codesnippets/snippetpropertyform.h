@@ -14,9 +14,9 @@
 
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
-	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+	Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
-// RCS-ID: $Id$
+// RCS-ID: $Id: snippetpropertyform.h 21 2007-03-28 19:13:13Z Pecan $
 
 #ifndef SNIPPETPROPERTYFORM_H
 #define SNIPPETPROPERTYFORM_H
@@ -42,8 +42,7 @@
 #endif
 
 #include <wx/button.h>
-#include "scrollingdialog.h"
-//-#include "edit.h"
+#include "edit.h"
 
 ///////////////////////////////////////////////////////////////////////////
 
@@ -51,22 +50,20 @@
 #define ID_FILESELECTBUTTON 1000
 #define ID_SNIPPETBUTTON 1001
 
-class wxScintilla;
 /**
  * Class SnippetPropertyForm
  */
-class SnippetPropertyForm : public wxScrollingDialog
+class SnippetPropertyForm : public wxDialog
 {
-    friend class CodeSnippetsTreeCtrl;
 	private:
 
 	protected:
-		wxStaticText*   m_ItemLabelStaticText;
-		wxTextCtrl*     m_ItemLabelTextCtrl;
-		wxStaticText*   m_SnippetStaticText;
-		wxScintilla*    m_SnippetEditCtrl;
-		wxButton*       m_SnippetButton;
-		wxButton*       m_FileSelectButton;
+		wxStaticText* m_ItemLabelStaticText;
+		wxTextCtrl* m_ItemLabelTextCtrl;
+		wxStaticText* m_SnippetStaticText;
+		Edit*         m_SnippetEditCtrl;
+		wxButton* m_SnippetButton;
+		wxButton* m_FileSelectButton;
 		wxStdDialogButtonSizer* m_sdbSizer1;
 
 	public:

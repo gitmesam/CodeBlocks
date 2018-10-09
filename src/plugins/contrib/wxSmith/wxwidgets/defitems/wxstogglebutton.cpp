@@ -26,7 +26,7 @@
 
 namespace
 {
-    wxsRegisterItem<wxsToggleButton> Reg(_T("ToggleButton"),wxsTWidget,_T("Standard"),30);
+    wxsRegisterItem<wxsToggleButton> Reg(_T("ToggleButton"),wxsTWidget,_T("Standard"),50);
 
     WXS_ST_BEGIN(wxsToggleButtonStyles,_T(""))
         WXS_ST_CATEGORY("wxToggleButton")
@@ -57,13 +57,12 @@ void wxsToggleButton::OnBuildCreatingCode()
         case wxsCPP:
         {
             AddHeader(_T("<wx/tglbtn.h>"),GetInfo().ClassName,0);
-            Codef(_T("%C(%W, %I, %t, %P, %S, %T, %V, %N);\n"),Label.wx_str());
+            Codef(_T("%C(%W, %I, %t, %P, %S, %T, %V, %N);\n"),Label.c_str());
             if ( IsChecked ) Codef(_T("%ASetValue(%b);\n"),true);
             BuildSetupWindowCode();
             return;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsToggleButton::OnBuildCreatingCode"),GetLanguage());
@@ -78,7 +77,7 @@ wxObject* wxsToggleButton::OnBuildPreview(wxWindow* Parent,long Flags)
     return SetupWindow(Preview,Flags);
 }
 
-void wxsToggleButton::OnEnumWidgetProperties(cb_unused long Flags)
+void wxsToggleButton::OnEnumWidgetProperties(long Flags)
 {
     WXS_STRING(wxsToggleButton,Label,_("Label"),_T("label"),_T(""),false)
     WXS_BOOL(wxsToggleButton,IsChecked,_("Is checked"),_T("checked"),false)

@@ -42,7 +42,7 @@ static SQInteger getInstanceVarInfo(StackHandler & sa,VarRefPtr & vr,SQUserPoint
     SQUserPointer typetag; instance.GetTypeTag(&typetag);
     if (typetag != vr->instanceType) {
       SquirrelObject typeTable = instance.GetValue(SQ_CLASS_OBJECT_TABLE_NAME);
-      up = (unsigned char *)typeTable.GetUserPointer(INT_T((size_t)vr->instanceType)); // <TODO> 64-bit compatible version.
+      up = (unsigned char *)typeTable.GetUserPointer(INT((size_t)vr->instanceType)); // <TODO> 64-bit compatible version.
       if (!up) {
         throw SquirrelError(sqT("Invalid Instance Type"));
       } // if
@@ -64,20 +64,20 @@ static SQInteger setVar(StackHandler & sa,VarRef * vr,void * data) {
   if (vr->access & (VAR_ACCESS_READ_ONLY|VAR_ACCESS_CONSTANT)) {
     ScriptStringVar256 msg;
     const SQChar * el = sa.GetString(2);
-    SCSNPRINTF(msg.s,sizeof(msg.s),sqT("setVar(): Cannot write to constant: %s"),el);
+    SCSNPRINTF(msg.s,sizeof(msg),sqT("setVar(): Cannot write to constant: %s"),el);
     throw SquirrelError(msg.s);
   } // if
   switch (vr->type) {
-  case TypeInfo<INT_T>::TypeID: {
-    INT_T * val = (INT_T *)data; // Address
+  case TypeInfo<INT>::TypeID: {
+    INT * val = (INT *)data; // Address
     if (val) {
       *val = sa.GetInt(3);
       return sa.Return(*val);
     } // if
     break;
   } // case
-  case TypeInfo<FLOAT_T>::TypeID: {
-    FLOAT_T * val = (FLOAT_T *)data; // Address
+  case TypeInfo<FLOAT>::TypeID: {
+    FLOAT * val = (FLOAT *)data; // Address
     if (val) {
       *val = sa.GetFloat(3);
       return sa.Return(*val);
@@ -114,7 +114,7 @@ static SQInteger setVar(StackHandler & sa,VarRef * vr,void * data) {
   case TypeInfo<SQUserPointer>::TypeID: {
     ScriptStringVar256 msg;
     const SQChar * el = sa.GetString(2);
-    SCSNPRINTF(msg.s,sizeof(msg.s),sqT("setVar(): Cannot write to an SQUserPointer: %s"),el);
+    SCSNPRINTF(msg.s,sizeof(msg),sqT("setVar(): Cannot write to an SQUserPointer: %s"),el);
     throw SquirrelError(msg.s);
   } // case
   case TypeInfo<ScriptStringVarBase>::TypeID: {
@@ -136,26 +136,26 @@ static SQInteger setVar(StackHandler & sa,VarRef * vr,void * data) {
 
 static SQInteger getVar(StackHandler & sa,VarRef * vr,void * data) {
   switch (vr->type) {
-  case TypeInfo<INT_T>::TypeID: {
+  case TypeInfo<INT>::TypeID: {
     if (!(vr->access & VAR_ACCESS_CONSTANT)) {
-      INT_T * val = (INT_T *)data; // Address
+      INT * val = (INT *)data; // Address
       if (val) {
         return sa.Return(*val);
       } // if
     } else {
-      INT_T * val = (INT_T *)&data; // Constant value
+      INT * val = (INT *)&data; // Constant value
       return sa.Return(*val);
     } // if
     break;
   } // case
-  case TypeInfo<FLOAT_T>::TypeID: {
+  case TypeInfo<FLOAT>::TypeID: {
     if (!(vr->access & VAR_ACCESS_CONSTANT)) {
-      FLOAT_T * val = (FLOAT_T *)data; // Address
+      FLOAT * val = (FLOAT *)data; // Address
       if (val) {
         return sa.Return(*val);
       } // if
     } else {
-      FLOAT_T * val = (FLOAT_T *)&data; // Constant value
+      FLOAT * val = (FLOAT *)&data; // Constant value
       return sa.Return(*val);
     } // if
     break;
@@ -175,7 +175,7 @@ static SQInteger getVar(StackHandler & sa,VarRef * vr,void * data) {
   case VAR_TYPE_INSTANCE:
     if (!CreateNativeClassInstance(sa.GetVMPtr(),vr->typeName,data,0)) { // data = address. Allocates memory.
       ScriptStringVar256 msg;
-      SCSNPRINTF(msg.s,sizeof(msg.s),sqT("getVar(): Could not create instance: %s"),vr->typeName);
+      SCSNPRINTF(msg.s,sizeof(msg),sqT("getVar(): Could not create instance: %s"),vr->typeName);
       throw SquirrelError(msg.s);
     } // if
     return 1;
@@ -259,7 +259,7 @@ SQInteger getInstanceVarFunc(HSQUIRRELVM v) {
 
 // === Classes ===
 
-BOOL_T CreateClass(HSQUIRRELVM v,SquirrelObject & newClass,SQUserPointer classType,const SQChar * name,const SQChar * baseName) {
+BOOL CreateClass(HSQUIRRELVM v,SquirrelObject & newClass,SQUserPointer classType,const SQChar * name,const SQChar * baseName) {
   // C::B patch: Comment out unused variable
   //SQInteger n = 0;
   SQInteger oldtop = sq_gettop(v);

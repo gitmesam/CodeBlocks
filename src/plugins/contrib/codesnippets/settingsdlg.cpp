@@ -14,7 +14,7 @@
 
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
-	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+	Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 // ----------------------------------------------------------------------------
@@ -29,8 +29,6 @@
 #include <wx/textctrl.h>
 #include <wx/filedlg.h>
 #include <wx/dirdlg.h>
-
-#include "configmanager.h"
 
 #include "codesnippetswindow.h"
 #include "snippetsconfig.h"
@@ -65,22 +63,20 @@ SettingsDlg::SettingsDlg(wxWindow* parent)
 	// Put the old Snippet XML folder into the textCtrl
     if ( not GetConfig()->SettingsSnippetsFolder.IsEmpty() )
         m_SnippetFileTextCtrl-> SetValue( GetConfig()->SettingsSnippetsFolder );
-
-    // Put the old ToolTip options
-    m_ToolTipsChkBox->SetValue( GetConfig()->GetToolTipsOption() );
-
     // Read Mouse DragScrolling settings
-    wxString windowState = GetConfig()->GetSettingsWindowState();
-////    if ( windowState.Contains(wxT("Floating")) ) {m_RadioFloatBtn->SetValue(true);}
-////    if ( windowState.Contains(wxT("Docked")) ) {  m_RadioDockBtn->SetValue(true);}
-////    //-if ( windowState.Contains(wxT("External")) ) {m_RadioExternalBtn->SetValue(true);}
 
-    // Show info for CB CfgFolder and CodeSnippets .ini folder
-    // CB Manager::GetConfigFolder() LIES. Esp. when the default.conf is in
-    // the executable directory.
-    //ConfigManager* cfg = Manager::Get()->GetConfigManager(_T("app"));
-    m_CfgFolderTextCtrl->SetValue( GetConfig()->SettingsCBConfigPath );
-    m_IniFolderTextCtrl->SetValue( GetConfig()->SettingsSnippetsCfgPath );
+    // "Adaptive Mouse Speed Sensitivity"
+    m_MouseSpeedSlider->SetValue(GetConfig()->MouseDragSensitivity );
+    // "Mouse Movement to Scroll Ratio"
+    m_MouseScrollSlider->SetValue( GetConfig()->MouseToLineRatio );
+    // "Context Menu Delay (millisec)"
+    m_MouseDelaylider->SetValue( GetConfig()->MouseContextDelay );
+
+    wxString windowState = GetConfig()->GetSettingsWindowState();
+    if ( windowState.Contains(wxT("Floating")) ) {m_RadioFloatBtn->SetValue(true);}
+    if ( windowState.Contains(wxT("Docked")) ) {  m_RadioDockBtn->SetValue(true);}
+    if ( windowState.Contains(wxT("External")) ) {m_RadioExternalBtn->SetValue(true);}
+
 }
 // ----------------------------------------------------------------------------
 SettingsDlg::~SettingsDlg()
@@ -92,18 +88,30 @@ SettingsDlg::~SettingsDlg()
 void SettingsDlg::OnOk(wxCommandEvent& event)
 // ----------------------------------------------------------------------------
 {
-    wxUnusedVar(event);
+    wxString filename = m_ExtEditorTextCtrl->GetValue();
+    if ( not filename.IsEmpty() )
+        GetConfig()->SettingsExternalEditor = filename;
+    else
+        GetConfig()->SettingsExternalEditor = wxEmptyString;
 
-    GetConfig()->SettingsExternalEditor = m_ExtEditorTextCtrl->GetValue();
-    GetConfig()->SettingsSnippetsFolder = m_SnippetFileTextCtrl->GetValue();
+    filename = m_SnippetFileTextCtrl->GetValue();
+    if ( not filename.IsEmpty() )
+        GetConfig()->SettingsSnippetsFolder = filename;
+    else
+        GetConfig()->SettingsSnippetsFolder = wxEmptyString;
 
-    // Get the ToolTips options
-    GetConfig()->SetToolTipsOption( m_ToolTipsChkBox->GetValue() );
+    // "Adaptive Mouse Speed Sensitivity"
+    GetConfig()->MouseDragSensitivity = m_MouseSpeedSlider->GetValue();
+    // "Mouse Movement to Scroll Ratio"
+    GetConfig()->MouseToLineRatio = m_MouseScrollSlider->GetValue();
+    // "Context Menu Delay (millisec)"
+    GetConfig()->MouseContextDelay = m_MouseDelaylider->GetValue();
 
     wxString windowState = wxT("Floating");
-////    if (m_RadioFloatBtn->GetValue() )   windowState = wxT("Floating");
-////    if (m_RadioDockBtn->GetValue() )    windowState = wxT("Docked");
-    GetConfig()->SetSettingsWindowState( windowState) ;
+    if (m_RadioFloatBtn->GetValue() )   windowState = wxT("Floating");
+    if (m_RadioDockBtn->GetValue() )    windowState = wxT("Docked");
+    if (m_RadioExternalBtn->GetValue()) windowState = wxT("External");
+    GetConfig()->SettingsWindowState = windowState;
 
     this->EndModal(wxID_OK);
     LOGIT( _T("OnOK Saving Settings"));
@@ -114,8 +122,6 @@ void SettingsDlg::OnExtEditorButton(wxCommandEvent& event)
 // ----------------------------------------------------------------------------
 {
     // Ask user for filename of editor program
-
-     wxUnusedVar(event);
     wxString newFileName;
     GetFileName(newFileName);
 
@@ -127,8 +133,6 @@ void SettingsDlg::OnSnippetFolderButton(wxCommandEvent& event)
 // ----------------------------------------------------------------------------
 {
     // Ask user for folder to store external snippets
-
-    wxUnusedVar(event);
     wxString newFolderName;
     newFolderName = AskForPathName();
 
@@ -142,16 +146,16 @@ void SettingsDlg::GetFileName(wxString& newFileName)
     newFileName = wxEmptyString;
 
     // Ask user for filename
-    wxFileDialog dlg(this,                           //parent  window
-                 _T("Select file "),                 //message
-                 wxEmptyString,                      //default directory
-                 wxEmptyString,                      //default file
-                 wxT("*.*"),                         //wildcards
-                 wxFD_OPEN | wxFD_FILE_MUST_EXIST ); //style
+    wxFileDialog dlg(this,                      //parent  window
+                 _T("Select file "),             //message
+                 wxEmptyString,                 //default directory
+                 wxEmptyString,                 //default file
+                 wxT("*.*"),                    //wildcards
+                 wxOPEN | wxFILE_MUST_EXIST );  //style
 
    // move dialog into the parents frame space
     wxPoint mousePosn = ::wxGetMousePosition();
-    dlg.Move(mousePosn.x, mousePosn.y);
+    (&dlg)->Move(mousePosn.x, mousePosn.y);
 
     if (dlg.ShowModal() != wxID_OK) return;
     newFileName = dlg.GetPath();
@@ -165,6 +169,8 @@ void SettingsDlg::GetFileName(wxString& newFileName)
 wxString SettingsDlg::AskForPathName()       //(pecan 2006/10/06)
 // ----------------------------------------------------------------------------
 {
+    wxString newPathName = wxEmptyString;
+
     // Ask user for filename
     wxDirDialog dlg(::wxGetTopLevelParent(0),   //parent  window
                  _T("Select path "),             //message
@@ -173,10 +179,10 @@ wxString SettingsDlg::AskForPathName()       //(pecan 2006/10/06)
 
    // move dialog into the parents frame space
     wxPoint mousePosn = ::wxGetMousePosition();
-    dlg.Move(mousePosn.x, mousePosn.y);
+    (&dlg)->Move(mousePosn.x, mousePosn.y);
 
     if (dlg.ShowModal() != wxID_OK) return wxEmptyString;
-    return dlg.GetPath();
+    return newPathName = dlg.GetPath();
 }
 // ----------------------------------------------------------------------------
 

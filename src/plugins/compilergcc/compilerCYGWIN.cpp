@@ -7,16 +7,16 @@
  * $HeadURL$
  */
 
+#ifdef __WXMSW__
+// this compiler is valid only in windows
+
 #include "compilerCYGWIN.h"
 #include <wx/filefn.h>
-#ifdef __WXMSW__
-    #include <wx/msw/registry.h>
-#endif // __WXMSW__
+#include <wx/msw/registry.h>
 
 CompilerCYGWIN::CompilerCYGWIN()
     : CompilerMINGW(_("Cygwin GCC"), _T("cygwin"))
 {
-    m_Weight = 32;
     Reset();
 }
 
@@ -26,60 +26,47 @@ CompilerCYGWIN::~CompilerCYGWIN()
 
 Compiler * CompilerCYGWIN::CreateCopy()
 {
-    return (new CompilerCYGWIN(*this));
+    Compiler* c = new CompilerCYGWIN(*this);
+    c->SetExtraPaths(m_ExtraPaths); // wxArrayString doesn't seem to be copied with the default copy ctor...
+    return c;
+}
+
+void CompilerCYGWIN::Reset()
+{
+    CompilerMINGW::Reset();
+
+	m_Programs.C = _T("gcc.exe");
+	m_Programs.CPP = _T("g++.exe");
+	m_Programs.LD = _T("g++.exe");
+	m_Programs.DBG = _T("gdb.exe");
+	m_Programs.LIB = _T("ar.exe");
+	m_Programs.WINDRES = _T("windres.exe");
+	m_Programs.MAKE = _T("make.exe");
+
+    m_Switches.forceFwdSlashes = true;
+
+	m_Options.AddOption(_("Do not use cygwin specific functionality"), _T("-mno-cygwin"), _("General"));
 }
 
 AutoDetectResult CompilerCYGWIN::AutoDetectInstallationDir()
 {
-    AutoDetectResult ret = adrGuessed;
     m_MasterPath = _T("C:\\Cygwin"); // just a guess
-    wxString tempMasterPath(m_MasterPath);
-    bool validInstallationDir = false;
 
     // look in registry for Cygwin
 
-#ifdef __WXMSW__
     wxRegKey key; // defaults to HKCR
-    key.SetName(_T("HKEY_LOCAL_MACHINE\\Software\\Cygwin\\setup"));
+    key.SetName(_T("HKEY_LOCAL_MACHINE\\Software\\Cygnus Solutions\\Cygwin\\mounts v2\\/"));
     if (key.Exists() && key.Open(wxRegKey::Read))
     {
-        // found CygWin version 1.7 or newer; read it
-        key.QueryValue(_T("rootdir"), tempMasterPath);
-        if (wxDirExists(tempMasterPath + wxFILE_SEP_PATH + _T("bin")))
-                validInstallationDir = true;
+        // found; read it
+        key.QueryValue(_T("native"), m_MasterPath);
     }
-    if (!validInstallationDir)
-    {
-        key.SetName(_T("HKEY_LOCAL_MACHINE\\Software\\Cygnus Solutions\\Cygwin\\mounts v2\\/"));
-        if (key.Exists() && key.Open(wxRegKey::Read))
-        {
-            // found CygWin version 1.5 or older; read it
-            key.QueryValue(_T("native"), tempMasterPath);
-            if ( wxDirExists(tempMasterPath + wxFILE_SEP_PATH + _T("bin")) )
-                validInstallationDir = true;
-        }
-    }
-#endif // __WXMSW__
-
-    if (!validInstallationDir)
-        return ret;
-
-    wxString cProgramDir = tempMasterPath + wxFILE_SEP_PATH + _T("bin") + wxFILE_SEP_PATH;
-    wxString cProgramFullname = cProgramDir + m_Programs.C;
-    if ( !wxFileExists(cProgramFullname) )
-        return ret;
-
-    wxFile pfFile(cProgramFullname);
-    if ( !pfFile.IsOpened() )
-       return ret;
-
-    char buffer[10] = {0};
-    pfFile.Read(buffer,10);
-    if (memcmp("!<symlink>", buffer, 10) != 0)
-    {
-        m_MasterPath = tempMasterPath;
-        ret = adrDetected;
-    }
-
+    AutoDetectResult ret = wxFileExists(m_MasterPath + wxFILE_SEP_PATH +
+                                        _T("bin") + wxFILE_SEP_PATH +
+                                        m_Programs.C)
+                            ? adrDetected
+                            : adrGuessed;
     return ret;
 }
+
+#endif // __WXMSW__

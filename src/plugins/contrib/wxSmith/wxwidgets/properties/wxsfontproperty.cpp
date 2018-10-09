@@ -32,22 +32,6 @@
 
 using namespace wxsFlags;
 
-namespace
-{
-    wxString wxsDoubleToString( double value )
-    {
-        // Because GCC uses locale settings to determine
-        // whether to use dot or comma as floating point separator
-        // we can not use standard printf-like methods because
-        // the code becomes non cross-platform
-
-        wxString res;
-        res.Printf( _T("%f"), value );
-        res.Replace( _T(","), _T(".") );
-        return res;
-    }
-}
-
 wxFont wxsFontData::BuildFont()
 {
     if ( IsDefault )
@@ -58,7 +42,11 @@ wxFont wxsFontData::BuildFont()
     wxString Face;
     wxFontEnumerator Enumer;
     Enumer.EnumerateFacenames();
-    wxArrayString faceNames = Enumer.GetFacenames();
+    #if wxCHECK_VERSION(2, 8, 0)
+        wxArrayString faceNames = Enumer.GetFacenames();
+    #else
+        wxArrayString& faceNames = *Enumer.GetFacenames();
+    #endif
     size_t Count = Faces.Count();
     for ( size_t i = 0; i<Count; i++ )
     {
@@ -76,14 +64,13 @@ wxFont wxsFontData::BuildFont()
     if ( !SysFont.empty() && HasSysFont )
     {
         wxFont Base;
-        if      ( SysFont == _T("wxSYS_OEM_FIXED_FONT") )      Base = wxSystemSettings::GetFont(wxSYS_OEM_FIXED_FONT);
-        else if ( SysFont == _T("wxSYS_ANSI_FIXED_FONT") )     Base = wxSystemSettings::GetFont(wxSYS_ANSI_FIXED_FONT);
-        else if ( SysFont == _T("wxSYS_ANSI_VAR_FONT") )       Base = wxSystemSettings::GetFont(wxSYS_ANSI_VAR_FONT);
-        else if ( SysFont == _T("wxSYS_SYSTEM_FONT") )         Base = wxSystemSettings::GetFont(wxSYS_SYSTEM_FONT);
-        else if ( SysFont == _T("wxSYS_DEVICE_DEFAULT_FONT") ) Base = wxSystemSettings::GetFont(wxSYS_DEVICE_DEFAULT_FONT);
-        else if ( SysFont == _T("wxSYS_DEFAULT_GUI_FONT") )    Base = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
-
-        if ( !Base.Ok() )                                      Base = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
+        if ( SysFont == _T("wxSYS_OEM_FIXED_FONT") ) Base = wxSystemSettings::GetFont(wxSYS_OEM_FIXED_FONT);
+        if ( SysFont == _T("wxSYS_ANSI_FIXED_FONT") ) Base = wxSystemSettings::GetFont(wxSYS_ANSI_FIXED_FONT);
+        if ( SysFont == _T("wxSYS_ANSI_VAR_FONT") ) Base = wxSystemSettings::GetFont(wxSYS_ANSI_VAR_FONT);
+        if ( SysFont == _T("wxSYS_SYSTEM_FONT") ) Base = wxSystemSettings::GetFont(wxSYS_SYSTEM_FONT);
+        if ( SysFont == _T("wxSYS_DEVICE_DEFAULT_FONT") ) Base = wxSystemSettings::GetFont(wxSYS_DEVICE_DEFAULT_FONT);
+        if ( SysFont == _T("wxSYS_DEFAULT_GUI_FONT") ) Base = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
+        if ( !Base.Ok() ) Base = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
 
         if ( HasSize ) Base.SetPointSize(Size);
         else if ( HasRelativeSize ) Base.SetPointSize((int)(Base.GetPointSize() * RelativeSize));
@@ -97,11 +84,10 @@ wxFont wxsFontData::BuildFont()
     }
 
     return wxFont(
-        // TODO (mortenmacfly#1#): wxDEFAULT looks like a bug to me: wxDEFAULT is 70, Size should be e.g. 8..12
         HasSize ? Size : wxDEFAULT,
-        HasFamily ? Family : wxFONTFAMILY_DEFAULT,
-        HasStyle ? Style : wxFONTSTYLE_NORMAL,
-        HasWeight ? Weight : wxFONTWEIGHT_NORMAL,
+        HasFamily ? Family : wxDEFAULT,
+        HasStyle ? Style : wxNORMAL,
+        HasWeight ? Weight : wxNORMAL,
         HasUnderlined ? Underlined : false,
         Face,
         HasEncoding ? Enc : wxFONTENCODING_DEFAULT);
@@ -179,21 +165,21 @@ wxString wxsFontData::BuildFontCode(const wxString& FontName,wxsCoderContext* Co
                 wxString EncodingVar = FontName + _T("Encoding");
                 Code << _T("wxFontEncoding ") << EncodingVar
                      << _T(" = wxFontMapper::Get()->CharsetToEncoding(")
-                     << wxsCodeMarks::WxString(wxsCPP,Encoding,false) << _T(",false);\n");
+                     << wxsCodeMarks::WxString(wxsCPP,Encoding) << _T(",false);\n");
                 Code << _T("if ( ") << EncodingVar << _T(" == wxFONTENCODING_SYSTEM ) ");
                 Code << EncodingVar << _T(" = wxFONTENCODING_DEFAULT;\n");
                 EncodingStr = EncodingVar;
             }
 
-            wxString FamilyStr = _T("wxFONTFAMILY_DEFAULT");
+            wxString FamilyStr = _T("wxDEFAULT");
             if ( HasFamily )
             {
-                if ( Family == wxFONTFAMILY_DECORATIVE ) FamilyStr = _T("wxFONTFAMILY_DECORATIVE"); else
-                if ( Family == wxFONTFAMILY_ROMAN      ) FamilyStr = _T("wxFONTFAMILY_ROMAN");      else
-                if ( Family == wxFONTFAMILY_SCRIPT     ) FamilyStr = _T("wxFONTFAMILY_SCRIPT");     else
-                if ( Family == wxFONTFAMILY_SWISS      ) FamilyStr = _T("wxFONTFAMILY_SWISS");      else
-                if ( Family == wxFONTFAMILY_MODERN     ) FamilyStr = _T("wxFONTFAMILY_MODERN");     else
-                if ( Family == wxFONTFAMILY_TELETYPE   ) FamilyStr = _T("wxFONTFAMILY_TELETYPE");
+                if ( Family == wxDECORATIVE ) FamilyStr = _T("wxDECORATIVE"); else
+                if ( Family == wxROMAN      ) FamilyStr = _T("wxROMAN");      else
+                if ( Family == wxSCRIPT     ) FamilyStr = _T("wxSCRIPT");     else
+                if ( Family == wxSWISS      ) FamilyStr = _T("wxSWISS");      else
+                if ( Family == wxMODERN     ) FamilyStr = _T("wxMODERN");     else
+                if ( Family == wxTELETYPE   ) FamilyStr = _T("wxTELETYPE");
             }
 
             wxString StyleStr = _T("wxFONTSTYLE_NORMAL");
@@ -203,11 +189,11 @@ wxString wxsFontData::BuildFontCode(const wxString& FontName,wxsCoderContext* Co
                 if ( Style == wxFONTSTYLE_SLANT  ) StyleStr = _T("wxFONTSTYLE_SLANT" );
             }
 
-            wxString WeightStr = _T("wxFONTWEIGHT_NORMAL");
+            wxString WeightStr = _T("wxNORMAL");
             if ( HasWeight )
             {
-                if ( Weight == wxFONTWEIGHT_BOLD  ) WeightStr = _T("wxFONTWEIGHT_BOLD");  else
-                if ( Weight == wxFONTWEIGHT_LIGHT ) WeightStr = _T("wxFONTWEIGHT_LIGHT");
+                if ( Weight == wxBOLD  ) WeightStr = _T("wxBOLD");  else
+                if ( Weight == wxLIGHT ) WeightStr = _T("wxLIGHT");
             }
 
             if ( !SysFont.empty() && HasSysFont )
@@ -221,7 +207,7 @@ wxString wxsFontData::BuildFontCode(const wxString& FontName,wxsCoderContext* Co
                 {
                     Code << FontName
                          << _T(".SetPointSize(")
-                         << wxString::Format(_T("%ld"),Size)
+                         << wxString::Format(_T("%d"),Size)
                          << _T(");\n");
                 }
                 else if ( HasRelativeSize )
@@ -230,7 +216,7 @@ wxString wxsFontData::BuildFontCode(const wxString& FontName,wxsCoderContext* Co
                          << _T(".SetPointSize((int)(")
                          << FontName
                          << _T(".GetPointSize() * ")
-                         << wxsDoubleToString(RelativeSize)
+                         << wxString::Format(_T("%f"),RelativeSize)
                          << _T("));\n");
                 }
                 if ( HasStyle )
@@ -262,7 +248,7 @@ wxString wxsFontData::BuildFontCode(const wxString& FontName,wxsCoderContext* Co
             }
 
             Code << _T("wxFont ") << FontName << _T("(")
-                 << (HasSize ? wxString::Format(_T("%ld,"),Size) : _T("wxDEFAULT,"))
+                 << (HasSize ? wxString::Format(_T("%d,"),Size) : _T("wxDEFAULT,"))
                  << FamilyStr << _T(",")
                  << StyleStr << _T(",")
                  << WeightStr << _T(",")
@@ -273,8 +259,6 @@ wxString wxsFontData::BuildFontCode(const wxString& FontName,wxsCoderContext* Co
             return Code;
         }
 
-
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsFontData::BuildFontCode"),Context->m_Language);
@@ -297,16 +281,6 @@ bool wxsFontProperty::ShowEditor(wxsPropertyContainer* Object)
     return Dlg.ShowModal() == wxID_OK;
 }
 
-wxString wxsFontProperty::GetStr(wxsPropertyContainer* Object)
-{
-    wxFont fnt = VALUE.BuildFont();
-    wxString res = wxEmptyString;
-    if (fnt.IsOk())
-        res = fnt.GetNativeFontInfoUserDesc();
-    return res.IsEmpty()?wxsCustomEditorProperty::GetStr(Object):res;
-}
-
-
 bool wxsFontProperty::XmlRead(wxsPropertyContainer* Object,TiXmlElement* Element)
 {
     if ( !Element )
@@ -327,40 +301,40 @@ bool wxsFontProperty::XmlRead(wxsPropertyContainer* Object,TiXmlElement* Element
     wxString Val;
 
     // Fetching size
-    if ( (VALUE.HasSize = XmlGetString(Element,Val,_T("size")) ))
+    if ( VALUE.HasSize = XmlGetString(Element,Val,_T("size")) )
     {
         Val.ToLong(&VALUE.Size);
     }
 
-    if ( (VALUE.HasStyle = XmlGetString(Element,Val,_T("style")) ))
+    if ( VALUE.HasStyle = XmlGetString(Element,Val,_T("style")) )
     {
         if ( Val == _T("italic") ) VALUE.Style = wxFONTSTYLE_ITALIC; else
         if ( Val == _T("slant") )  VALUE.Style = wxFONTSTYLE_SLANT;  else
                                    VALUE.Style = wxFONTSTYLE_NORMAL;
     }
 
-    if ( (VALUE.HasWeight = XmlGetString(Element,Val,_T("weight")) ))
+    if ( VALUE.HasWeight = XmlGetString(Element,Val,_T("weight")) )
     {
-        if ( Val == _T("bold") )  VALUE.Weight = wxFONTWEIGHT_BOLD;   else
-        if ( Val == _T("light") ) VALUE.Weight = wxFONTWEIGHT_LIGHT;  else
-                                  VALUE.Weight = wxFONTWEIGHT_NORMAL;
+        if ( Val == _T("bold") )  VALUE.Weight = wxBOLD;   else
+        if ( Val == _T("light") ) VALUE.Weight = wxLIGHT;  else
+                                  VALUE.Weight = wxNORMAL;
     }
 
-    if ( (VALUE.HasUnderlined = XmlGetString(Element,Val,_T("underlined")) ))
+    if ( VALUE.HasUnderlined = XmlGetString(Element,Val,_T("underlined")) )
     {
         if ( Val == _T("1" ) ) VALUE.Underlined = true;
         else                   VALUE.Underlined = false;
     }
 
-    if ( (VALUE.HasFamily = XmlGetString(Element,Val,_T("family")) ))
+    if ( VALUE.HasFamily = XmlGetString(Element,Val,_T("family")) )
     {
-        if ( Val == _T("decorative") ) VALUE.Family = wxFONTFAMILY_DECORATIVE; else
-        if ( Val == _T("roman") )      VALUE.Family = wxFONTFAMILY_ROMAN;      else
-        if ( Val == _T("script") )     VALUE.Family = wxFONTFAMILY_SCRIPT;     else
-        if ( Val == _T("swiss") )      VALUE.Family = wxFONTFAMILY_SWISS;      else
-        if ( Val == _T("modern") )     VALUE.Family = wxFONTFAMILY_MODERN;     else
-        if ( Val == _T("teletype") )   VALUE.Family = wxFONTFAMILY_TELETYPE;   else
-                                       VALUE.Family = wxFONTFAMILY_DEFAULT;
+        if ( Val == _T("decorative") ) VALUE.Family = wxDECORATIVE; else
+        if ( Val == _T("roman") )      VALUE.Family = wxROMAN;      else
+        if ( Val == _T("script") )     VALUE.Family = wxSCRIPT;     else
+        if ( Val == _T("swiss") )      VALUE.Family = wxSWISS;      else
+        if ( Val == _T("modern") )     VALUE.Family = wxMODERN;     else
+        if ( Val == _T("teletype") )   VALUE.Family = wxTELETYPE;   else
+                                       VALUE.Family = wxDEFAULT;
     }
 
     VALUE.Faces.Clear();
@@ -377,7 +351,7 @@ bool wxsFontProperty::XmlRead(wxsPropertyContainer* Object,TiXmlElement* Element
     VALUE.HasEncoding = XmlGetString(Element,VALUE.Encoding,_T("encoding"));
     VALUE.HasSysFont = XmlGetString(Element,VALUE.SysFont,_T("sysfont"));
 
-    if ( (VALUE.HasRelativeSize = XmlGetString(Element,Val,_T("relativesize")) ))
+    if ( VALUE.HasRelativeSize = XmlGetString(Element,Val,_T("relativesize")) )
     {
         Val.ToDouble(&VALUE.RelativeSize);
     }
@@ -396,7 +370,7 @@ bool wxsFontProperty::XmlWrite(wxsPropertyContainer* Object,TiXmlElement* Elemen
 
     if ( VALUE.HasSize )
     {
-        XmlSetString(Element,wxString::Format(_T("%ld"),VALUE.Size),_T("size"));
+        XmlSetString(Element,wxString::Format(_T("%d"),VALUE.Size),_T("size"));
     }
 
     if ( VALUE.HasStyle )
@@ -408,9 +382,9 @@ bool wxsFontProperty::XmlWrite(wxsPropertyContainer* Object,TiXmlElement* Elemen
 
     if ( VALUE.HasWeight )
     {
-        if ( VALUE.Weight == wxFONTWEIGHT_BOLD  ) XmlSetString(Element,_T("bold"),  _T("weight")); else
-        if ( VALUE.Weight == wxFONTWEIGHT_LIGHT ) XmlSetString(Element,_T("light"), _T("weight")); else
-                                                  XmlSetString(Element,_T("normal"),_T("weight"));
+        if ( VALUE.Weight == wxBOLD  ) XmlSetString(Element,_T("bold"),  _T("weight")); else
+        if ( VALUE.Weight == wxLIGHT ) XmlSetString(Element,_T("light"), _T("weight")); else
+                                       XmlSetString(Element,_T("normal"),_T("weight"));
     }
 
     if ( VALUE.HasUnderlined )
@@ -422,13 +396,13 @@ bool wxsFontProperty::XmlWrite(wxsPropertyContainer* Object,TiXmlElement* Elemen
 
     if ( VALUE.HasFamily )
     {
-        if ( VALUE.Family == wxFONTFAMILY_DECORATIVE ) XmlSetString(Element,_T("decorative"),_T("family")); else
-        if ( VALUE.Family == wxFONTFAMILY_ROMAN      ) XmlSetString(Element,_T("roman"),     _T("family")); else
-        if ( VALUE.Family == wxFONTFAMILY_SCRIPT     ) XmlSetString(Element,_T("script"),    _T("family")); else
-        if ( VALUE.Family == wxFONTFAMILY_SWISS      ) XmlSetString(Element,_T("swiss"),     _T("family")); else
-        if ( VALUE.Family == wxFONTFAMILY_MODERN     ) XmlSetString(Element,_T("modern"),    _T("family")); else
-        if ( VALUE.Family == wxFONTFAMILY_TELETYPE   ) XmlSetString(Element,_T("teletype"),  _T("family")); else
-        if ( VALUE.Family == wxFONTFAMILY_DEFAULT    ) XmlSetString(Element,_T("default"),   _T("family"));
+        if ( VALUE.Family == wxDECORATIVE ) XmlSetString(Element,_T("decorative"),_T("family")); else
+        if ( VALUE.Family == wxROMAN      ) XmlSetString(Element,_T("roman"),     _T("family")); else
+        if ( VALUE.Family == wxSCRIPT     ) XmlSetString(Element,_T("script"),    _T("family")); else
+        if ( VALUE.Family == wxSWISS      ) XmlSetString(Element,_T("swiss"),     _T("family")); else
+        if ( VALUE.Family == wxMODERN     ) XmlSetString(Element,_T("modern"),    _T("family")); else
+        if ( VALUE.Family == wxTELETYPE   ) XmlSetString(Element,_T("teletype"),  _T("family")); else
+        if ( VALUE.Family == wxDEFAULT    ) XmlSetString(Element,_T("default"),   _T("family"));
     }
 
     wxString Faces;
@@ -457,7 +431,7 @@ bool wxsFontProperty::XmlWrite(wxsPropertyContainer* Object,TiXmlElement* Elemen
 
     if ( VALUE.HasRelativeSize )
     {
-        XmlSetString(Element, wxsDoubleToString(VALUE.RelativeSize), _T("relativesize"));
+        XmlSetString(Element,wxString::Format(_T("%f"),VALUE.RelativeSize),_T("relativesize"));
     }
 
     return true;
@@ -467,25 +441,18 @@ bool wxsFontProperty::PropStreamRead(wxsPropertyContainer* Object,wxsPropertyStr
 {
     bool Ret = true;
     bool Tmp;
-    long TmpL;
     Stream->SubCategory(GetDataName());
 
     Stream->GetBool(_T("has_size"),Tmp,false); VALUE.HasSize = Tmp;
     Stream->GetLong(_T("size"),VALUE.Size,0);
     Stream->GetBool(_T("has_style"),Tmp,false); VALUE.HasStyle = Tmp;
-    TmpL = static_cast<long>(VALUE.Style);
-    Stream->GetLong(_T("style"),TmpL,wxFONTSTYLE_NORMAL);
-    VALUE.Style = static_cast<wxFontStyle>(TmpL);
+    Stream->GetLong(_T("style"),VALUE.Style,wxFONTSTYLE_NORMAL);
     Stream->GetBool(_T("has_weight"),Tmp,false); VALUE.HasWeight = Tmp;
-    TmpL = static_cast<long>(VALUE.Weight);
-    Stream->GetLong(_T("weight"),TmpL,wxFONTWEIGHT_NORMAL);
-    VALUE.Weight = static_cast<wxFontWeight>(TmpL);
+    Stream->GetLong(_T("weight"),VALUE.Weight,wxNORMAL);
     Stream->GetBool(_T("has_underlined"),Tmp,false); VALUE.HasUnderlined = Tmp;
     Stream->GetBool(_T("underlined"),VALUE.Underlined,false);
     Stream->GetBool(_T("has_family"),Tmp,false); VALUE.HasFamily = Tmp;
-    TmpL = static_cast<long>(VALUE.Family);
-    Stream->GetLong(_T("family"),TmpL,wxFONTFAMILY_DEFAULT);
-    VALUE.Family = static_cast<wxFontFamily>(TmpL);
+    Stream->GetLong(_T("family"),VALUE.Family,wxDEFAULT);
     VALUE.Faces.Clear();
     Stream->SubCategory(_T("faces"));
     wxString Str;
@@ -507,7 +474,6 @@ bool wxsFontProperty::PropStreamWrite(wxsPropertyContainer* Object,wxsPropertySt
 {
     bool Ret = true;
     bool Tmp;
-    long TmpL;
     Stream->SubCategory(GetDataName());
 
     Tmp = VALUE.HasSize;
@@ -515,22 +481,16 @@ bool wxsFontProperty::PropStreamWrite(wxsPropertyContainer* Object,wxsPropertySt
     Stream->PutLong(_T("size"),VALUE.Size,0);
     Tmp = VALUE.HasStyle;
     Stream->PutBool(_T("has_style"),Tmp,false); VALUE.HasStyle = Tmp;
-    TmpL = static_cast<long>(VALUE.Style);
-    Stream->PutLong(_T("style"),TmpL,wxFONTSTYLE_NORMAL);
-    VALUE.Style = static_cast<wxFontStyle>(TmpL);
+    Stream->PutLong(_T("style"),VALUE.Style,wxFONTSTYLE_NORMAL);
     Tmp = VALUE.HasWeight;
     Stream->PutBool(_T("has_weight"),Tmp,false); VALUE.HasWeight = Tmp;
-    TmpL = static_cast<long>(VALUE.Weight);
-    Stream->PutLong(_T("weight"),TmpL,wxFONTWEIGHT_NORMAL);
-    VALUE.Weight = static_cast<wxFontWeight>(TmpL);
+    Stream->PutLong(_T("weight"),VALUE.Weight,wxNORMAL);
     Tmp = VALUE.HasUnderlined;
     Stream->PutBool(_T("has_underlined"),Tmp,false); VALUE.HasUnderlined = Tmp;
     Stream->PutBool(_T("underlined"),VALUE.Underlined,false);
     Tmp = VALUE.HasFamily;
     Stream->PutBool(_T("has_family"),Tmp,false); VALUE.HasFamily = Tmp;
-    TmpL = static_cast<long>(VALUE.Family);
-    Stream->PutLong(_T("family"),TmpL,wxFONTFAMILY_DEFAULT);
-    VALUE.Family = static_cast<wxFontFamily>(TmpL);
+    Stream->PutLong(_T("family"),VALUE.Family,wxDEFAULT);
     VALUE.Faces.Clear();
     Stream->SubCategory(_T("faces"));
     size_t Count = VALUE.Faces.Count();

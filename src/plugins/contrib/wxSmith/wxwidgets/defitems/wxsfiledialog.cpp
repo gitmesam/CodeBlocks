@@ -1,5 +1,4 @@
-/** \file wxsfiledialog.cpp
-*
+/*
 * This file is part of wxSmith plugin for Code::Blocks Studio
 * Copyright (C) 2007  Bartlomiej Swiecki
 *
@@ -16,9 +15,9 @@
 * You should have received a copy of the GNU General Public License
 * along with wxSmith. If not, see <http://www.gnu.org/licenses/>.
 *
-* $Revision$
-* $Id$
-* $HeadURL$
+* $Revision: 4504 $
+* $Id: wxsFileDialog.cpp 4504 2007-10-02 21:52:30Z byo $
+* $HeadURL: svn+ssh://byo@svn.berlios.de/svnroot/repos/codeblocks/trunk/src/plugins/contrib/wxSmith/wxwidgets/defitems/wxsFileDialog.cpp $
 */
 
 #include "wxsfiledialog.h"
@@ -27,7 +26,7 @@
 
 namespace
 {
-    wxsRegisterItem<wxsFileDialog> Reg(_T("FileDialog"),wxsTTool,_T("Dialogs"),180,false);
+    wxsRegisterItem<wxsFileDialog> Reg(_T("FileDialog"),wxsTTool,_T("Dialogs"),50,false);
 
     WXS_ST_BEGIN(wxsFileDialogStyles,_T("wxFD_DEFAULT_STYLE"))
         WXS_ST_CATEGORY("wxFileDialog")
@@ -59,23 +58,22 @@ void wxsFileDialog::OnBuildCreatingCode()
             if ( m_Wildcard.empty() )
             {
                 Codef(_T("%C(%W, %t, %t, %t, wxFileSelectorDefaultWildcardStr, %T, %P, %S, %N);\n"),
-                      m_Message.wx_str(),
-                      m_DefaultDir.wx_str(),
-                      m_DefaultFile.wx_str());
+                    m_Message.c_str(),
+                    m_DefaultDir.c_str(),
+                    m_DefaultFile.c_str());
             }
             else
             {
                 Codef(_T("%C(%W, %t, %t, %t, %t, %T, %P, %S, %N);\n"),
-                      m_Message.wx_str(),
-                      m_DefaultDir.wx_str(),
-                      m_DefaultFile.wx_str(),
-                      m_Wildcard.wx_str());
+                    m_Message.c_str(),
+                    m_DefaultDir.c_str(),
+                    m_DefaultFile.c_str(),
+                    m_Wildcard.c_str());
             }
             BuildSetupWindowCode();
             return;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsFileDialog::OnBuildCreatingCode"),GetLanguage());
@@ -83,7 +81,7 @@ void wxsFileDialog::OnBuildCreatingCode()
     }
 }
 
-void wxsFileDialog::OnEnumToolProperties(cb_unused long Flags)
+void wxsFileDialog::OnEnumToolProperties(long Flags)
 {
     WXS_SHORT_STRING(wxsFileDialog,m_Message,_("Message"),_T("message"),_T(""),false);
     WXS_SHORT_STRING(wxsFileDialog,m_DefaultDir,_("Default directory"),_T("default_dir"),_T(""),false);

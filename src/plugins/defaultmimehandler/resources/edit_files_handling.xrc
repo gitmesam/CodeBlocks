@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<resource xmlns="http://www.wxwidgets.org/wxxrc" version="2.5.3.0">
+<resource>
 	<object class="wxPanel" name="dlgEditFilesHandling">
 		<object class="wxBoxSizer">
 			<orient>wxVERTICAL</orient>
@@ -11,7 +11,7 @@
 							<orient>wxVERTICAL</orient>
 							<object class="sizeritem">
 								<object class="wxListBox" name="lstWild" />
-								<flag>wxALL|wxEXPAND</flag>
+								<flag>wxALL|wxEXPAND|wxALIGN_LEFT|wxALIGN_TOP</flag>
 								<border>4</border>
 								<option>1</option>
 							</object>
@@ -21,21 +21,21 @@
 										<object class="wxButton" name="btnNew">
 											<label>&amp;New</label>
 										</object>
-										<flag>wxALIGN_TOP</flag>
+										<flag>wxALIGN_LEFT|wxALIGN_TOP</flag>
 									</object>
 									<object class="sizeritem">
 										<object class="wxButton" name="btnDelete">
 											<label>&amp;Delete</label>
 										</object>
-										<flag>wxLEFT|wxALIGN_TOP</flag>
+										<flag>wxLEFT|wxALIGN_LEFT|wxALIGN_TOP</flag>
 										<border>8</border>
 									</object>
 								</object>
-								<flag>wxLEFT|wxRIGHT|wxALIGN_CENTER_HORIZONTAL</flag>
+								<flag>wxLEFT|wxRIGHT|wxALIGN_TOP|wxALIGN_CENTER_HORIZONTAL</flag>
 								<border>4</border>
 							</object>
 						</object>
-						<flag>wxEXPAND</flag>
+						<flag>wxEXPAND|wxALIGN_LEFT|wxALIGN_TOP</flag>
 					</object>
 					<object class="sizeritem">
 						<object class="wxBoxSizer">
@@ -44,37 +44,37 @@
 								<object class="wxStaticText" name="ID_STATICTEXT1">
 									<label>Wildcard:</label>
 								</object>
-								<flag>wxEXPAND</flag>
+								<flag>wxEXPAND|wxALIGN_LEFT|wxALIGN_TOP</flag>
 							</object>
 							<object class="sizeritem">
 								<object class="wxTextCtrl" name="txtWild" />
-								<flag>wxBOTTOM|wxEXPAND</flag>
+								<flag>wxBOTTOM|wxEXPAND|wxALIGN_LEFT|wxALIGN_TOP</flag>
 								<border>8</border>
 							</object>
 							<object class="sizeritem">
 								<object class="wxRadioBox" name="rbOpen">
 									<label>To open the file</label>
 									<content>
-										<item>Launch an external program</item>
-										<item>Launch the associated application</item>
-										<item>Open it in a Code::Blocks editor</item>
+										<item>launch an external program</item>
+										<item>launch the associated application (windows only)</item>
+										<item>open it in a Code::Blocks editor</item>
 									</content>
 									<style>wxRA_SPECIFY_COLS</style>
 								</object>
-								<flag>wxEXPAND</flag>
+								<flag>wxEXPAND|wxALIGN_LEFT|wxALIGN_TOP</flag>
 							</object>
 							<object class="sizeritem">
 								<object class="wxStaticText" name="ID_STATICTEXT2">
 									<label>External program:</label>
 								</object>
-								<flag>wxTOP|wxEXPAND</flag>
+								<flag>wxTOP|wxEXPAND|wxALIGN_LEFT|wxALIGN_TOP</flag>
 								<border>8</border>
 							</object>
 							<object class="sizeritem">
 								<object class="wxBoxSizer">
 									<object class="sizeritem">
 										<object class="wxTextCtrl" name="txtProgram" />
-										<flag>wxEXPAND</flag>
+										<flag>wxEXPAND|wxALIGN_LEFT|wxALIGN_TOP</flag>
 										<option>1</option>
 									</object>
 									<object class="sizeritem">
@@ -82,10 +82,10 @@
 											<label>...</label>
 											<size>22,22</size>
 										</object>
-										<flag>wxALIGN_TOP</flag>
+										<flag>wxALIGN_LEFT|wxALIGN_TOP</flag>
 									</object>
 								</object>
-								<flag>wxEXPAND</flag>
+								<flag>wxEXPAND|wxALIGN_LEFT|wxALIGN_TOP</flag>
 							</object>
 							<object class="sizeritem">
 								<object class="wxBoxSizer">
@@ -93,20 +93,20 @@
 										<object class="wxCheckBox" name="chkModal">
 											<label>Wait for the external program to terminate</label>
 										</object>
-										<flag>wxALIGN_TOP</flag>
+										<flag>wxALIGN_LEFT|wxALIGN_TOP</flag>
 										<border>4</border>
 									</object>
 								</object>
-								<flag>wxEXPAND</flag>
+								<flag>wxEXPAND|wxALIGN_LEFT|wxALIGN_TOP</flag>
 								<border>8</border>
 							</object>
 						</object>
-						<flag>wxLEFT|wxEXPAND</flag>
+						<flag>wxLEFT|wxEXPAND|wxALIGN_LEFT|wxALIGN_TOP</flag>
 						<border>8</border>
 						<option>1</option>
 					</object>
 				</object>
-				<flag>wxLEFT|wxEXPAND</flag>
+				<flag>wxLEFT|wxEXPAND|wxALIGN_LEFT|wxALIGN_TOP</flag>
 				<border>4</border>
 				<option>1</option>
 			</object>

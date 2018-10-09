@@ -9,172 +9,97 @@
 #include <wx/thread.h>
 #include <wx/treectrl.h>
 
-#include "cctreectrl.h"
-#include "nativeparser.h"
 #include "parser/token.h"
 #include "parser/parser.h"
 
-/** worker thread to build the symbol browser tree controls(both the top tree and the bottom tree)
- *  When the thread is started, it is waiting for the semaphore, and once the GUI post the semaphore
- *  the builder will do the dirty job, once finished, it will wait again.
- */
+enum SpecialFolder
+{
+    sfToken         = 0x0001, // token node
+    sfRoot          = 0x0002, // root node
+    sfGFuncs        = 0x0004, // global funcs node
+    sfGVars         = 0x0008, // global vars node
+    sfPreproc       = 0x0010, // preprocessor symbols node
+    sfTypedef       = 0x0020, // typedefs node
+    sfBase          = 0x0040, // base classes node
+    sfDerived       = 0x0080, // derived classes node
+};
+
+class CBTreeData : public wxTreeItemData
+{
+    public:
+        CBTreeData(SpecialFolder sf = sfToken, Token* token = 0, int kindMask = 0xffffffff, int parentIdx = -1)
+            : m_pToken(token),
+            m_KindMask(kindMask),
+            m_SpecialFolder(sf),
+            m_TokenIndex(token ? token->GetSelf() : -1),
+            m_TokenKind(token ? token->m_TokenKind : tkUndefined),
+            m_TokenName(token ? token->m_Name : _T("")),
+            m_ParentIndex(parentIdx),
+            m_Ticket(token ? token->GetTicket() : 0)
+        {
+        }
+        Token* m_pToken;
+        int m_KindMask;
+        SpecialFolder m_SpecialFolder;
+        int m_TokenIndex;
+        TokenKind m_TokenKind;
+        wxString m_TokenName;
+        int m_ParentIndex;
+        unsigned long m_Ticket;
+};
+
 class ClassBrowserBuilderThread : public wxThread
 {
-public:
-    /** the builder threads' event sent to the GUI(class browser window) */
-    enum EThreadEvent
-    {
-        selectItemRequired,  /// an item is selected
-        buildTreeStart,      /// the thread is starting to (re)build the tree
-        buildTreeEnd         /// finishing (re)build the tree
-    };
+    public:
+        ClassBrowserBuilderThread(wxSemaphore& sem, ClassBrowserBuilderThread** threadVar);
+        virtual ~ClassBrowserBuilderThread();
 
-    /** constructor
-     * @param evtHandler parent window notification events will sent to
-     * @param sem a semaphore reference which is used synchronize the GUI and the builder thread
-     */
-    ClassBrowserBuilderThread(wxEvtHandler* evtHandler, wxSemaphore& sem);
+        void Init(Parser* parser,
+                    wxTreeCtrl* treeTop,
+                    wxTreeCtrl* treeBottom,
+                    const wxString& active_filename,
+                    void* user_data, // active project
+                    const BrowserOptions& options,
+                    TokensTree* pTokens,
+                    bool build_tree);
+        void AbortBuilding();
+        void ExpandItem(wxTreeItemId item);
+        void CollapseItem(wxTreeItemId item);
+        void SelectItem(wxTreeItemId item);
+    protected:
+        virtual void* Entry();
 
-    /** destructor */
-    virtual ~ClassBrowserBuilderThread();
+        void BuildTree();
+        void RemoveInvalidNodes(wxTreeCtrl* tree, wxTreeItemId parent);
+        wxTreeItemId AddNodeIfNotThere(wxTreeCtrl* tree, wxTreeItemId parent, const wxString& name, int imgIndex = -1, CBTreeData* data = 0, bool sorted = true);
+        bool AddChildrenOf(wxTreeCtrl* tree, wxTreeItemId parent, int parentTokenIdx, int tokenKindMask = 0xffff);
+        bool AddAncestorsOf(wxTreeCtrl* tree, wxTreeItemId parent, int tokenIdx);
+        bool AddDescendantsOf(wxTreeCtrl* tree, wxTreeItemId parent, int tokenIdx, bool allowInheritance = true);
+        bool AddNodes(wxTreeCtrl* tree, wxTreeItemId parent, TokenIdxSet::iterator start, TokenIdxSet::iterator end, int tokenKindMask = 0xffff, bool allowGlobals = false);
+        void SelectNode(wxTreeItemId node);
+        bool TokenMatchesFilter(Token* token);
+        bool TokenContainsChildrenOfKind(Token* token, int kind);
+        bool CreateSpecialFolders(wxTreeCtrl* tree, wxTreeItemId parent);
+		void ExpandNamespaces(wxTreeItemId node);
 
-    // Called from external:
-    void Init(NativeParser* np, CCTreeCtrl* treeTop, CCTreeCtrl* treeBottom,
-              const wxString& active_filename, void* user_data/*active project*/,
-              const BrowserOptions& bo, TokenTree* tt,
-              int idThreadEvent);
+        wxSemaphore& m_Semaphore;
+        Parser* m_pParser;
+        wxTreeCtrl* m_pTreeTop;
+        wxTreeCtrl* m_pTreeBottom;
+        wxString m_ActiveFilename;
+        void* m_pUserData; // active project
+        BrowserOptions m_Options;
+        TokensTree* m_pTokens;
+        ClassBrowserBuilderThread** m_ppThreadVar;
+
+        // pair of current-file-filter
+        TokenFilesSet m_CurrentFileSet;
+        TokenIdxSet m_CurrentTokenSet;
+        TokenIdxSet m_CurrentGlobalTokensSet;
 
 
-    /** construct the children of the tree item
-     *  Called from external, BuildTree():
-     */
-    void ExpandItem(wxTreeItemId item);
-#ifndef CC_NO_COLLAPSE_ITEM
-    /** remove the children of the tree item
-     *  Called from external, BuildTree(), RemoveInvalidNodes():
-     */
-    void CollapseItem(wxTreeItemId item);
-#endif // CC_NO_COLLAPSE_ITEM
-
-    // Called from external and SelectItemRequired():
-    void SelectItem(wxTreeItemId item);
-
-    // Called from external:
-    void SelectItemRequired();
-
-    /** ask the worker thread to die
-     *  Called from external: when the class browser window get destroyed
-     */
-    void RequestTermination(bool terminate = true) { m_TerminationRequested = terminate; }
-
-protected:
-    virtual void* Entry();
-
-    // Called from Entry():
-    void BuildTree();
-
-    /** Remove any nodes no longer valid (due to update)
-     *
-     * Recursively enters all existing nodes and deletes the node if the token it references is invalid
-     * @param tree the symbol tree
-     * @param parent the node Id
-     * Called from BuildTree():
-     */
-    void RemoveInvalidNodes(CCTreeCtrl* tree, wxTreeItemId parent);
-
-    /** recursively construct the children of node's children, which matches tokenKind
-     *  Called from BuildTree():
-     *  @param level the recursive level
-     */
-    void ExpandNamespaces(wxTreeItemId node, TokenKind tokenKind, int level);
-
-    // Called from ExpandItem():
-    bool CreateSpecialFolders(CCTreeCtrl* tree, wxTreeItemId parent);
-
-    // Called from CreateSpecialFolders():
-    wxTreeItemId AddNodeIfNotThere(CCTreeCtrl* tree, wxTreeItemId parent,
-                                   const wxString& name, int imgIndex = -1, CCTreeCtrlData* data = 0);
-
-    /** Add the child nodes of the specified token
-     * @param tree the symbol tree control
-     * @param parent the specified node
-     * @param parentTokenIdx the Token index associated with the node
-     * Called from ExpandItem()
-     */
-    bool AddChildrenOf(CCTreeCtrl* tree, wxTreeItemId parent, int parentTokenIdx,
-                       short int tokenKindMask = 0xffff, int tokenScopeMask = 0);
-    bool AddAncestorsOf(CCTreeCtrl* tree, wxTreeItemId parent, int tokenIdx);
-    bool AddDescendantsOf(CCTreeCtrl* tree, wxTreeItemId parent, int tokenIdx, bool allowInheritance = true);
-    // Called from ExpandItem(), SelectItem():
-    void AddMembersOf(CCTreeCtrl* tree, wxTreeItemId node);
-
-private:
-    // Called from AddChildrenOf(), AddAncestorsOf(), AddDescendantsOf():
-    bool AddNodes(CCTreeCtrl* tree, wxTreeItemId parent, const TokenIdxSet* tokens,
-                  short int tokenKindMask = 0xffff, int tokenScopeMask = 0, bool allowGlobals = false);
-
-    /** if the token should be shown in the tree, it will return true
-     *
-     * The view option of the symbol browser determines which tokens should be shown in the tree
-     * Called from RemoveInvalidNodes(), AddNodes(), CreateSpecialFolder()
-     */
-    bool TokenMatchesFilter(const Token* token, bool locked = false);
-    // Called from AddNodes():
-    bool TokenContainsChildrenOfKind(const Token* token, int kind);
-
-    // Called from BuildTree():
-    void SaveExpandedItems(CCTreeCtrl* tree, wxTreeItemId parent, int level);
-    void ExpandSavedItems(CCTreeCtrl* tree, wxTreeItemId parent, int level);
-    void SaveSelectedItem();
-    void SelectSavedItem();
-
-protected:
-    wxEvtHandler*    m_Parent;
-    wxSemaphore&     m_ClassBrowserSemaphore;
-
-    /** Some member functions of ClassBrowserBuilderThread such as ExpandItem() can either be called
-     * from the main GUI thread(in ClassBrowser::OnTreeItemExpanding(wxTreeEvent& event)), or be
-     * called in the worker thread(in BuildTree() which is called in ClassBrowserBuilderThread::Entry()),
-     * to protect the member variables of the class(especially the wxTreeCtrl, we use the Mutex so
-     * that only one thread can access to those member variables.
-     */
-    wxMutex          m_ClassBrowserBuilderThreadMutex;
-    NativeParser*    m_NativeParser;
-
-    /** pointer to the top wxTreeCtrl */
-    CCTreeCtrl*      m_CCTreeCtrlTop;
-    /** pointer to the bottom wxTreeCtrl */
-    CCTreeCtrl*      m_CCTreeCtrlBottom;
-
-    wxString         m_ActiveFilename;
-    void*            m_UserData; // active project
-    BrowserOptions   m_BrowserOptions;
-    TokenTree*       m_TokenTree;
-
-    // pair of current-file-filter
-    /** A file set which contains a header file and the associated implementation file
-     *
-     * If the view option "Current file's symbols" is selected, the symbol tree will show tokens
-     * from those files, e.g. if the a.cpp shown in the current active editor, then m_CurrentFileSet
-     * maybe contains two files: a.cpp and a.h
-     */
-    TokenFileSet     m_CurrentFileSet;
-
-    /** Tokens belong to the m_CurrentFileSet file set */
-    TokenIdxSet      m_CurrentTokenSet;
-
-    /** Special global scope tokens belong to the m_CurrentFileSet file set  */
-    TokenIdxSet      m_CurrentGlobalTokensSet;
-
-private:
-    ExpandedItemVect m_ExpandedVect;
-    SelectedItemPath m_SelectedPath;
-    bool             m_InitDone;
-
-    /** if this variable is true, the Entry() function should return */
-    bool             m_TerminationRequested;
-    int              m_idThreadEvent;
-    wxTreeItemId     m_SelectItemRequired;
+        wxMutex m_BuildMutex;
+    private:
 };
 
 #endif // CLASSBROWSERBUILDERTHREAD_H

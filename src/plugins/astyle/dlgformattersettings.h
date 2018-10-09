@@ -10,18 +10,17 @@
 #ifndef DLGFORMATTERSETTINGS_H
 #define DLGFORMATTERSETTINGS_H
 
-#include <astyle.h>
+#include "./astyle/astyle.h"
+#include <wx/dialog.h>
 
-class wxWindow;
-
-class DlgFormatterSettings
+class dlgFormatterSettings
 {
   private:
     wxWindow *m_dlg;
 
 	public:
-		DlgFormatterSettings(wxWindow *dlg);
-		virtual ~DlgFormatterSettings();
+		dlgFormatterSettings(wxWindow *dlg);
+		virtual ~dlgFormatterSettings();
 
 		void ApplyTo(astyle::ASFormatter& formatter);
 };

@@ -26,7 +26,7 @@
 
 namespace
 {
-    wxsRegisterItem<wxsSpinButton> Reg(_T("SpinButton"),wxsTWidget,_T("Standard"),100);
+    wxsRegisterItem<wxsSpinButton> Reg(_T("SpinButton"),wxsTWidget,_T("Standard"),50);
 
     WXS_ST_BEGIN(wxsSpinButtonStyles,_T("wxSP_VERTICAL|wxSP_ARROW_KEYS"))
         WXS_ST_CATEGORY("wxsSpinButton")
@@ -72,7 +72,6 @@ void wxsSpinButton::OnBuildCreatingCode()
             return;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsSpinButton::OnBuildCreatingCode"),GetLanguage());
@@ -89,7 +88,7 @@ wxObject* wxsSpinButton::OnBuildPreview(wxWindow* Parent,long Flags)
     return SetupWindow(Preview,Flags);
 }
 
-void wxsSpinButton::OnEnumWidgetProperties(cb_unused long Flags)
+void wxsSpinButton::OnEnumWidgetProperties(long Flags)
 {
     WXS_LONG(wxsSpinButton,Value,_("Value"),_T("value"),0)
     WXS_LONG(wxsSpinButton,Min,_("Min Value"),_T("min"),0)

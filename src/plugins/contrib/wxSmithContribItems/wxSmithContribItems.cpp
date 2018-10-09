@@ -63,7 +63,7 @@ void wxSmithContribItems::OnAttach()
 	// (see: does not need) this plugin...
 }
 
-void wxSmithContribItems::OnRelease(cb_unused bool appShutDown)
+void wxSmithContribItems::OnRelease(bool appShutDown)
 {
 	// do de-initialization for your plugin
 	// if appShutDown is true, the plugin is unloaded because Code::Blocks is being shut down,

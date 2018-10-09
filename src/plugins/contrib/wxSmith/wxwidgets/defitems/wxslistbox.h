@@ -40,7 +40,7 @@ class wxsListBox: public wxsWidget
 
 
         wxArrayString ArrayChoices;
-        long DefaultSelection;
+        int DefaultSelection;
 };
 
 #endif

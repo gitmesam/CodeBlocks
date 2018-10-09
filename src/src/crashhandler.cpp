@@ -7,7 +7,7 @@
  * $HeadURL$
  */
 
-#ifdef __WXMSW__
+#if (__WXMSW__)
 #include "sdk.h"
 #ifndef CB_PRECOMP
     #include <wx/filefn.h>
@@ -23,7 +23,7 @@
 #include "crashhandler.h"
 #include <shlobj.h>
 
-inline void CrashHandlerSaveEditorFiles(wxString& buf)
+void CrashHandlerSaveEditorFiles(wxString& buf)
 {
     wxString path;
     //get the "My Files" folder
@@ -33,49 +33,51 @@ inline void CrashHandlerSaveEditorFiles(wxString& buf)
         path = ConfigManager::GetHomeFolder();
     }
     path << _T("\\cb-crash-recover");
-    if (!wxDirExists(path)) wxMkdir(path);
+    if(!wxDirExists(path)) wxMkdir(path);
 
     //make a sub-directory of the current date & time
     wxDateTime now = wxDateTime::Now();
     path << now.Format(_T("\\%Y%m%d-%H%M%S"));
 
     EditorManager* em = Manager::Get()->GetEditorManager();
-    if (em)
+    if(em)
     {
         bool AnyFileSaved = false;
-        if (wxMkdir(path) && wxDirExists(path))
+        wxMkdir(path);
+        if(wxDirExists(path))
         {
-            for (int i = 0; i < em->GetEditorsCount(); ++i)
+            for(int i = 0; i < em->GetEditorsCount(); ++i)
             {
                 cbEditor* ed = em->GetBuiltinEditor(em->GetEditor(i));
-                if (ed)
+                if(ed)
                 {
                     wxFileName fn(ed->GetFilename());
                     wxString fnpath = path + _T("/") + fn.GetFullName();
                     wxString newfnpath = fnpath;
                     // add number if filename already exists e.g. main.cpp.001, main.cpp.002, ...
                     int j = 1;
-                    while (wxFileExists(newfnpath))
+                    while(wxFileExists(newfnpath))
+                    {
                         newfnpath = fnpath + wxString::Format(wxT(".%03d"),j);
-
-                    if (cbSaveToFile(newfnpath,
+                    }
+                    if(cbSaveToFile(newfnpath,
                                     ed->GetControl()->GetText(),
                                     ed->GetEncoding(),
-                                    ed->GetUseBom() ) )
-                    {
+                                    ed->GetUseBom() ))
                         AnyFileSaved = true;
-                    }
                 }
             }
 
-            if (AnyFileSaved)
+            if(AnyFileSaved)
             {
                 buf << _("The currently opened files have been saved to the directory\n");
                 buf << path;
                 buf << _("\nHopefully, this will prevent you from losing recent modifications.\n\n");
             }
             else
+            {
                 wxRmdir(path);
+            }
         }
     }
 }
@@ -85,16 +87,14 @@ LONG WINAPI CrashHandlerFunc(PEXCEPTION_POINTERS ExceptionInfo)
     static bool EditorFilesNotSaved = true;
     DWORD code = ExceptionInfo->ExceptionRecord->ExceptionCode;
 
-    if (code != EXCEPTION_ACCESS_VIOLATION && code != EXCEPTION_ILLEGAL_INSTRUCTION)
+    if(code != EXCEPTION_ACCESS_VIOLATION && code != EXCEPTION_ILLEGAL_INSTRUCTION)
         return EXCEPTION_CONTINUE_SEARCH;
 
     wxString buf;
-#if !defined(_WIN64)
     buf.Printf(_("The application encountered a crash at address %u.\n\n"),
                (unsigned int) ExceptionInfo->ContextRecord->Eip);
-#endif
 
-    if (EditorFilesNotSaved)
+    if(EditorFilesNotSaved)
     {
         CrashHandlerSaveEditorFiles(buf);
         EditorFilesNotSaved = false;
@@ -113,16 +113,12 @@ LONG WINAPI CrashHandlerFunc(PEXCEPTION_POINTERS ExceptionInfo)
         break;
 
         case IDIGNORE:
-#if !defined(_WIN64)
         ExceptionInfo->ContextRecord->Eip += 2;
-#endif
         return EXCEPTION_CONTINUE_EXECUTION;
         break;
 
         case IDRETRY:
         return EXCEPTION_CONTINUE_EXECUTION;
-        break;
-        default:
         break;
     }
     return EXCEPTION_CONTINUE_SEARCH;
@@ -142,11 +138,13 @@ CrashHandler::CrashHandler(bool bDisabled) : handler(0)
 
 CrashHandler::~CrashHandler()
 {
-    if (handler)
+    if(handler)
     {
         RemoveHandler_t RemoveHandler = (RemoveHandler_t) GetProcAddress(GetModuleHandle(_T("kernel32")), "RemoveVectoredExceptionHandler");
         RemoveHandler(handler);
     }
 }
 
+
 #endif //(__WXMSW__)
+

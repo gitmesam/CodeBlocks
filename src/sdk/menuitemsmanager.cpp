@@ -19,7 +19,7 @@
 namespace
 {
     wxRegEx reInsert(_T("([0-9]+):.+"));
-}
+};
 
 MenuItemsManager::MenuItemsManager(bool autoClearOnDestroy)
     : m_AutoClearOnDestroy(autoClearOnDestroy)
@@ -48,7 +48,7 @@ MenuItemsManager::~MenuItemsManager()
 wxMenuItem* MenuItemsManager::Add(wxMenu* parent, int id, const wxString& caption, const wxString& helptext)
 {
     if (!parent)
-        return nullptr;
+        return 0;
     wxMenuItem* ni = new wxMenuItem(parent, id, caption, helptext);
     m_MenuItems.Add(ni);
     parent->Append(ni);
@@ -67,7 +67,7 @@ wxMenuItem* MenuItemsManager::Add(wxMenu* parent, int id, const wxString& captio
 wxMenuItem* MenuItemsManager::Insert(wxMenu* parent, int index, int id, const wxString& caption, const wxString& helptext)
 {
     if (!parent)
-        return nullptr;
+        return 0;
     wxMenuItem* ni = new wxMenuItem(parent, id, caption, helptext);
     m_MenuItems.Add(ni);
     parent->Insert(index, ni);
@@ -100,12 +100,12 @@ void MenuItemsManager::Clear()
   *                 starts with a dash (-) (e.g. "-MyItem") then a menu
   *                 separator is prepended before the actual menu item.
   * @param id The menu item ID (use wxID_SEPARATOR for adding a separator)
-  * @return The id of the newly created menu or the id of the old, same menu entry or NULL for failure.
+  * @return The newly created menu item or NULL for failure.
   */
-int MenuItemsManager::CreateFromString(const wxString& menuPath, int id)
+wxMenuItem* MenuItemsManager::CreateFromString(const wxString& menuPath, int id)
 {
     wxMenuBar* mbar = Manager::Get()->GetAppFrame()->GetMenuBar();
-    wxMenu* menu = nullptr;
+    wxMenu* menu = 0;
     size_t pos = 0;
     while (true)
     {
@@ -159,27 +159,21 @@ int MenuItemsManager::CreateFromString(const wxString& menuPath, int id)
             if (needsSep)
                 current.Remove(0, 1); // remove dash (-)
 
-            int existingID = menu->FindItem(current);
-            if (existingID != wxNOT_FOUND)
+            wxMenu* existingMenu = 0;
+            int existing = menu->FindItem(current);
+            if (existing != wxNOT_FOUND)
             {
                 // existing menu
                 // if it is the final item we want to create, display error and stop
-
-                if (isLast)
-                    return existingID;
+                if (isLast || existing >= (int)menu->GetMenuItemCount())
+                    return 0;
 
                 // else just keep the menu pointer updated
-                wxMenuItem *item = menu->FindChildItem(existingID);
-                if (item)
-                {
-                    wxMenu* existingMenu = item->GetSubMenu();
-                    if (existingMenu)
-                        menu = existingMenu;
-                    else
-                        return 0;
-                }
-                else
+                existingMenu = menu->GetMenuItems()[existing]->GetSubMenu();
+                if (!existingMenu)
                     return 0;
+
+                menu = existingMenu;
             }
             else
             {
@@ -193,10 +187,7 @@ int MenuItemsManager::CreateFromString(const wxString& menuPath, int id)
                     break;
 
                 if (isLast)
-                {
-                    Insert(menu, insert ? insertIndex : menu->GetMenuItemCount(), id, current, wxEmptyString);
-                    return id;
-                }
+                    return Insert(menu, insert ? insertIndex : menu->GetMenuItemCount(), id, current, wxEmptyString);
                 else
                 {
                     wxMenu* sub = new wxMenu;

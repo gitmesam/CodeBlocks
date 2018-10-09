@@ -6,7 +6,7 @@
 #ifndef CRASH_HANDLER
 #define CRASH_HANDLER
 
-#ifdef __WXMSW__
+#if (__WXMSW__)
 
 #include <winnt.h>
 
@@ -28,7 +28,7 @@ public:
 class CrashHandler
 {
 public:
-    CrashHandler(cb_unused bool bDisabled){};
+    CrashHandler(bool bDisabled){};
     ~CrashHandler(){};
 };
 

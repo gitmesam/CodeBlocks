@@ -106,7 +106,7 @@ namespace ScriptBindings
         int paramCount = sa.GetParamCount();
         if (paramCount == 2)
         {
-            cbEditor* ed = nullptr;
+            cbEditor* ed = 0;
             if (sa.GetType(2) == OT_INTEGER)
                 ed = Manager::Get()->GetEditorManager()->GetBuiltinEditor(sa.GetInt(2));
             else
@@ -162,7 +162,7 @@ namespace ScriptBindings
         {
             cbProject* prj = SqPlus::GetInstance<cbProject,false>(v, 1);
             if (sa.GetType(2) == OT_INTEGER)
-                return sa.ThrowError("Invalid arguments to \"cbProject::RemoveFile\"");
+                return sa.Return(prj->RemoveFile(sa.GetInt(2)));
             else
                 return sa.Return(prj->RemoveFile(SqPlus::GetInstance<ProjectFile,false>(v, 2)));
         }
@@ -179,7 +179,7 @@ namespace ScriptBindings
             bool b1 = paramCount >= 4 ? sa.GetBool(4) : true;
             bool b2 = paramCount >= 5 ? sa.GetBool(5) : true;
             int i = paramCount == 6 ? sa.GetInt(6) : 50;
-            ProjectFile* pf = nullptr;
+            ProjectFile* pf = 0;
             if (sa.GetType(2) == OT_INTEGER)
                 pf = prj->AddFile(sa.GetInt(2), str, b1, b2, i);
             else
@@ -196,7 +196,7 @@ namespace ScriptBindings
         if (paramCount == 2)
         {
             cbProject* prj = SqPlus::GetInstance<cbProject,false>(v, 1);
-            ProjectBuildTarget* bt = nullptr;
+            ProjectBuildTarget* bt = 0;
             if (sa.GetType(2) == OT_INTEGER)
                 bt = prj->GetBuildTarget(sa.GetInt(2));
             else
@@ -227,7 +227,7 @@ namespace ScriptBindings
         if (paramCount == 3)
         {
             cbProject* prj = SqPlus::GetInstance<cbProject,false>(v, 1);
-            ProjectBuildTarget* bt = nullptr;
+            ProjectBuildTarget* bt = 0;
             if (sa.GetType(2) == OT_INTEGER)
                 bt = prj->DuplicateBuildTarget(sa.GetInt(2), *SqPlus::GetInstance<wxString,false>(v, 3));
             else
@@ -281,59 +281,6 @@ namespace ScriptBindings
         }
         return sa.ThrowError("Invalid arguments to \"ProjectManager::AddFileToProject\"");
     }
-
-    SQInteger ProjectManager_GetProjectCount(HSQUIRRELVM v)
-    {
-        StackHandler sa(v);
-        int count = sa.GetParamCount();
-        if (count != 1)
-            return sa.ThrowError("Invalid arguments to \"ProjectManager::GetProjectCount\"");
-        else
-        {
-            ProjectManager *manager = SqPlus::GetInstance<ProjectManager, false>(v, 1);
-            int project_count = manager->GetProjects()->GetCount();
-            return sa.Return((SQInteger)project_count);
-        }
-    }
-
-    SQInteger ProjectManager_GetProject(HSQUIRRELVM v)
-    {
-        StackHandler sa(v);
-        int count = sa.GetParamCount();
-        if (count != 2)
-            return sa.ThrowError("Invalid arguments to \"ProjectManager::GetProject\"");
-        else
-        {
-            ProjectManager *manager = SqPlus::GetInstance<ProjectManager, false>(v, 1);
-            int index = sa.GetInt(2);
-            int project_count = manager->GetProjects()->GetCount();
-            if(index >= project_count)
-                return sa.ThrowError("Index out of bounds in \"ProjectManager::GetProject\"");
-            else
-            {
-                cbProject *project = (*manager->GetProjects())[index];
-                SqPlus::Push(v, project);
-                return 1;
-            }
-        }
-    }
-    SQInteger ProjectManager_RebuildTree(HSQUIRRELVM v)
-    {
-        StackHandler sa(v);
-        int paramCount = sa.GetParamCount();
-        if (paramCount == 1)
-        {
-            ProjectManager *manager = SqPlus::GetInstance<ProjectManager, false>(v, 1);
-            if (manager)
-            {
-                manager->GetUI().RebuildTree();
-                return sa.Return();
-            }
-            return sa.ThrowError("'this' is NULL!?! (type of ProjectManager*)");
-        }
-        return sa.ThrowError("Invalid arguments to \"ProjectManager::RebuildTree\"");
-    }
-
     SQInteger cbEditor_SetText(HSQUIRRELVM v)
     {
         StackHandler sa(v);
@@ -375,12 +322,6 @@ namespace ScriptBindings
         return sa.ThrowError("Invalid arguments to \"CompilerFactory::GetCompilerIndex\"");
     }
 
-    wxString CompilerFactory_GetCompilerIDByName(const wxString &name)
-    {
-        Compiler *compiler = CompilerFactory::GetCompilerByName(name);
-        return (compiler ? compiler->GetID() : wxString(wxEmptyString));
-    }
-
     void RegisterBindings()
     {
         if (!SquirrelVM::GetVMPtr())
@@ -402,7 +343,6 @@ namespace ScriptBindings
                 func(&ProjectFile::AddBuildTarget, "AddBuildTarget").
                 func(&ProjectFile::RenameBuildTarget, "RenameBuildTarget").
                 func(&ProjectFile::RemoveBuildTarget, "RemoveBuildTarget").
-                func(&ProjectFile::GetBuildTargets, "GetBuildTargets").
                 func(&ProjectFile::GetBaseName, "GetBaseName").
                 func(&ProjectFile::GetObjName, "GetObjName").
                 func(&ProjectFile::SetObjName, "SetObjName").
@@ -417,8 +357,7 @@ namespace ScriptBindings
                 var(&ProjectFile::compile, "compile").
                 var(&ProjectFile::link, "link").
                 var(&ProjectFile::weight, "weight").
-                var(&ProjectFile::compilerVar, "compilerVar").
-                var(&ProjectFile::buildTargets, "buildTargets");
+                var(&ProjectFile::compilerVar, "compilerVar");
 
         SqPlus::SQClassDef<CompileOptionsBase>("CompileOptionsBase").
                 func(&CompileOptionsBase::AddPlatform, "AddPlatform").
@@ -429,7 +368,6 @@ namespace ScriptBindings
                 func(&CompileOptionsBase::SetLinkerOptions, "SetLinkerOptions").
                 func(&CompileOptionsBase::SetLinkLibs, "SetLinkLibs").
                 func(&CompileOptionsBase::SetCompilerOptions, "SetCompilerOptions").
-                func(&CompileOptionsBase::SetResourceCompilerOptions, "SetResourceCompilerOptions").
                 func(&CompileOptionsBase::SetIncludeDirs, "SetIncludeDirs").
                 func(&CompileOptionsBase::SetResourceIncludeDirs, "SetResourceIncludeDirs").
                 func(&CompileOptionsBase::SetLibDirs, "SetLibDirs").
@@ -438,7 +376,6 @@ namespace ScriptBindings
                 func(&CompileOptionsBase::GetLinkerOptions, "GetLinkerOptions").
                 func(&CompileOptionsBase::GetLinkLibs, "GetLinkLibs").
                 func(&CompileOptionsBase::GetCompilerOptions, "GetCompilerOptions").
-                func(&CompileOptionsBase::GetResourceCompilerOptions, "GetResourceCompilerOptions").
                 func(&CompileOptionsBase::GetIncludeDirs, "GetIncludeDirs").
                 func(&CompileOptionsBase::GetResourceIncludeDirs, "GetResourceIncludeDirs").
                 func(&CompileOptionsBase::GetLibDirs, "GetLibDirs").
@@ -449,24 +386,15 @@ namespace ScriptBindings
                 func(&CompileOptionsBase::AddLinkerOption, "AddLinkerOption").
                 func(&CompileOptionsBase::AddLinkLib, "AddLinkLib").
                 func(&CompileOptionsBase::AddCompilerOption, "AddCompilerOption").
-                func(&CompileOptionsBase::AddResourceCompilerOption, "AddResourceCompilerOption").
                 func(&CompileOptionsBase::AddIncludeDir, "AddIncludeDir").
                 func(&CompileOptionsBase::AddResourceIncludeDir, "AddResourceIncludeDir").
                 func(&CompileOptionsBase::AddLibDir, "AddLibDir").
                 func(&CompileOptionsBase::AddCommandsBeforeBuild, "AddCommandsBeforeBuild").
                 func(&CompileOptionsBase::AddCommandsAfterBuild, "AddCommandsAfterBuild").
-                func(&CompileOptionsBase::ReplaceLinkerOption, "ReplaceLinkerOption").
-                func(&CompileOptionsBase::ReplaceLinkLib, "ReplaceLinkLib").
-                func(&CompileOptionsBase::ReplaceCompilerOption, "ReplaceCompilerOption").
-                func(&CompileOptionsBase::ReplaceResourceCompilerOption, "ReplaceResourceCompilerOption").
-                func(&CompileOptionsBase::ReplaceIncludeDir, "ReplaceIncludeDir").
-                func(&CompileOptionsBase::ReplaceResourceIncludeDir, "ReplaceResourceIncludeDir").
-                func(&CompileOptionsBase::ReplaceLibDir, "ReplaceLibDir").
                 func(&CompileOptionsBase::RemoveLinkerOption, "RemoveLinkerOption").
                 func(&CompileOptionsBase::RemoveLinkLib, "RemoveLinkLib").
                 func(&CompileOptionsBase::RemoveCompilerOption, "RemoveCompilerOption").
                 func(&CompileOptionsBase::RemoveIncludeDir, "RemoveIncludeDir").
-                func(&CompileOptionsBase::RemoveResourceCompilerOption, "RemoveResourceCompilerOption").
                 func(&CompileOptionsBase::RemoveResourceIncludeDir, "RemoveResourceIncludeDir").
                 func(&CompileOptionsBase::RemoveLibDir, "RemoveLibDir").
                 func(&CompileOptionsBase::RemoveCommandsBeforeBuild, "RemoveCommandsBeforeBuild").
@@ -530,9 +458,7 @@ namespace ScriptBindings
                 func(&ProjectBuildTarget::GetCreateStaticLib, "GetCreateStaticLib").
                 func(&ProjectBuildTarget::SetCreateStaticLib, "SetCreateStaticLib").
                 func(&ProjectBuildTarget::GetUseConsoleRunner, "GetUseConsoleRunner").
-                func(&ProjectBuildTarget::SetUseConsoleRunner, "SetUseConsoleRunner").
-                func(&ProjectBuildTarget::GetFilesCount, "GetFilesCount").
-                func(&ProjectBuildTarget::GetFile, "GetFile");
+                func(&ProjectBuildTarget::SetUseConsoleRunner, "SetUseConsoleRunner");
 
         SqPlus::SQClassDef<cbProject>("cbProject", "CompileTargetBase").
                 func(&cbProject::GetModified, "GetModified").
@@ -547,7 +473,7 @@ namespace ScriptBindings
 //                func(&cbProject::SaveAs, "SaveAs"). // *UNSAFE*
                 func(&cbProject::SaveLayout, "SaveLayout").
                 func(&cbProject::LoadLayout, "LoadLayout").
-//                func(&cbProject::ShowOptions, "ShowOptions").
+                func(&cbProject::ShowOptions, "ShowOptions").
                 func(&cbProject::GetCommonTopLevelPath, "GetCommonTopLevelPath").
                 func(&cbProject::GetFilesCount, "GetFilesCount").
                 func(&cbProject::GetFile, "GetFile").
@@ -578,8 +504,6 @@ namespace ScriptBindings
                 func(&cbProject::GetNotes, "GetNotes").
                 func(&cbProject::SetShowNotesOnLoad, "SetShowNotesOnLoad").
                 func(&cbProject::GetShowNotesOnLoad, "GetShowNotesOnLoad").
-                func(&cbProject::SetCheckForExternallyModifiedFiles, "SetCheckForExternallyModifiedFiles").
-                func(&cbProject::GetCheckForExternallyModifiedFiles, "GetCheckForExternallyModifiedFiles").
                 func(&cbProject::ShowNotes, "ShowNotes").
                 func(&cbProject::AddToExtensions, "AddToExtensions").
                 func(&cbProject::DefineVirtualBuildTarget, "DefineVirtualBuildTarget").
@@ -596,8 +520,6 @@ namespace ScriptBindings
                 func(&ProjectManager::GetDefaultPath, "GetDefaultPath").
                 func(&ProjectManager::SetDefaultPath, "SetDefaultPath").
                 func(&ProjectManager::GetActiveProject, "GetActiveProject").
-                staticFuncVarArgs(&ProjectManager_GetProjectCount, "GetProjectCount", "*").
-                staticFuncVarArgs(&ProjectManager_GetProject, "GetProject", "*").
                 func(&ProjectManager::SetProject, "SetProject").
                 func(&ProjectManager::LoadWorkspace, "LoadWorkspace").
                 func(&ProjectManager::SaveWorkspace, "SaveWorkspace").
@@ -615,14 +537,14 @@ namespace ScriptBindings
                 func(&ProjectManager::CloseAllProjects, "CloseAllProjects").
                 func(&ProjectManager::NewProject, "NewProject").
                 staticFuncVarArgs(&ProjectManager_AddFileToProject, "AddFileToProject", "*").
-//                func(&ProjectManager::AskForBuildTargetIndex, "AskForBuildTargetIndex").
+                func(&ProjectManager::AskForBuildTargetIndex, "AskForBuildTargetIndex").
+                func(&ProjectManager::RebuildTree, "RebuildTree").
                 func(&ProjectManager::AddProjectDependency, "AddProjectDependency").
                 func(&ProjectManager::RemoveProjectDependency, "RemoveProjectDependency").
                 func(&ProjectManager::ClearProjectDependencies, "ClearProjectDependencies").
                 func(&ProjectManager::RemoveProjectFromAllDependencies, "RemoveProjectFromAllDependencies").
                 func(&ProjectManager::GetDependenciesForProject, "GetDependenciesForProject").
-//                func(&ProjectManager::ConfigureProjectDependencies, "ConfigureProjectDependencies");
-                staticFuncVarArgs(&ProjectManager_RebuildTree, "RebuildTree", "*");
+                func(&ProjectManager::ConfigureProjectDependencies, "ConfigureProjectDependencies");
 
         SqPlus::SQClassDef<EditorBase>("EditorBase").
                 func(&EditorBase::GetFilename, "GetFilename").
@@ -638,6 +560,14 @@ namespace ScriptBindings
                 func(&EditorBase::IsBuiltinEditor, "IsBuiltinEditor").
                 func(&EditorBase::ThereAreOthers, "ThereAreOthers").
                 func(&EditorBase::GotoLine, "GotoLine").
+                func(&EditorBase::ToggleBreakpoint, "ToggleBreakpoint").
+                func(&EditorBase::HasBreakpoint, "HasBreakpoint").
+                func(&EditorBase::GotoNextBreakpoint, "GotoNextBreakpoint").
+                func(&EditorBase::GotoPreviousBreakpoint, "GotoPreviousBreakpoint").
+                func(&EditorBase::ToggleBookmark, "ToggleBookmark").
+                func(&EditorBase::HasBookmark, "HasBookmark").
+                func(&EditorBase::GotoNextBookmark, "GotoNextBookmark").
+                func(&EditorBase::GotoPreviousBookmark, "GotoPreviousBookmark").
                 func(&EditorBase::Undo, "Undo").
                 func(&EditorBase::Redo, "Redo").
                 func(&EditorBase::Cut, "Cut").
@@ -668,22 +598,12 @@ namespace ScriptBindings
                 func(&cbEditor::AutoComplete, "AutoComplete").
                 func(&cbEditor::AddBreakpoint, "AddBreakpoint").
                 func(&cbEditor::RemoveBreakpoint, "RemoveBreakpoint").
-                func(&cbEditor::ToggleBookmark, "ToggleBookmark").
-                func(&cbEditor::HasBookmark, "HasBookmark").
-                func(&cbEditor::GotoNextBookmark, "GotoNextBookmark").
-                func(&cbEditor::GotoPreviousBookmark, "GotoPreviousBookmark").
-                func(&cbEditor::ClearAllBookmarks, "ClearAllBookmarks").
-                func(&cbEditor::ToggleBreakpoint, "ToggleBreakpoint").
-                func(&cbEditor::HasBreakpoint, "HasBreakpoint").
-                func(&cbEditor::GotoNextBreakpoint, "GotoNextBreakpoint").
-                func(&cbEditor::GotoPreviousBreakpoint, "GotoPreviousBreakpoint").
-
-
                 // these are not present in cbEditor; included to help scripts edit text
                 staticFuncVarArgs(&cbEditor_SetText, "SetText", "*").
                 staticFuncVarArgs(&cbEditor_GetText, "GetText", "*");
 
         SqPlus::SQClassDef<EditorManager>("EditorManager").
+                func(&EditorManager::Configure, "Configure").
                 func(&EditorManager::New, "New").
                 staticFuncVarArgs(&EditorManager_Open, "Open").
                 func(&EditorManager::IsBuiltinOpen, "IsBuiltinOpen").
@@ -700,8 +620,8 @@ namespace ScriptBindings
                 func(&EditorManager::SaveActive, "SaveActive").
                 func(&EditorManager::SaveAs, "SaveAs").
                 func(&EditorManager::SaveActiveAs, "SaveActiveAs").
-                func(&EditorManager::SaveAll, "SaveAll");
-        //        func(&EditorManager::ShowFindDialog, "ShowFindDialog");
+                func(&EditorManager::SaveAll, "SaveAll").
+                func(&EditorManager::ShowFindDialog, "ShowFindDialog");
 
         SqPlus::SQClassDef<UserVariableManager>("UserVariableManager").
                 func(&UserVariableManager::Exists, "Exists");
@@ -716,8 +636,7 @@ namespace ScriptBindings
                 staticFuncVarArgs(&CompilerFactory_GetCompilerIndex, "GetCompilerIndex", "*").
                 staticFunc(&CompilerFactory::GetDefaultCompilerID, "GetDefaultCompilerID").
                 staticFunc(&CompilerFactory::GetCompilerVersionString, "GetCompilerVersionString").
-                staticFunc<CF_INHERITSFROM>(&CompilerFactory::CompilerInheritsFrom, "CompilerInheritsFrom").
-                staticFunc(CompilerFactory_GetCompilerIDByName, "GetCompilerIDByName");
+                staticFunc<CF_INHERITSFROM>(&CompilerFactory::CompilerInheritsFrom, "CompilerInheritsFrom");
 
         SqPlus::SQClassDef<PluginInfo>("PluginInfo").
             emptyCtor().

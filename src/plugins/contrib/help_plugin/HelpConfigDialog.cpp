@@ -16,6 +16,7 @@
 #include <projectmanager.h>
 
 #include <wx/filedlg.h>
+#include <wx/textdlg.h>
 #include <wx/msgdlg.h>
 #include <wx/listbox.h>
 #include <wx/textctrl.h>
@@ -110,7 +111,7 @@ void HelpConfigDialog::UpdateEntry(int index)
     // Patch by Yorgos Pagles: Write the new attributes
     hfa.keywordCase = static_cast<HelpCommon::StringCase>(XRCCTRL(*this, "chkCase", wxChoice)->GetSelection());
     hfa.defaultKeyword = XRCCTRL(*this, "textDefaultKeyword", wxTextCtrl)->GetValue();
-    m_Vector.insert(m_Vector.end() - HelpCommon::getNumReadFromIni(), make_pair(lst->GetString(index), hfa));
+    m_Vector.push_back(make_pair(lst->GetString(index), hfa));
   }
 }
 
@@ -138,11 +139,11 @@ void HelpConfigDialog::ChooseFile()
   }
 }
 
-void HelpConfigDialog::ListChange(wxCommandEvent& /*event*/)
+void HelpConfigDialog::ListChange(wxCommandEvent& event)
 {
   wxListBox *lst = XRCCTRL(*this, "lstHelp", wxListBox);
 
-  if (lst->GetSelection() != -1 && lst->GetSelection() != m_LastSel)
+  if (lst->GetSelection() != m_LastSel)
   {
     UpdateEntry(m_LastSel);
   }
@@ -168,16 +169,16 @@ void HelpConfigDialog::ListChange(wxCommandEvent& /*event*/)
   }
 }
 
-void HelpConfigDialog::Browse(wxCommandEvent &/*event*/)
+void HelpConfigDialog::Browse(wxCommandEvent &event)
 {
   ChooseFile();
 }
 
-void HelpConfigDialog::Add(wxCommandEvent &/*event*/)
+void HelpConfigDialog::Add(wxCommandEvent &event)
 {
   wxListBox *lst = XRCCTRL(*this, "lstHelp", wxListBox);
   UpdateEntry(lst->GetSelection());
-  wxString text = cbGetTextFromUser(_("Please enter new help file title:"), _("Add title"));
+  wxString text = wxGetTextFromUser(_("Please enter new help file title:"), _("Add title"));
 
   if (!text.IsEmpty())
   {
@@ -216,11 +217,11 @@ void HelpConfigDialog::Add(wxCommandEvent &/*event*/)
   }
 }
 
-void HelpConfigDialog::Rename(wxCommandEvent &/*event*/)
+void HelpConfigDialog::Rename(wxCommandEvent &event)
 {
   wxListBox *lst = XRCCTRL(*this, "lstHelp", wxListBox);
   wxString orig = lst->GetString(lst->GetSelection());
-  wxString text = cbGetTextFromUser(_("Rename this help file title:"), _("Rename title"), orig);
+  wxString text = wxGetTextFromUser(_("Rename this help file title:"), _("Rename title"), orig);
 
   if (!text.IsEmpty())
   {
@@ -244,7 +245,7 @@ void HelpConfigDialog::Rename(wxCommandEvent &/*event*/)
   }
 }
 
-void HelpConfigDialog::Delete(wxCommandEvent &/*event*/)
+void HelpConfigDialog::Delete(wxCommandEvent &event)
 {
   if (cbMessageBox(_("Are you sure you want to remove this help file?"), _("Remove"), wxICON_QUESTION | wxYES_NO) == wxID_NO)
   {
@@ -284,7 +285,7 @@ void HelpConfigDialog::Delete(wxCommandEvent &/*event*/)
   m_LastSel = lst->GetSelection();
 }
 
-void HelpConfigDialog::OnUp(wxCommandEvent &/*event*/)
+void HelpConfigDialog::OnUp(wxCommandEvent &event)
 {
   wxListBox *lst = XRCCTRL(*this, "lstHelp", wxListBox);
   int helpIndex = HelpCommon::getDefaultHelpIndex();
@@ -313,7 +314,7 @@ void HelpConfigDialog::OnUp(wxCommandEvent &/*event*/)
   m_LastSel = current;
 }
 
-void HelpConfigDialog::OnDown(wxCommandEvent &/*event*/)
+void HelpConfigDialog::OnDown(wxCommandEvent &event)
 {
   wxListBox *lst = XRCCTRL(*this, "lstHelp", wxListBox);
   int helpIndex = HelpCommon::getDefaultHelpIndex();
@@ -385,7 +386,7 @@ void HelpConfigDialog::OnCheckboxEmbeddedViewer(wxCommandEvent& event)
 }
 
 // Patch by Yorgos Pagles: Handle the events of the new gui elements
-void HelpConfigDialog::OnCaseChoice(wxCommandEvent &/*event*/)
+void HelpConfigDialog::OnCaseChoice(wxCommandEvent &event)
 {
   int current = XRCCTRL(*this, "lstHelp", wxListBox)->GetSelection();
   if ((current<0) || (current>=static_cast<int>(m_Vector.size()))) return;
@@ -394,7 +395,7 @@ void HelpConfigDialog::OnCaseChoice(wxCommandEvent &/*event*/)
   m_Vector[current].second.keywordCase = static_cast<HelpCommon::StringCase>(keywordCaseCtrl->GetSelection());
 }
 
-void HelpConfigDialog::OnDefaultKeywordEntry(wxCommandEvent &/*event*/)
+void HelpConfigDialog::OnDefaultKeywordEntry(wxCommandEvent &event)
 {
   int current = XRCCTRL(*this, "lstHelp", wxListBox)->GetSelection();
   if ((current<0) || (current>=static_cast<int>(m_Vector.size()))) return;
@@ -403,7 +404,7 @@ void HelpConfigDialog::OnDefaultKeywordEntry(wxCommandEvent &/*event*/)
   m_Vector[current].second.defaultKeyword = defaultKeywordCtrl->GetValue();
 }
 
-void HelpConfigDialog::UpdateUI(wxUpdateUIEvent &/*event*/)
+void HelpConfigDialog::UpdateUI(wxUpdateUIEvent &event)
 {
   int sel = XRCCTRL(*this, "lstHelp", wxListBox)->GetSelection();
   int count = XRCCTRL(*this, "lstHelp", wxListBox)->GetCount();

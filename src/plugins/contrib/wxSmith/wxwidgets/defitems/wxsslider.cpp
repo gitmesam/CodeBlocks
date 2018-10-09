@@ -27,7 +27,7 @@
 // TODO: Add some flag like "Using Selection range" to note when using selmin / selmax (current comparision to 0 isn't enough)
 namespace
 {
-    wxsRegisterItem<wxsSlider> Reg(_T("Slider"),wxsTWidget,_T("Standard"),110);
+    wxsRegisterItem<wxsSlider> Reg(_T("Slider"),wxsTWidget,_T("Standard"),50);
 
     WXS_ST_BEGIN(wxsSliderStyles,_T(""))
         WXS_ST(wxSL_HORIZONTAL)
@@ -56,7 +56,6 @@ namespace
         WXS_EVI(EVT_COMMAND_SCROLL_THUMBTRACK,wxEVT_SCROLL_THUMBTRACK,wxScrollEvent,CmdScrollThumbTrack)
         WXS_EVI(EVT_COMMAND_SCROLL_THUMBRELEASE,wxEVT_SCROLL_THUMBRELEASE,wxScrollEvent,CmdScrollThumbRelease)
         WXS_EVI(EVT_COMMAND_SCROLL_CHANGED,wxEVT_SCROLL_CHANGED,wxScrollEvent,CmdScrollChanged)
-        WXS_EVI(EVT_COMMAND_SLIDER_UPDATED,wxEVT_COMMAND_SLIDER_UPDATED,wxScrollEvent,CmdSliderUpdated)
     WXS_EV_END()
 
 }
@@ -99,7 +98,6 @@ void wxsSlider::OnBuildCreatingCode()
             return;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsSlider::OnBuildCreatingCode"),GetLanguage());
@@ -110,11 +108,7 @@ void wxsSlider::OnBuildCreatingCode()
 wxObject* wxsSlider::OnBuildPreview(wxWindow* Parent,long Flags)
 {
     wxSlider* Preview = new wxSlider(Parent,GetId(),Value,Min,Max,Pos(Parent),Size(Parent),Style());
-#if wxCHECK_VERSION(3, 0, 0)
-    if ( TickFrequency )    Preview->SetTickFreq(TickFrequency);
-#else
     if ( TickFrequency )    Preview->SetTickFreq(TickFrequency,0);
-#endif
     if ( PageSize )         Preview->SetPageSize(PageSize);
     if ( LineSize )         Preview->SetLineSize(LineSize);
     if ( ThumbLength )      Preview->SetThumbLength(ThumbLength);
@@ -123,7 +117,7 @@ wxObject* wxsSlider::OnBuildPreview(wxWindow* Parent,long Flags)
     return SetupWindow(Preview,Flags);
 }
 
-void wxsSlider::OnEnumWidgetProperties(cb_unused long Flags)
+void wxsSlider::OnEnumWidgetProperties(long Flags)
 {
    WXS_LONG(wxsSlider,Value,_("Value"),_T("value"),0)
    WXS_LONG(wxsSlider,Min,_("Min"),_T("min"),0)

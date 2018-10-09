@@ -25,7 +25,7 @@
 
 namespace
 {
-    wxsRegisterItem<wxsRadioButton> Reg(_T("RadioButton"),wxsTWidget,_T("Standard"),170);
+    wxsRegisterItem<wxsRadioButton> Reg(_T("RadioButton"),wxsTWidget,_T("Standard"),60);
 
     WXS_ST_BEGIN(wxsRadioButtonStyles,_T(""))
         WXS_ST_CATEGORY("wxRadioButton")
@@ -58,13 +58,12 @@ void wxsRadioButton::OnBuildCreatingCode()
         case wxsCPP:
         {
             AddHeader(_T("<wx/radiobut.h>"),GetInfo().ClassName,hfInPCH);
-            Codef(_T("%C(%W, %I, %t, %P, %S, %T, %V, %N);\n"),Label.wx_str());
+            Codef(_T("%C(%W, %I, %t, %P, %S, %T, %V, %N);\n"),Label.c_str());
             if ( IsSelected ) Codef( _T("%ASetValue(%b);\n"), true);
             BuildSetupWindowCode();
             return;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsRadioButton::OnBuildCreatingCode"),GetLanguage());
@@ -79,7 +78,7 @@ wxObject* wxsRadioButton::OnBuildPreview(wxWindow* Parent,long Flags)
     return SetupWindow(Preview,Flags);
 }
 
-void wxsRadioButton::OnEnumWidgetProperties(cb_unused long Flags)
+void wxsRadioButton::OnEnumWidgetProperties(long Flags)
 {
     WXS_SHORT_STRING(wxsRadioButton,Label,_("Label"),_T("label"),_T(""),true)
     WXS_BOOL(wxsRadioButton,IsSelected,_("Is Selected"),_T("selected"),false)

@@ -6,18 +6,18 @@
 #ifndef EDITTOOLDLG_H
 #define EDITTOOLDLG_H
 
-#include "scrollingdialog.h"
+#include <wx/dialog.h>
 
 class cbTool;
 class wxCommandEvent;
 class wxUpdateUIEvent;
 
-class EditToolDlg : public wxScrollingDialog
+class EditToolDlg : public wxDialog
 {
 	public:
 		EditToolDlg(wxWindow* parent, cbTool* tool);
-		~EditToolDlg() override;
-		void EndModal(int retCode) override;
+		~EditToolDlg();
+		void EndModal(int retCode);
 	private:
 		void OnUpdateUI(wxUpdateUIEvent& event);
 		void OnBrowseCommand(wxCommandEvent& event);

@@ -6,10 +6,7 @@ libz_la_SOURCES = adler32.c \
 			compress.c \
 			crc32.c \
 			deflate.c \
-			gzclose.c \
-			gzlib.c \
-			gzread.c \
-			gzwrite.c \
+			gzio.c \
 			infback.c \
 			inffast.c \
 			inflate.c \
@@ -20,7 +17,6 @@ libz_la_SOURCES = adler32.c \
 
 noinst_HEADERS = crc32.h \
 		 deflate.h \
-		 gzguts.h \
 		 inffast.h \
 		 inffixed.h \
 		 inflate.h \

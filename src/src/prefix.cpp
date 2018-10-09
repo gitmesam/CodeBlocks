@@ -12,7 +12,7 @@
  * Written by: Mike Hearn <mike@theoretic.com>
  *             Hongli Lai <h.lai@chello.nl>
  * http://autopackage.org/
- *
+ * 
  * This source code is public domain. You can relicense this code
  * under whatever license you want.
  *
@@ -202,20 +202,21 @@ br_locate_prefix (void *symbol)
 char *
 br_prepend_prefix (void *symbol, char *path)
 {
-	br_return_val_if_fail (symbol != 0, (char*)0);
-	br_return_val_if_fail (path != 0, (char*)0);
+	char *tmp, *newpath;
 
-	char* tmp = br_locate_prefix (symbol);
-	if (!tmp) return (char*)0;
+	br_return_val_if_fail (symbol != NULL, (char*)NULL);
+	br_return_val_if_fail (path != NULL, (char*)NULL);
 
-	char *newpath;
+	tmp = br_locate_prefix (symbol);
+	if (!tmp) return (char*)NULL;
+
 	if (strcmp (tmp, "/") == 0)
 		newpath = strdup (path);
 	else
 		newpath = br_strcat (tmp, path);
 
 	/* Get rid of compiler warning ("br_prepend_prefix never used") */
-	if (0) br_prepend_prefix (0,  (char*)0);
+	if (0) br_prepend_prefix (NULL,  (char*)NULL);
 
 	free (tmp);
 	return newpath;
@@ -239,7 +240,9 @@ static pthread_once_t br_thread_key_once = PTHREAD_ONCE_INIT;
 static void
 br_thread_local_store_fini ()
 {
-	char* specific = (char *) pthread_getspecific (br_thread_key);
+	char *specific;
+
+	specific = (char *) pthread_getspecific (br_thread_key);
 	if (specific)
 	{
 		free (specific);
@@ -298,9 +301,11 @@ const char *
 br_thread_local_store (char *str)
 {
 	#if BR_PTHREADS
+		char *specific;
+
 		pthread_once (&br_thread_key_once, br_thread_local_store_init);
 
-		char* specific = (char *) pthread_getspecific (br_thread_key);
+		specific = (char *) pthread_getspecific (br_thread_key);
 		br_str_free (specific);
 		pthread_setspecific (br_thread_key, str);
 
@@ -333,13 +338,16 @@ br_thread_local_store (char *str)
 char *
 br_strcat (const char *str1, const char *str2)
 {
+	char *result;
+	size_t len1, len2;
+
 	if (!str1) str1 = "";
 	if (!str2) str2 = "";
 
-	size_t len1 = strlen (str1);
-	size_t len2 = strlen (str2);
+	len1 = strlen (str1);
+	len2 = strlen (str2);
 
-	char* result = (char *) malloc (len1 + len2 + 1);
+	result = (char *) malloc (len1 + len2 + 1);
 	memcpy (result, str1, len1);
 	memcpy (result + len1, str2, len2);
 	result[len1 + len2] = '\0';
@@ -352,13 +360,16 @@ br_strcat (const char *str1, const char *str2)
 static char *
 br_strndup (char *str, size_t size)
 {
-	br_return_val_if_fail (str != (char *) 0, (char *) 0);
+	char *result = (char *) NULL;
+	size_t len;
 
-	size_t len = strlen (str);
+	br_return_val_if_fail (str != (char *) NULL, (char *) NULL);
+
+	len = strlen (str);
 	if (!len) return strdup ("");
 	if (size > len) size = len;
 
-	char* result = (char *) calloc (sizeof (char), len + 1);
+	result = (char *) calloc (sizeof (char), len + 1);
 	memcpy (result, str, size);
 	return result;
 }
@@ -378,16 +389,16 @@ br_strndup (char *str, size_t size)
 char *
 br_extract_dir (const char *path)
 {
-	br_return_val_if_fail (path != (char *) 0, (char *) 0);
+	char *end, *result;
 
-	const char* end = strrchr (path, '/');
+	br_return_val_if_fail (path != (char *) NULL, (char *) NULL);
+
+	end = strrchr (path, '/');
 	if (!end) return strdup (".");
 
 	while (end > path && *end == '/')
-	{
 		end--;
-	}
-	char* result = br_strndup ((char *) path, end - path + 1);
+	result = br_strndup ((char *) path, end - path + 1);
 	if (!*result)
 	{
 		free (result);
@@ -413,13 +424,15 @@ br_extract_dir (const char *path)
 char *
 br_extract_prefix (const char *path)
 {
-	br_return_val_if_fail (path != (char *) 0, (char *) 0);
+	char *end, *tmp, *result;
+
+	br_return_val_if_fail (path != (char *) NULL, (char *) NULL);
 
 	if (!*path) return strdup ("/");
-	const char* end = strrchr (path, '/');
+	end = strrchr (path, '/');
 	if (!end) return strdup (path);
 
-	char* tmp = br_strndup ((char *) path, end - path);
+	tmp = br_strndup ((char *) path, end - path);
 	if (!*tmp)
 	{
 		free (tmp);
@@ -428,7 +441,7 @@ br_extract_prefix (const char *path)
 	end = strrchr (tmp, '/');
 	if (!end) return tmp;
 
-	char* result = br_strndup (tmp, end - tmp);
+	result = br_strndup (tmp, end - tmp);
 	free (tmp);
 
 	if (!*result)

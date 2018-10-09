@@ -15,9 +15,9 @@
 
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
-	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+	Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
-// RCS-ID: $Id$
+// RCS-ID: $Id: snippetitemdata.cpp 28 2007-04-01 14:32:57Z Pecan $
 
 #ifdef WX_PRECOMP
     #include "wx_pch.h"
@@ -25,52 +25,23 @@
 #endif
 
 #include "snippetitemdata.h"
-#include "snippetsconfig.h"
-#include "codesnippetswindow.h"
 
 // ----------------------------------------------------------------------------
-// statics
+SnippetItemData::SnippetItemData(SnippetItemType type) : m_Type(type), m_Snippet(wxEmptyString)
 // ----------------------------------------------------------------------------
-long     SnippetTreeItemData::m_HighestSnippetID = 0;
-unsigned SnippetTreeItemData::m_itemsChangedCount = 0;
+{
+}
 
 // ----------------------------------------------------------------------------
-SnippetTreeItemData::SnippetTreeItemData(SnippetItemType type, SnippetItemID oldID)
+SnippetItemData::SnippetItemData(SnippetItemType type, wxString snippet) : m_Type(type), m_Snippet(snippet)
 // ----------------------------------------------------------------------------
-    : m_Type(type), m_Snippet(wxEmptyString), m_ID(oldID)
 {
-    InitializeItem(oldID);
 }
+
 // ----------------------------------------------------------------------------
-SnippetTreeItemData::SnippetTreeItemData(SnippetItemType type, wxString snippet, SnippetItemID oldID)
-// ---------------------------------------------------------------------------
-    : m_Type(type), m_Snippet(snippet), m_ID(oldID)
-{
-    InitializeItem(oldID);
-}
-// ----------------------------------------------------------------------------
-SnippetTreeItemData::~SnippetTreeItemData()
+SnippetItemData::~SnippetItemData()
 // ----------------------------------------------------------------------------
 {
 	//dtor
-}
-// ----------------------------------------------------------------------------
-void SnippetTreeItemData::InitializeItem(SnippetItemID oldID)
-// ----------------------------------------------------------------------------
-{
-    //m_ID already set by ctor init m_ID(oldID)
-    if ( 0 == oldID )
-        m_ID = GetNewID();
-
-    // if ID is less than highest, must be merging another .xml
-    if ( m_ID < m_HighestSnippetID )
-        if ( GetConfig()->GetSnippetsWindow()->IsAppendingFile() )
-            m_ID = GetNewID();
-
-    if ( oldID not_eq m_ID )
-        m_itemsChangedCount += 1;
-
-    // if ID is greater than highest, set to highest
-    UpdateHighestSnippetID(m_ID);
 }
 

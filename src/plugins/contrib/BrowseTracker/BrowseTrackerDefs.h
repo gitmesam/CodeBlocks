@@ -1,13 +1,12 @@
 #ifndef BROWSEMARKERDEFS_H_INCLUDED
 #define BROWSEMARKERDEFS_H_INCLUDED
 
-//svn5785 #include "wxscintilla/include/wx/wxscintilla.h"
-#include <wx/wxscintilla.h>
+#include "wxscintilla/include/wx/wxscintilla.h"
 
     const int MaxEntries = 20;
 
     // from cbeditor.cpp
-    #define BOOKMARK_MARKER        4
+    #define BOOKMARK_MARKER        2
     #define BOOKMARK_STYLE         wxSCI_MARK_ARROW
 
     const int BROWSETRACKER_MARKER       = 9 ;
@@ -36,7 +35,7 @@ WX_DECLARE_STRING_HASH_MAP(BrowseMarks*, FileBrowse_MarksHash);
             ClearAllOnSingleClick = 0,
             ClearAllOnDoubleClick = 1,
 
-            //-BrowseMarksStyle  = 0,
+            BrowseMarksStyle  = 0,
             BookMarksStyle   = 1,
             HiddenMarksStyle = 2
 

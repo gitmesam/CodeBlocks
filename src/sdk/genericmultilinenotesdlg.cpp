@@ -10,14 +10,13 @@
 #include "sdk_precomp.h"
 
 #ifndef CB_PRECOMP
-    #include <wx/button.h>
-    #include <wx/textctrl.h>
     #include <wx/xrc/xmlres.h>
 #endif
 
 #include "genericmultilinenotesdlg.h"
+#include <wx/textctrl.h>
 
-BEGIN_EVENT_TABLE(GenericMultiLineNotesDlg, wxScrollingDialog)
+BEGIN_EVENT_TABLE(GenericMultiLineNotesDlg, wxDialog)
     //
 END_EVENT_TABLE()
 
@@ -26,25 +25,18 @@ GenericMultiLineNotesDlg::GenericMultiLineNotesDlg(wxWindow* parent, const wxStr
     m_ReadOnly(readOnly)
 {
     //ctor
-    wxXmlResource::Get()->LoadObject(this, parent, _T("dlgGenericMultiLineNotes"),_T("wxScrollingDialog"));
+    wxXmlResource::Get()->LoadDialog(this, parent, _T("dlgGenericMultiLineNotes"));
     SetTitle(caption);
 
-    wxTextCtrl *notesCtrl = XRCCTRL(*this, "txtNotes", wxTextCtrl);
+    XRCCTRL(*this, "txtNotes", wxTextCtrl)->SetValue(m_Notes);
+    XRCCTRL(*this, "txtNotes", wxTextCtrl)->SetEditable(!m_ReadOnly);
 
-    notesCtrl->SetValue(m_Notes);
     if (m_ReadOnly)
     {
-        notesCtrl->SetEditable(false);
-        if (wxWindow* win = FindWindowById(wxID_CANCEL, this))
-        {
+        wxWindow* win = FindWindowById(wxID_OK, this);
+        if (win)
             win->Enable(false);
-        }
-        // If the control is editable the user cannot activate the default button with
-        // the enter key, so we set the default button only for read only notes.
-        XRCCTRL(*this, "wxID_OK", wxButton)->SetDefault();
     }
-    else
-        notesCtrl->SetFocus();
 }
 
 GenericMultiLineNotesDlg::~GenericMultiLineNotesDlg()
@@ -54,9 +46,7 @@ GenericMultiLineNotesDlg::~GenericMultiLineNotesDlg()
 
 void GenericMultiLineNotesDlg::EndModal(int retCode)
 {
-    if (retCode == wxID_OK && !m_ReadOnly)
-    {
+    if (retCode == wxID_OK)
         m_Notes = XRCCTRL(*this, "txtNotes", wxTextCtrl)->GetValue();
-    }
-    wxScrollingDialog::EndModal(retCode);
+    wxDialog::EndModal(retCode);
 }

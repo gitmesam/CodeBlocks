@@ -16,17 +16,15 @@
 * along with wxSmith; if not, write to the Free Software
 * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
 *
-* $Revision$
-* $Id$
-* $HeadURL$
+* $Revision: 4504 $
+* $Id: wxsmithpluginregistrants.cpp 4504 2007-10-02 21:52:30Z byo $
+* $HeadURL: svn+ssh://byo@svn.berlios.de/svnroot/repos/codeblocks/trunk/src/plugins/contrib/wxSmith/plugin/wxsmithpluginregistrants.cpp $
 */
 
-#include <wx/intl.h>
-#include <wx/log.h>
+#include "pkgconfigmanager.h"
 #include <wx/utils.h>
 #include <wx/tokenzr.h>
-
-#include "pkgconfigmanager.h"
+#include <wx/intl.h>
 
 PkgConfigManager::PkgConfigManager()
 {
@@ -40,18 +38,25 @@ PkgConfigManager::~PkgConfigManager()
 void PkgConfigManager::RefreshData()
 {
     if ( !DetectVersion() /*|| !LoadLibraries() */)
+    {
         m_PkgConfigVersion = -1;
+    }
 }
 
 bool PkgConfigManager::DetectVersion()
 {
     wxArrayString Output;
-    wxLogNull noLog;
     if ( wxExecute(_T("pkg-config --version"),Output,wxEXEC_NODISABLE) != 0 )
-        return false; // Some error, we can not talk to pkg-config
+    {
+        // Some error, we can not talk to pkg-config
+        return false;
+    }
 
     if ( Output.Count() < 1 )
-        return false; // Did not receive version string
+    {
+        // Did not receive version string
+        return false;
+    }
 
     wxStringTokenizer VerTok(Output[0],_T("."));
     long VersionNumbers[4] = { 0,0,0,0 };
@@ -60,11 +65,17 @@ bool PkgConfigManager::DetectVersion()
     while ( VerTok.HasMoreTokens() && CurrentVersionToken<4 )
     {
         if ( !VerTok.GetNextToken().ToLong(&VersionNumbers[CurrentVersionToken++],10) )
-            return false; // Incorrect version
+        {
+            // Incorrect version
+            return false;
+        }
     }
 
     if ( CurrentVersionToken==0 )
-        return false; // No suitable version number found
+    {
+        // No suitable version number found
+        return false;
+    }
 
     m_PkgConfigVersion =
         ((VersionNumbers[0]&0xFFL) << 24) |
@@ -79,10 +90,12 @@ bool PkgConfigManager::DetectLibraries(ResultMap& Results)
 {
     if ( !IsPkgConfig() ) return false;
 
-    wxLogNull noLog;
     wxArrayString Output;
     if ( wxExecute(_T("pkg-config --list-all"),Output,wxEXEC_NODISABLE) != 0 )
-        return false; // Some error, we can not talk to pkg-config
+    {
+        // Some error, we can not talk to pkg-config
+        return false;
+    }
 
     Results.Clear();
     for ( size_t i=0; i<Output.Count(); i++ )
@@ -98,11 +111,16 @@ bool PkgConfigManager::DetectLibraries(ResultMap& Results)
         {
             wxChar ch = Line[j];
             if ( ch==_T('\0') || ch==_T(' ') || ch==_T('\t') )
+            {
                 break;
+            }
             Name += ch;
         }
         if ( Name.IsEmpty() )
-            continue; // Woow, what was that ?
+        {
+            // Woow, what was that ?
+            continue;
+        }
 
         // Eat white
         while ( j<Line.Length() && (Line[j]==_T(' ') || Line[j]==_T('\t')) ) j++;
@@ -124,7 +142,7 @@ void PkgConfigManager::Clear()
 {
 }
 
-bool PkgConfigManager::UpdateTarget(const wxString& VarName,CompileTargetBase* Target,bool /*Force*/)
+bool PkgConfigManager::UpdateTarget(const wxString& VarName,CompileTargetBase* Target,bool Force)
 {
     Target->AddCompilerOption(_T("`pkg-config ") + VarName + _T(" --cflags`"));
     Target->AddLinkerOption  (_T("`pkg-config ") + VarName + _T(" --libs`"  ));

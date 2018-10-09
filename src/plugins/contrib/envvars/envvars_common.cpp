@@ -22,9 +22,6 @@
   #include "logmanager.h"
 #endif
 
-#include <map>
-#include <utility> // std::pair
-
 #include "envvars_common.h"
 
 // Uncomment this for tracing of method calls in C::B's DebugLog:
@@ -32,12 +29,8 @@
 
 // ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 
-namespace nsEnvVars
-{
-  const wxString              EnvVarsSep     = _T("|");
-  const wxString              EnvVarsDefault = _T("default");
-  std::map<wxString,wxString> EnvVarsStack;
-}
+const wxString nsEnvVars::EnvVarsSep     = _T("|");
+const wxString nsEnvVars::EnvVarsDefault = _T("default");
 
 // ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 
@@ -57,46 +50,7 @@ void nsEnvVars::EnvVarsDebugLog(const wxChar* msg, ...)
   va_list  arg_list;
 
   va_start(arg_list, msg);
-#if wxCHECK_VERSION(3, 0, 0) && wxUSE_UNICODE
-// in wx >=  3 unicode-build (default) we need the %ls here, or the strings get
-// cut after the first character
-    log_msg = msg;
-    log_msg.Replace(_T("%s"), _T("%ls"));
-    msg = log_msg.wx_str();
-#endif
-
   log_msg = wxString::FormatV(msg, arg_list);
-  va_end(arg_list);
-
-  Manager::Get()->GetLogManager()->DebugLog(log_msg);
-}// EnvVarsDebugLog
-
-void nsEnvVars::EnvVarsDebugLog(const wxString &msg, ...)
-{
-  // load and apply configuration (to application only)
-  ConfigManager *cfg = Manager::Get()->GetConfigManager(_T("envvars"));
-  if (!cfg)
-    return;
-
-  // get whether to print debug message to debug log or not
-  bool debug_log = cfg->ReadBool(_T("/debug_log"));
-  if (!debug_log)
-    return;
-
-  wxString log_msg;
-  va_list  arg_list;
-
-  va_start(arg_list, msg);
-#if wxCHECK_VERSION(2,9,0) && wxUSE_UNICODE
-// in wx >=  2.9 unicode-build (default) we need the %ls here, or the strings get
-// cut after the first character
-    log_msg = msg;
-    log_msg.Replace(_T("%s"), _T("%ls"));
-    log_msg = wxString::FormatV(msg, arg_list);
-#else
-    log_msg = wxString::FormatV(msg, arg_list);
-#endif
-
   va_end(arg_list);
 
   Manager::Get()->GetLogManager()->DebugLog(log_msg);
@@ -106,7 +60,7 @@ void nsEnvVars::EnvVarsDebugLog(const wxString &msg, ...)
 
 wxArrayString nsEnvVars::EnvvarStringTokeniser(const wxString& str)
 {
-#if defined(TRACE_ENVVARS)
+#if TRACE_ENVVARS
   Manager::Get()->GetLogManager()->DebugLog(F(_T("EnvvarStringTokeniser")));
 #endif
   // tokenise string like:
@@ -132,7 +86,7 @@ wxArrayString nsEnvVars::EnvvarStringTokeniser(const wxString& str)
     if (current_char.CompareTo(_T("\""))==0) // equality
       inside_quot = !inside_quot;
 
-    if ((current_char.CompareTo(nsEnvVars::EnvVarsSep.wx_str())==0) && (!inside_quot))
+    if ((current_char.CompareTo(nsEnvVars::EnvVarsSep)==0) && (!inside_quot))
     {
       if (!token.IsEmpty())
       {
@@ -156,7 +110,7 @@ wxArrayString nsEnvVars::EnvvarStringTokeniser(const wxString& str)
 
 wxArrayString nsEnvVars::GetEnvvarSetNames()
 {
-#if defined(TRACE_ENVVARS)
+#if TRACE_ENVVARS
   Manager::Get()->GetLogManager()->DebugLog(F(_T("GetEnvvarSetNames")));
 #endif
 
@@ -172,7 +126,7 @@ wxArrayString nsEnvVars::GetEnvvarSetNames()
   // Read all envvar sets available
   wxArrayString sets     = cfg->EnumerateSubPaths(_T("/sets"));
   unsigned int  num_sets = sets.GetCount();
-  EV_DBGLOG(_T("EnvVars: Found %u envvar sets in config."), num_sets);
+  EV_DBGLOG(_T("EnvVars: Found %d envvar sets in config."), num_sets);
 
   if (num_sets==0)
     set_names.Add(nsEnvVars::EnvVarsDefault);
@@ -182,7 +136,7 @@ wxArrayString nsEnvVars::GetEnvvarSetNames()
     {
       wxString set_name = sets[i];
       if (set_name.IsEmpty())
-        set_name.Printf(_T("Set%u"), i);
+        set_name.Printf(_T("Set%d"), i);
 
       set_names.Add(set_name);
     }// for
@@ -195,7 +149,7 @@ wxArrayString nsEnvVars::GetEnvvarSetNames()
 
 wxString nsEnvVars::GetActiveSetName()
 {
-#if defined(TRACE_ENVVARS)
+#if TRACE_ENVVARS
   Manager::Get()->GetLogManager()->DebugLog(F(_T("GetActiveSetName")));
 #endif
 
@@ -211,7 +165,7 @@ wxString nsEnvVars::GetActiveSetName()
   if (!active_set_cfg.IsEmpty())
     active_set = active_set_cfg;
 
-  EV_DBGLOG(_T("EnvVars: Obtained '%s' as active envvar set from config."), active_set.wx_str());
+  EV_DBGLOG(_T("EnvVars: Obtained '%s' as active envvar set from config."), active_set.c_str());
   return active_set;
 }// GetActiveSetName
 
@@ -220,7 +174,7 @@ wxString nsEnvVars::GetActiveSetName()
 wxString nsEnvVars::GetSetPathByName(const wxString& set_name, bool check_exists,
                                      bool return_default)
 {
-#if defined(TRACE_ENVVARS)
+#if TRACE_ENVVARS
   Manager::Get()->GetLogManager()->DebugLog(F(_T("GetSetPathByName")));
 #endif
 
@@ -254,12 +208,12 @@ wxString nsEnvVars::GetSetPathByName(const wxString& set_name, bool check_exists
 
 wxArrayString nsEnvVars::GetEnvvarsBySetPath(const wxString& set_path)
 {
-#if defined(TRACE_ENVVARS)
+#if TRACE_ENVVARS
   Manager::Get()->GetLogManager()->DebugLog(F(_T("GetEnvvarsBySetPath")));
 #endif
 
   wxArrayString envvars;
-  EV_DBGLOG(_T("EnvVars: Searching for envvars in path '%s'."), set_path.wx_str());
+  EV_DBGLOG(_T("EnvVars: Searching for envvars in path '%s'."), set_path.c_str());
 
   ConfigManager *cfg = Manager::Get()->GetConfigManager(_T("envvars"));
   if (!cfg || set_path.IsEmpty())
@@ -275,8 +229,8 @@ wxArrayString nsEnvVars::GetEnvvarsBySetPath(const wxString& set_path)
     else
       EV_DBGLOG(_T("EnvVars: Warning: empty envvar detected and skipped."));
   }
-  EV_DBGLOG(_T("EnvVars: Read %lu/%u envvars in path '%s'."),
-    static_cast<unsigned long>(envvars.GetCount()), num_envvars, set_path.wx_str());
+  EV_DBGLOG(_T("EnvVars: Read %d/%d envvars in path '%s'."),
+    envvars.GetCount(), num_envvars, set_path.c_str());
 
   return envvars;
 }// GetEnvvarsBySetPath
@@ -285,7 +239,7 @@ wxArrayString nsEnvVars::GetEnvvarsBySetPath(const wxString& set_path)
 
 bool nsEnvVars::EnvvarSetExists(const wxString& set_name)
 {
-#if defined(TRACE_ENVVARS)
+#if TRACE_ENVVARS
   Manager::Get()->GetLogManager()->DebugLog(F(_T("EnvvarSetExists")));
 #endif
 
@@ -301,10 +255,10 @@ bool nsEnvVars::EnvvarSetExists(const wxString& set_name)
 
 // ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 
-bool nsEnvVars::EnvvarVetoUI(const wxString& key, wxCheckListBox* lstEnvVars, int sel)
+bool nsEnvVars::EnvvarVeto(const wxString& key, wxCheckListBox* lstEnvVars, int sel)
 {
-#if defined(TRACE_ENVVARS)
-  Manager::Get()->GetLogManager()->DebugLog(F(_T("EnvvarVetoUI")));
+#if TRACE_ENVVARS
+  Manager::Get()->GetLogManager()->DebugLog(F(_T("EnvvarVeto")));
 #endif
 
   if (wxGetEnv(key, NULL))
@@ -317,7 +271,7 @@ bool nsEnvVars::EnvvarVetoUI(const wxString& key, wxCheckListBox* lstEnvVars, in
     warn_exist.Printf(_("Warning: Environment variable '%s' is already set.\n"
                         "Continue with updating it's value?\n"
                         "(Recursions like '%s' will be considered.)"),
-                        key.wx_str(), recursion.wx_str());
+                        key.c_str(), recursion.c_str());
 
     if (cbMessageBox(warn_exist, _("Confirmation"),
                      wxYES_NO | wxICON_QUESTION) == wxID_NO)
@@ -329,17 +283,15 @@ bool nsEnvVars::EnvvarVetoUI(const wxString& key, wxCheckListBox* lstEnvVars, in
   }// if
 
   return false;
-}// EnvvarVetoUI
+}// EnvvarVeto
 
 // ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 
-bool nsEnvVars::EnvvarsClearUI(wxCheckListBox* lstEnvVars)
+bool nsEnvVars::EnvvarsClear(wxCheckListBox* lstEnvVars)
 {
-#if defined(TRACE_ENVVARS)
-  Manager::Get()->GetLogManager()->DebugLog(F(_T("EnvvarsClearUI")));
+#if TRACE_ENVVARS
+  Manager::Get()->GetLogManager()->DebugLog(F(_T("EnvvarsClear")));
 #endif
-
-  if (!lstEnvVars) return false;
 
   wxString envsNotUnSet(wxEmptyString);
 
@@ -371,56 +323,32 @@ bool nsEnvVars::EnvvarsClearUI(wxCheckListBox* lstEnvVars)
   {
     wxString msg;
     msg.Printf( _("There was an error unsetting the following environment variables:\n%s"),
-                envsNotUnSet.wx_str() );
+                envsNotUnSet.c_str() );
     cbMessageBox(msg, _("Error"), wxOK | wxCENTRE | wxICON_ERROR);
     return false;
   }
 
   return true;
-}// EnvvarsClearUI
-
-// ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
-
-bool nsEnvVars::EnvvarIsRecursive(const wxString& key, const wxString& value)
-{
-  // Replace all macros the user might have setup for the key
-  wxString the_key = key;
-  Manager::Get()->GetMacrosManager()->ReplaceMacros(the_key);
-
-  wxString recursion;
-  if (platform::windows) recursion = _T("%")+the_key+_("%");
-  else                   recursion = _T("$")+the_key;
-
-  if (value.Contains(recursion))
-    return true;
-
-  return false;
-}// EnvvarIsRecursive
+}// EnvvarsClear
 
 // ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 
 bool nsEnvVars::EnvvarDiscard(const wxString &key)
 {
-#if defined(TRACE_ENVVARS)
+#if TRACE_ENVVARS
   Manager::Get()->GetLogManager()->DebugLog(F(_T("EnvvarDiscard")));
 #endif
 
   // Replace all macros the user might have setup for the key
   wxString the_key = key;
   Manager::Get()->GetMacrosManager()->ReplaceMacros(the_key);
-  if (the_key.Trim().IsEmpty()) return false;
-  if (!wxGetEnv(the_key, NULL)) return false; // envvar was not set - nothing to do.
-
-  std::map<wxString,wxString>::iterator it = nsEnvVars::EnvVarsStack.find(the_key);
-  if (it!=nsEnvVars::EnvVarsStack.end()) // found an old envvar on the stack
-    return nsEnvVars::EnvvarApply(the_key, it->second); // restore old value
 
   if (!wxUnsetEnv(the_key))
   {
     Manager::Get()->GetLogManager()->Log(F(
-      _("Unsetting environment variable '%s' failed."), the_key.wx_str())
-    );
-    EV_DBGLOG(_T("EnvVars: Unsetting environment variable '%s' failed."), the_key.wx_str());
+      _("Unsetting environment variable '%s' failed."), the_key.c_str()));
+    EV_DBGLOG(_T("EnvVars: Unsetting environment variable '%s' failed."),
+      the_key.c_str());
     return false;
   }
 
@@ -429,55 +357,51 @@ bool nsEnvVars::EnvvarDiscard(const wxString &key)
 
 // ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 
-bool nsEnvVars::EnvvarApply(const wxString& key, const wxString& value)
+bool nsEnvVars::EnvvarApply(const wxString& key, const wxString& value,
+                            wxCheckListBox* lstEnvVars, int sel)
 {
-#if defined(TRACE_ENVVARS)
+#if TRACE_ENVVARS
   Manager::Get()->GetLogManager()->DebugLog(F(_T("EnvvarApply")));
 #endif
 
-  // Replace all macros the user might have setup for the key
+  // Key:   Replace all macros the user might have used
   wxString the_key = key;
   Manager::Get()->GetMacrosManager()->ReplaceMacros(the_key);
-  if (the_key.Trim().IsEmpty()) return false;
 
   // Value: First, expand stuff like:
   //        set PATH=%PATH%;C:\NewPath OR export PATH=$PATH:/new_path
   //        After, replace all macros the user might have used in addition
+  wxString the_value = value;
   wxString value_set;
   bool     is_set    = wxGetEnv(the_key, &value_set);
-  wxString the_value = value;
   if (is_set)
   {
-    std::map<wxString,wxString>::iterator it = nsEnvVars::EnvVarsStack.find(the_key);
-    if (it==nsEnvVars::EnvVarsStack.end()) // envvar not already on the stack
-      nsEnvVars::EnvVarsStack[the_key] = value_set; // remember the old value
+    wxString recursion;
+    if (platform::windows) recursion = _T("%")+the_key+_("%");
+    else                   recursion = _T("$")+the_key;
 
-    // Avoid endless recursion if the value set contains e.g. $PATH, too
-    if (nsEnvVars::EnvvarIsRecursive(the_key,the_value))
+    if (the_value.Contains(recursion))
     {
-      if (nsEnvVars::EnvvarIsRecursive(the_key,value_set))
+      // Avoid endless recursion if the value set contains e.g. $PATH, too
+      if (value_set.Contains(recursion))
       {
         EV_DBGLOG(_T("EnvVars: Setting environment variable '%s' failed "
-                     "due to unresolvable recursion."), the_key.wx_str());
+                     "due to unsresolvable recursion."), the_key.c_str());
+        if (lstEnvVars && (sel>=0))
+          lstEnvVars->Check(sel, false); // Unset to visualise it's NOT set
         return false;
       }
-      // Restore original value in case of recursion before
-      if (it!=nsEnvVars::EnvVarsStack.end())
-        value_set = nsEnvVars::EnvVarsStack[the_key];
-      // Resolve recursion now (if any)
-      wxString recursion;
-      if (platform::windows) recursion = _T("%")+the_key+_("%");
-      else                   recursion = _T("$")+the_key;
-      the_value.Replace(recursion.wx_str(), value_set.wx_str());
+      the_value.Replace(recursion.c_str(), value_set.c_str());
     }
   }
-  // Replace all macros the user might have setup for the value
   Manager::Get()->GetMacrosManager()->ReplaceMacros(the_value);
 
-  EV_DBGLOG(_T("EnvVars: Trying to set environment variable '%s' to value '%s'..."), the_key.wx_str(), the_value.wx_str());
-  if (!wxSetEnv(the_key, the_value)) // set the envvar as computed
+  EV_DBGLOG(_T("EnvVars: Trying to set environment variable '%s' to value '%s'..."), the_key.c_str(), the_value.c_str());
+  if (!wxSetEnv(the_key, the_value))
   {
-    EV_DBGLOG(_T("EnvVars: Setting environment variable '%s' failed."), the_key.wx_str());
+    EV_DBGLOG(_T("EnvVars: Setting environment variable '%s' failed."), the_key.c_str());
+    if (lstEnvVars && (sel>=0))
+      lstEnvVars->Check(sel, false); // Unset to visualise it's NOT set
     return false;
   }
 
@@ -487,10 +411,10 @@ bool nsEnvVars::EnvvarApply(const wxString& key, const wxString& value)
 // ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 
 bool nsEnvVars::EnvvarArrayApply(const wxArrayString& envvar,
-                                 wxCheckListBox*      lstEnvVars)
+                                 wxCheckListBox* lstEnvVars)
 {
-#if defined(TRACE_ENVVARS)
-  Manager::Get()->GetLogManager()->DebugLog(F(_T("EnvvarArrayApply")));
+#if TRACE_ENVVARS
+  Manager::Get()->GetLogManager()->DebugLog(F(_T("EnvvarApply")));
 #endif
 
   if (envvar.GetCount() == 3)
@@ -503,37 +427,30 @@ bool nsEnvVars::EnvvarArrayApply(const wxArrayString& envvar,
     key.Trim(true).Trim(false);
     value.Trim(true).Trim(false);
 
-    int sel = -1;
+    int sel = 0;
     if (lstEnvVars)
     {
-#if CHECK_LIST_BOX_CLIENT_DATA==1
-      sel = lstEnvVars->Append(key + _T(" = ") + value, new EnvVariableListClientData(key, value));
-#else
       sel = lstEnvVars->Append(key + _T(" = ") + value);
-#endif
       lstEnvVars->Check(sel, bCheck);
     }
 
     if (bCheck)
     {
-      bool success = EnvvarApply(key, value);
-      if (!success && lstEnvVars && sel>=0)
-        lstEnvVars->Check(sel, false); // Unset on UI to mark it's NOT set
-
-      return success;
+      if (EnvvarApply(key, value, lstEnvVars, sel))
+        return true;
     }
     else
       return true; // No need to apply -> success, too.
   }// if
 
   return false;
-}// EnvvarArrayApply
+}// EnvvarApply
 
 // ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 
 void nsEnvVars::EnvvarSetApply(const wxString& set_name, bool even_if_active)
 {
-#if defined(TRACE_ENVVARS)
+#if TRACE_ENVVARS
   Manager::Get()->GetLogManager()->DebugLog(F(_T("EnvvarSetApply")));
 #endif
 
@@ -553,16 +470,15 @@ void nsEnvVars::EnvvarSetApply(const wxString& set_name, bool even_if_active)
   if (!even_if_active && set_to_apply.IsSameAs(last_set_applied))
   {
     EV_DBGLOG(_T("EnvVars: Set '%s' will not be applied (already active)."),
-              set_to_apply.wx_str());
+      set_to_apply.c_str());
     return;
   }
 
   // Show currently activated set in debug log (for reference)
   wxString set_path = nsEnvVars::GetSetPathByName(set_to_apply);
   EV_DBGLOG(_T("EnvVars: Active envvar set is '%s', config path '%s'."),
-    set_to_apply.wx_str(), set_path.wx_str());
+    set_to_apply.c_str(), set_path.c_str());
 
-  // NOTE: Keep this in sync with EnvVarsConfigDlg::LoadSettings
   // Read and apply all envvars from currently active set in config
   wxArrayString vars     = nsEnvVars::GetEnvvarsBySetPath(set_path);
   size_t envvars_total   = vars.GetCount();
@@ -574,17 +490,15 @@ void nsEnvVars::EnvvarSetApply(const wxString& set_name, bool even_if_active)
     if (nsEnvVars::EnvvarArrayApply(var_array))
       envvars_applied++;
     else
-    {
-      EV_DBGLOG(_T("EnvVars: Invalid envvar in '%s' at position #%u."),
-        set_path.wx_str(), i);
-    }
+      EV_DBGLOG(_T("EnvVars: Invalid envvar in '%s' at position #%d."),
+        set_path.c_str(), i);
   }// for
 
   if (envvars_total>0)
   {
     last_set_applied = set_to_apply;
-    EV_DBGLOG(_T("EnvVars: %lu/%lu envvars applied within C::B focus."),
-      static_cast<unsigned long>(envvars_applied), static_cast<unsigned long>(envvars_total));
+    EV_DBGLOG(_T("EnvVars: %d/%d envvars applied within C::B focus."),
+      envvars_applied, envvars_total);
   }
 }// EnvvarSetApply
 
@@ -592,7 +506,7 @@ void nsEnvVars::EnvvarSetApply(const wxString& set_name, bool even_if_active)
 
 void nsEnvVars::EnvvarSetDiscard(const wxString& set_name)
 {
-#if defined(TRACE_ENVVARS)
+#if TRACE_ENVVARS
   Manager::Get()->GetLogManager()->DebugLog(F(_T("EnvvarSetDiscard")));
 #endif
 
@@ -608,7 +522,7 @@ void nsEnvVars::EnvvarSetDiscard(const wxString& set_name)
   // Show currently activated set in debug log (for reference)
   wxString set_path = nsEnvVars::GetSetPathByName(set_to_discard);
   EV_DBGLOG(_T("EnvVars: Active envvar set is '%s', config path '%s'."),
-    set_to_discard.wx_str(), set_path.wx_str());
+    set_to_discard.c_str(), set_path.c_str());
 
   // Read and apply all envvars from currently active set in config
   wxArrayString vars       = nsEnvVars::GetEnvvarsBySetPath(set_path);
@@ -622,23 +536,17 @@ void nsEnvVars::EnvvarSetDiscard(const wxString& set_name)
     {
       wxString check = var_array[0];
       bool bCheck = check.Trim(true).Trim(false).IsSameAs(_T("1"))?true:false;
-      // Do not unset envvars that are not activated (checked)
-      if (!bCheck) continue; // next for-loop
-
-      // unset the old envvar
-      if (nsEnvVars::EnvvarDiscard(var_array[1]))
+      if (!bCheck || (bCheck && nsEnvVars::EnvvarDiscard(var_array[1]))) // key
         envvars_discarded++;
     }
     else
-    {
-      EV_DBGLOG(_T("EnvVars: Invalid envvar in '%s' at position #%u."),
-        set_path.wx_str(), i);
-    }
+      EV_DBGLOG(_T("EnvVars: Invalid envvar in '%s' at position #%d."),
+        set_path.c_str(), i);
   }// for
 
   if (envvars_total>0)
   {
-    EV_DBGLOG(_T("EnvVars: %lu/%lu envvars discarded within C::B focus."),
-      static_cast<unsigned long>(envvars_discarded), static_cast<unsigned long>(envvars_total));
+    EV_DBGLOG(_T("EnvVars: %d/%d envvars discarded within C::B focus."),
+      envvars_discarded, envvars_total);
   }
 }// EnvvarSetDiscard

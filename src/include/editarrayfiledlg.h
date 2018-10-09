@@ -6,17 +6,17 @@
 #ifndef EDITARRAYFILEDLG_H
 #define EDITARRAYFILEDLG_H
 
-#include "scrollingdialog.h"
+#include <wx/dialog.h>
 #include <wx/intl.h>
 #include "settings.h"
 
-class DLLIMPORT EditArrayFileDlg : public wxScrollingDialog
+class DLLIMPORT EditArrayFileDlg : public wxDialog
 {
 	public:
 		EditArrayFileDlg(wxWindow* parent, wxArrayString& array, bool useRelativePaths = false, const wxString& basePath = _T(""));
-		~EditArrayFileDlg() override;
+		virtual ~EditArrayFileDlg();
 		EditArrayFileDlg& operator=(const EditArrayFileDlg&){ return *this; } // just to satisfy script bindings (never used)
-		void EndModal(int retCode) override;
+		virtual void EndModal(int retCode);
 	protected:
 		void OnAdd(wxCommandEvent& event);
 		void OnEdit(wxCommandEvent& event);

@@ -8,34 +8,21 @@
 
 #include "settings.h"
 
-//uncomment the below line if you want to do the hook performance measure
-//#define EDITOR_HOOK_PERFORMANCE_MEASURE
-
-#ifdef EDITOR_HOOK_PERFORMANCE_MEASURE
-    #include <typeinfo> // typeid
-#endif // EDITOR_HOOK_PERFORMANCE_MEASURE
-
 class cbEditor;
-class cbSmartIndentPlugin;
 class wxScintillaEvent;
 
-/** Provides static functions to add hooks to the editor modification operations. */
+/** Provides static functions to add hooks to the project loading/saving procedure. */
 namespace EditorHooks
 {
-    /** Abstract base hook functor interface. Similar to cbEventFunctor class*/
+    /** Abstract base hook functor interface. */
     class DLLIMPORT HookFunctorBase
     {
         public:
             virtual ~HookFunctorBase(){}
             virtual void Call(cbEditor*, wxScintillaEvent&) const = 0;
-
-#ifdef EDITOR_HOOK_PERFORMANCE_MEASURE
-            virtual const char* GetTypeName() const = 0;
-#endif // EDITOR_HOOK_PERFORMANCE_MEASURE
-
     };
 
-    /** Functor class for use as a editor modification operations hook.
+    /** Functor class for use as a project loading/saving hook.
       * Passed as the first parameter in RegisterHook() and
       * UnregisterHook().
       *
@@ -47,28 +34,25 @@ namespace EditorHooks
       * EditorHooks::UnregisterHook(id, true);
       *
       * Member functions used as hook callbacks must have the following signature:
-      * void YourFunctionName(cbEditor*, wxScintillaEvent&)
+      * void YourFunctionName(cbProject*, TiXmlElement*, bool)
+      *
+      * Use normal TinyXML procedures to work with the TiXmlElement* argument.
+      * The isLoading argument is true if your hook is called when the project is being loaded,
+      * and false when the project is saved.
       */
-    template<class T> class HookFunctor : public HookFunctorBase
+    template<class T> class DLLIMPORT HookFunctor : public HookFunctorBase
     {
         public:
             typedef void (T::*Func)(cbEditor*, wxScintillaEvent&);
-            HookFunctor(T* obj, Func func) : m_pObj(obj), m_pFunc(func)
-            { ; }
-            void Call(cbEditor* editor, wxScintillaEvent& event) const override
+            HookFunctor(T* obj, Func func)
+                : m_pObj(obj),
+                m_pFunc(func)
+            {}
+            virtual void Call(cbEditor* editor, wxScintillaEvent& event) const
             {
                 if (m_pObj && m_pFunc)
                     (m_pObj->*m_pFunc)(editor, event);
             }
-
-#ifdef EDITOR_HOOK_PERFORMANCE_MEASURE
-            /** return the name (usually mangled C++ name for the member function) */
-            virtual const char* GetTypeName() const
-            {
-                return typeid(m_pFunc).name();
-            }
-#endif // EDITOR_HOOK_PERFORMANCE_MEASURE
-
         protected:
             T* m_pObj;
             Func m_pFunc;
@@ -93,36 +77,9 @@ namespace EditorHooks
     /** Call all registered hooks using the supplied parameters.
       * This is called by ProjectLoader.
       * @param editor The editor in question.
-      * @param event Parameter (wxScintilla event) to provide to the registered hook
+      * @param event Paremeter (wxScintilla event) to provide to the registered hook
       */
     extern DLLIMPORT void CallHooks(cbEditor* editor, wxScintillaEvent& event);
-
-    /** Provides a HookFunctor which redirects the Call() of a cbSmartIndentPlugin
-      * so only the interface of cbSmartIndentPlugin has to be implemented for a new language.
-      */
-    class cbSmartIndentEditorHookFunctor : public HookFunctorBase
-    {
-        public:
-            /** ctor. */
-            cbSmartIndentEditorHookFunctor(cbSmartIndentPlugin* plugin);
-            /** dtor. */
-            ~cbSmartIndentEditorHookFunctor() override{}
-            /** Needs to be implemented by the plugin to act(smart indent) accordingly.
-              * @param editor The editor that is active and whose content is changed
-              * @param event  The wxScintilla event fired to react accordingly (see cbEditor::CreateEditor, namely scintilla_events)
-              */
-            void Call(cbEditor* editor, wxScintillaEvent& event) const override;
-
-#ifdef EDITOR_HOOK_PERFORMANCE_MEASURE
-            virtual const char* GetTypeName() const
-            {
-                return typeid(m_plugin).name();
-            }
-#endif // EDITOR_HOOK_PERFORMANCE_MEASURE
-
-        private:
-            cbSmartIndentPlugin* m_plugin;
-    };
-}
+};
 
 #endif // EDITOR_HOOKS_H

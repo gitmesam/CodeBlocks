@@ -44,43 +44,24 @@ struct avScheme
 	}
 };
 
-struct avCode
-{
-	std::string HeaderGuard;
-	std::string NameSpace;
-	std::string Prefix;
-
-	avCode() : HeaderGuard("VERSION_H"), NameSpace("AutoVersion"), Prefix(""){}
-
-	bool operator!=(const avCode& Other) const
-	{
-	    return (HeaderGuard != Other.HeaderGuard || NameSpace != Other.NameSpace ||
-                Prefix != Other.Prefix);
-	}
-};
-
 struct avSettings
 {
 	bool Autoincrement;
 	bool DateDeclarations;
 	bool DoAutoIncrement;
-	// GJH 03/03/10 Added manifest updating.
-	bool UpdateManifest;
 	bool AskToIncrement;
-	bool UseDefine;
 	std::string Language;
 	bool Svn;
 	std::string SvnDirectory;
 	std::string HeaderPath;
 	avSettings() : Autoincrement(true), DateDeclarations(true), DoAutoIncrement(false), AskToIncrement(false),
-        UseDefine(false), Language("C++"), Svn(false), SvnDirectory(), HeaderPath("version.h") {}
+        Language("C++"), Svn(false), SvnDirectory(), HeaderPath("version.h") {}
 	bool operator!=(const avSettings& Other) const
 	{
-	    return (Autoincrement != Other.Autoincrement || UpdateManifest != Other.UpdateManifest ||
-		DateDeclarations != Other.DateDeclarations || DoAutoIncrement != Other.DoAutoIncrement ||
-		AskToIncrement != Other.AskToIncrement || Language != Other.Language || UseDefine != Other.UseDefine ||
-		Svn != Other.Svn || SvnDirectory != Other.SvnDirectory ||
-		HeaderPath != Other.HeaderPath);
+	    return (Autoincrement != Other.Autoincrement || DateDeclarations != Other.DateDeclarations ||
+                DoAutoIncrement != Other.DoAutoIncrement || AskToIncrement != Other.AskToIncrement ||
+                Language != Other.Language || Svn != Other.Svn ||
+                SvnDirectory != Other.SvnDirectory || HeaderPath != Other.HeaderPath);
 	}
 };
 
@@ -100,7 +81,6 @@ struct avChangesLog
 
 struct avConfig
 {
-    avCode Code;
 	avScheme Scheme;
 	avSettings Settings;
 	avChangesLog ChangesLog;
@@ -108,7 +88,7 @@ struct avConfig
 	bool operator!=(const avConfig& Other) const
 	{
 	    return (Scheme != Other.Scheme || Settings != Other.Settings ||
-                ChangesLog != Other.ChangesLog || Code != Other.Code);
+                ChangesLog != Other.ChangesLog);
 	}
 };
 

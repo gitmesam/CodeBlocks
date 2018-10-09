@@ -6,11 +6,8 @@
 #ifndef ADDTODODLG_H
 #define ADDTODODLG_H
 
-#include <bitset>
-
+#include <wx/dialog.h>
 #include <wx/string.h>
-
-#include "scrollingdialog.h"
 
 class wxArrayString;
 class wxWindow;
@@ -25,38 +22,35 @@ enum ToDoPosition
 
 enum ToDoCommentType
 {
-    tdctLine = 0,      // line comments (for example C++ style)
-    tdctStream,        // Stream comments (for example C style)
-    tdctDoxygenLine,   // Doxygen line comment
-    tdctDoxygenStream, // Doxygen stream comment
-    tdctWarning,       // compiler warning
-    tdctError          // compiler error
+    tdctCpp = 0, // C++ style,
+    tdctC,       // C style
+    tdctDoxygen, // Doxygen style
+    tdctWarning, // compiler warning
+    tdctError    // compiler error
 };
-// when user want to add a new todo item, this dialog will shown to let user setting properties
-class AddTodoDlg : public wxScrollingDialog
+
+class AddTodoDlg : public wxDialog
 {
     public:
-        AddTodoDlg(wxWindow* parent, const wxArrayString& users, const wxArrayString& types, std::bitset<(int)tdctError+1> supportedTdcts);
-        virtual ~AddTodoDlg() {};
+        AddTodoDlg(wxWindow* parent, wxArrayString& types); // make sure the types live as long (or longer) then this dialog
+        ~AddTodoDlg();
 
         wxString GetText() const;
         wxString GetUser() const;
-        bool DateRequested() const;
         int GetPriority() const;
         ToDoPosition GetPosition() const;
         wxString GetType() const;
         ToDoCommentType GetCommentType() const;
 
         void EndModal(int retVal);
-
     private:
-        void OnAddUser(wxCommandEvent&);
-        void OnDelUser(wxCommandEvent&);
-        void OnAddType(wxCommandEvent&);
-        void OnDelType(wxCommandEvent&);
-
-        std::bitset<(int)tdctError+1> m_supportedTdcts;
+        void LoadUsers() const;
+        void SaveUsers() const;
+        void OnAddUser(wxCommandEvent& event);
+        void OnDelUser(wxCommandEvent& event);
+        wxArrayString& m_Types;
         DECLARE_EVENT_TABLE()
 };
 
 #endif // ADDTODODLG_H
+

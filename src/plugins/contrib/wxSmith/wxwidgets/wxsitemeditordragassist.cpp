@@ -79,9 +79,7 @@ void wxsItemEditorDragAssist::DrawExtra(wxsItem* Target,wxsItem* Parent,bool Add
                 DC->DrawBitmap(*m_ParentBitmap,m_ParentRect.x,m_ParentRect.y);
                 break;
 
-            case dtNone: // fall-through
-            default:
-                break;
+            default:;
         }
     }
 
@@ -98,9 +96,7 @@ void wxsItemEditorDragAssist::DrawExtra(wxsItem* Target,wxsItem* Parent,bool Add
                 DC->DrawBitmap(*m_TargetBitmap,m_TargetRect.x,m_TargetRect.y);
                 break;
 
-            case dtNone: // fall-through
-            default:
-                break;
+            default:;
         }
     }
 }
@@ -150,10 +146,7 @@ void wxsItemEditorDragAssist::RebuildParentAssist()
                 }
                 break;
 
-            case dtOutline: // fall-through
-            case dtNone:    // fall-through
-            default:
-                break;
+            default:;
         }
 
         m_IsParent = true;
@@ -201,10 +194,7 @@ void wxsItemEditorDragAssist::RebuildTargetAssist()
                 }
                 break;
 
-            case dtOutline: // fall-through
-            case dtNone:    // fall-through
-            default:
-                break;
+            default:;
         }
 
         m_IsTarget = true;

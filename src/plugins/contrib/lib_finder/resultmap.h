@@ -16,9 +16,9 @@
 * along with wxSmith; if not, write to the Free Software
 * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
 *
-* $Revision$
-* $Id$
-* $HeadURL$
+* $Revision: 4504 $
+* $Id: wxsmithpluginregistrants.cpp 4504 2007-10-02 21:52:30Z byo $
+* $HeadURL: svn+ssh://byo@svn.berlios.de/svnroot/repos/codeblocks/trunk/src/plugins/contrib/wxSmith/plugin/wxsmithpluginregistrants.cpp $
 */
 
 #ifndef RESULTMAP_H
@@ -31,7 +31,6 @@
 
 class wxArrayString;
 class wxString;
-class PkgConfigManager;
 
 WX_DEFINE_ARRAY(LibraryResult*,ResultArray);
 
@@ -46,14 +45,7 @@ WX_DEFINE_ARRAY(LibraryResult*,ResultArray);
 class ResultMap
 {
     public:
-
-        /** \brief Default ctor */
         ResultMap();
-
-        /** \brief Copying ctor */
-        ResultMap(const ResultMap& source);
-
-        /** \brief Dctor - clears all results */
         virtual ~ResultMap();
 
         /** \brief Clearing all results */
@@ -75,27 +67,7 @@ class ResultMap
         /** \brief Getting array of used variable names */
         void GetShortCodes(wxArrayString& Names);
 
-        /** \brief Writing detected results into configuration */
-        void WriteDetectedResults();
-
-        /** \brief Reading detected results from configuration (previous results are cleared) */
-        void ReadDetectedResults();
-
-        /** \brief Reading results from PkgConfig */
-        void ReadPkgConfigResults(PkgConfigManager* m_PkgConfigManager);
-
-        /** \brief Reading predefined results from configuration files */
-        void ReadPredefinedResults();
-
-        /** \brief Copying operator */
-        ResultMap& operator=(const ResultMap& source);
-
-        /** \brief Dumping content into debug output */
-        void DebugDump(const wxString& Name);
-
     private:
-
-        void LoadPredefinedResultFromFile(const wxString& FileName);
 
         WX_DECLARE_STRING_HASH_MAP(ResultArray,ResultHashMap);
         ResultHashMap Map;

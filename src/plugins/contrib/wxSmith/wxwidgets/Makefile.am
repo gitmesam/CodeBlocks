@@ -1,16 +1,21 @@
 SUBDIRS = defitems icons properties
 
-AM_CPPFLAGS = $(WX_CXXFLAGS) \
-		$(CB_SQUIRREL_CFLAGS) \
+AM_CPPFLAGS = -DWXMAKINGLIB_PROPGRID
+
+INCLUDES = $(WX_CXXFLAGS) \
 		-I$(top_srcdir)/src/include \
-		-I$(top_srcdir)/src/sdk/wxscintilla/include \
-		$(WXPROPGRID_INCLUDE) \
+		-I$(top_srcdir)/src/include/wxFlatNotebook/include \
+		-I$(top_srcdir)/src/include/wxscintilla/include \
+		-I$(top_srcdir)/src/include/wxFlatNotebook \
+		-I$(top_srcdir)/src/include/scripting/include \
+		-I$(top_srcdir)/src/include/scripting/squirrel \
 		-I$(top_srcdir)/src/include/scripting/sqplus \
-		-I$(top_srcdir)/src/include/scripting/bindings
+		-I$(top_srcdir)/src/include/scripting/bindings \
+		-I$(top_srcdir)/src/plugins/contrib/wxSmith/propgrid/contrib/include
 
 noinst_LTLIBRARIES = libwxsmith_wxwidgets.la
 
-libwxsmith_wxwidgets_la_LDFLAGS = @MODULE_SHARED_LDFLAGS@ -version-info 0:1:0 -no-undefined -avoid-version
+libwxsmith_wxwidgets_la_LDFLAGS = -module -version-info 0:1:0 -shared -no-undefined -avoid-version
 
 libwxsmith_wxwidgets_la_LIBADD = ../../../../sdk/libcodeblocks.la \
 				    properties/libwxsmith_wxwidgets_properties.la \
@@ -47,7 +52,6 @@ libwxsmith_wxwidgets_la_SOURCES = \
 ./wxsitemresdata.cpp \
 ./wxsitemeditor.cpp \
 ./wxsdialogres.cpp \
-./wxsscrollingdialogres.cpp \
 ./wxwidgetsgui.cpp \
 ./wxssizerparentqp.cpp \
 ./wxstool.cpp \
@@ -57,9 +61,7 @@ libwxsmith_wxwidgets_la_SOURCES = \
 ./wxscodercontext.cpp \
 ./wxscodegenerator.cpp
 
-sdkdir=$(includedir)/wxsmith/wxwidgets/
-
-sdk_HEADERS = \
+noinst_HEADERS = \
 ./wxsitemresdata.h \
 ./wxspredefinedids.h \
 ./wxsdrawingwindow.h \
@@ -85,7 +87,6 @@ sdk_HEADERS = \
 ./wxsitemeditor.h \
 ./wxwidgetsguiappadoptingdlg.h \
 ./wxsdialogres.h \
-./wxsscrollingdialogres.h \
 ./wxsitemundobuffer.h \
 ./wxsitemrestreedata.h \
 ./wxscontainer.h \

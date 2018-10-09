@@ -3,15 +3,22 @@
  * http://www.gnu.org/licenses/lgpl-3.0.html
  */
 
-#if ( !defined(PREP_H) && defined(__cplusplus) )
+#if ( !defined (PREP_H) && defined(__cplusplus) )
 #define PREP_H
 
-#include <stdint.h>
-
-#include <wx/defs.h> // wxIntPtr
 #ifndef wxMAJOR_VERSION
-    #include <wx/version.h>
+#include <wx/version.h>
 #endif
+
+
+
+/* -----------------------------------------------
+   remove this once the compiler supports C++0x*/
+   struct null_pointer_t { template<typename T> operator T*() const { return (T*) 0; }; };
+   extern null_pointer_t nullptr;
+/* ----------------------------------------------- */
+
+
 
 /*  ---------------------------------------------------------------------------------------------------------
     Version<major, minor, revision>::eval
@@ -29,10 +36,28 @@
             ErrorMessage("This feature is only supported under wxWidgets 2.8, or with Foo Component 1.2 or higher.");
 */
 template <int major, int minor = 0, int revision = 0> struct Version { enum { eval = (major<<25) + (minor<<15) + revision }; };
-inline void Version2MMR(int v, int& major, int& minor, int& revision) { major = v>>25; minor = (v>>15) & ((1<<10) -1); revision = v & ((1<<15) -1); }
+inline void Version2MMR(int v, int& major, int& minor, int& revision) { major = v>>25; minor = (v>>15) & ((1<<10) -1); revision = v & ((1<<15) -1); };
 
 template <int major, int minor, int rel = 0> struct wxMinimumVersion { enum { eval = ((unsigned int)  Version<wxMAJOR_VERSION, wxMINOR_VERSION, wxRELEASE_NUMBER>::eval >= (unsigned int) Version<major, minor, rel>::eval) }; };
 template <int major, int minor, int rel = 0> struct wxExactVersion { enum { eval = ((unsigned int) Version<wxMAJOR_VERSION, wxMINOR_VERSION, wxRELEASE_NUMBER>::eval == (unsigned int) Version<major, minor, rel>::eval) }; };
+
+
+
+/*  ---------------------------------------------------------------------------------------------------------
+    Assert a condition at compile time (as assert() does at runtime)
+    Break compilation if the assertion fails.
+
+    Example:
+		CompileTimeAssertion<wxMinimumVersion<2,6>::eval>::Assert();
+
+		This example code will break the build if you try to compile the code with wxWindows 2.4 (or any
+		other version below 2.6).
+		However, it will break the build in such a way that the problem is apparent in the error message,
+		rather than throwing up 317 obscure errors about whatever undefined symbols and wrong types.
+*/
+template <bool b> struct CompileTimeAssertion{};
+template<> struct CompileTimeAssertion<true> { static inline void Assert(){}; };
+
 
 
 /*  ---------------------------------------------------------------------------------------------------------
@@ -48,12 +73,11 @@ template <int major, int minor, int rel = 0> struct wxExactVersion { enum { eval
     and not having to worry about what it really is, without giving up type safety and without
     the nasty side effects that a #define might have.
 
-    Example:
-        typedef TernaryCondTypedef<wxMinimumVersion<2,5>::eval, wxTreeItemIdValue, long int>::eval tree_cookie_t;
+	Example:
+		typedef TernaryCondTypedef<wxMinimumVersion<2,5>::eval, wxTreeItemIdValue, long int>::eval tree_cookie_t;
 */
 template <bool cond, class true_t, class false_t> struct TernaryCondTypedef { typedef true_t eval; };
 template <class true_t, class false_t> struct TernaryCondTypedef<false, true_t, false_t> { typedef false_t eval; };
-
 
 
 /*  ---------------------------------------------------------------------------------------------------------
@@ -65,7 +89,7 @@ template <class true_t, class false_t> struct TernaryCondTypedef<false, true_t, 
         int widths[] = {5, 3, 8};
         myListControl->SetWidths(widths, 4); // oh crap, why does this crash?
 */
-template <typename T> unsigned int array_size(const T& array) { enum {result = sizeof(array) / sizeof(array[0])}; return result; }
+template <typename T> unsigned int array_size(const T& array) { enum {result = sizeof(array) / sizeof(array[0])}; return result; };
 
 
 
@@ -75,8 +99,8 @@ template <typename T> unsigned int array_size(const T& array) { enum {result = s
     to set a pointer to zero in the destructor, as it can never be used again).
     In _all_ other cases, use Delete(), which prevents accidential double-deletes.
 */
-template<typename T>inline void Delete(T*& p){delete p; p = nullptr;}
-template<typename T>inline void DeleteArray(T*& p){delete[] p; p = nullptr;}
+template<typename T>inline void Delete(T*& p){delete p; p = 0;};
+template<typename T>inline void DeleteArray(T*& p){delete[] p; p = 0;};
 
 
 
@@ -84,9 +108,9 @@ template<typename T>inline void DeleteArray(T*& p){delete[] p; p = nullptr;}
     platform::id
         Value of type platform::identifier describing the target platform
 
-    platform::windows, platform::macosx, platform::Linux
+    platform::windows, platform::macosx, platform::linux
     platform::freebsd, platform::netbsd, platform::openbsd
-    platform::darwin,  platform::solaris, platform::Unix
+    platform::darwin,  platform::solaris, platform::unix
         Boolean value that evaluates to true if the target platform is the same as the variable's name, false otherwise.
         Using the platform booleans is equivalent to using platform::id, but results in nicer code.
 
@@ -127,7 +151,7 @@ namespace platform
     const bool unicode = false;
     #endif
 
-    #if   defined ( __WIN32__ ) || defined ( _WIN64 )
+    #if   defined ( __WIN32__ )
     const identifier id = platform_windows;
     #elif defined ( __WXMAC__ )  || defined ( __WXCOCOA__ )
     const identifier id = platform_macosx;
@@ -165,87 +189,43 @@ namespace platform
     const bool cocoa = false;
     #endif
 
+	#if defined ( linux )
+		#undef linux
+	#endif
+
+	#if defined ( unix )
+		#undef unix
+	#endif
+
     const bool windows = (id == platform_windows);
     const bool macosx  = (id == platform_macosx);
-    const bool Linux   = (id == platform_linux);
+    const bool linux   = (id == platform_linux);
     const bool freebsd = (id == platform_freebsd);
     const bool netbsd  = (id == platform_netbsd);
     const bool openbsd = (id == platform_openbsd);
     const bool darwin  = (id == platform_darwin);
     const bool solaris = (id == platform_solaris);
-    const bool Unix    = (Linux | freebsd | netbsd | openbsd | darwin | solaris);
+    const bool unix    = (linux | freebsd | netbsd | openbsd | darwin | solaris);
 
     const int bits = 8*sizeof(void*);
 
-    // Function and parameter attributes
-    // ----------------------------------
-    //
-    // These parameters possibly allow more fine-grained optimization and better diagnostics.
-    // They are implemented for the GCC compiler family and 'quiet' for all others
-    //
-    // IMPORTANT: Do not lie to the compiler when marking functions pure or const, or you will cause great evil.
-    //
-    // a) Optimization hints:
-    //
-    // cb_pure_function        Function has no observable effects other than the return value
-    //                         and the return value depends only on parameters and global variables
-    //                         ALSO: function does not throw (makes sense with the above requirement).
-    //
-    // cb_const_function       Function has no observable effects other than the return value
-    //                         and the return value depends only on parameters.
-    //                         ALSO: No external memory, including memory referenced by parameters, may be touched.
-    //                         ALSO: function does not throw (makes sense with the above requirement).
-    //
-    // cb_force_inline         What the name says. This is the strongest available inline hint (the compiler may still ignore it).
-    //
-    //
-    // b) Usage hints:
-    //
-    // cb_must_consume_result  The return value of a function must be consumed (usually because of taking ownership), i.e.
-    //                         ObjType* result = function();  ---> valid
-    //                         function();                    ---> will raise a warning
-    //
-    // cb_deprecated_function  The function is deprecated and may be removed in a future revision of the API.
-    //                         New code should not call the function. Doing so will work, but will raise a warning.
-    //
-    // cb_optional             No warning will be raised if the parameter is not used. Identical to "unused",
-    //                         but the wording sounds more like "you may omit using this" rather than "we are not using this"
-    //                         Used for interfaces or base classes to convey the message that a (generally useful) parameter is passed,
-	//                         but it is allowable to ignore the parameter (and maybe a base class implementation does just that).
-    //
-    // cb_unused               No warning will be raised if the parameter is not used.
-    //                         Use this if you want to convey that you are aware of a parameter but you are intentionally not using it.
-    //
-    // POISON(message)         If you touch this, you'll die. The message tells you why.
-    //                         ALSO: It will break the build, so nobody else must die.
 
-    #if defined(__GNUC__) && ((100 * __GNUC__ + 10 * __GNUC_MINOR__ + __GNUC_PATCHLEVEL__) >= 332)
+    #if __GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 2)
         const int gcc = Version<__GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__>::eval;
-        #define cb_pure_function       __attribute__ ((__pure__,  __nothrow__))
-        #define cb_const_function      __attribute__ ((__const__, __nothrow__))
-        #define cb_force_inline        __attribute__ ((__always_inline__))
-        #define cb_must_consume_result __attribute__ ((__warn_unused_result__))
-        #define cb_deprecated_function __attribute__ ((__deprecated__))
-        #define cb_unused              __attribute__ ((__unused__))
-
-        #if((100 * __GNUC__ + 10 *__GNUC_MINOR__ + __GNUC_PATCHLEVEL__) >= 436)
-            #define POISON(message) __attribute__((__error__(#message))
-        #else
-            #define POISON(message)
-        #endif
+        #define pure_function       __attribute__ ((pure, nothrow))
+        #define const_function      __attribute__ ((const, nothrow))
+        #define force_inline        __attribute__ ((always_inline))
+        #define warn_unused         __attribute__ ((warn_unused_result))
+        #define deprecated_function __attribute__ ((deprecated))
     #else
         const int gcc = 0;
-        #define cb_pure_function
-        #define cb_const_function
-        #define cb_force_inline
-        #define cb_must_consume_result
-        #define cb_deprecated_function
-        #define cb_unused
-        #define POISON(message)
+        #define pure_function
+        #define const_function
+        #define force_inline
+        #define warn_unused
+        #define deprecated_function
     #endif
-
-    #define cb_optional cb_unused
-}
+};
 
 
 
@@ -254,16 +234,16 @@ namespace platform
 */
 namespace sdk
 {
-    const int version             = Version<1>::eval;
+    const int version = Version<1>::eval;
     const int buildsystem_version = Version<1>::eval;
-    const int plugin_api_version  = Version<1,11,10>::eval;
-}
+    const int plugin_api_version = Version<1,11,10>::eval;
+};
 
 
 
 /*  ---------------------------------------------------------------------------------------------------------
     The compatibility namespace is intended for workarounds that try to cope with incompatibilities in different
-    wxWidgets versions. Since these often involve missing functions or constants, #ifdef is explicitly allowed
+    wxWidgets versions. Since these often involve missing functions or constants, #ifdef is explicitely allowed
     and not frowned upon in this namespace.
 
     wxHideReadonly
@@ -313,7 +293,7 @@ namespace compatibility
             unsigned int Z(){return GetID<foo>(); };    // shared with A
         };
 
-        In this example, A::X() will return a counter that is globally unique throughout the lifetime of the application.
+        In this example, A::X() will return a counter that is globally unique througout the lifetime of the application.
         A::Y() and B::Y() will return counters that increment independently for A and B. In other words,
         B does not know about A's counter, nor can it influence it.
         A::Z() and B::Z() will return a shared counter that increments if either A or B is asked to return a value.
@@ -321,59 +301,39 @@ namespace compatibility
 
 class ID
 {
-    wxIntPtr value;
+    unsigned int value;
 
-    ID(wxIntPtr in) : value(in) {};
+    ID(unsigned int in) : value(in) {};
 
     template<typename> friend ID GetID();
-    friend ID ConstructID(wxIntPtr);
+    friend ID ConstructID(unsigned int);
 
 public:
 
-    ID() : value ((wxIntPtr) -1) {};
+    ID() : value ((unsigned) -1) {};
 
-    operator wxIntPtr() const { return value; };
-    operator void*() const { return reinterpret_cast<void*>(static_cast<uintptr_t>(value)); };
+    operator unsigned int() const { return value; };
+    operator void*() const { return (void*) value; };
 
-    bool Valid() const { return value != ((wxIntPtr) -1); };
+    bool Valid() const { return value != ((unsigned) -1); };
     bool operator!() const { return !Valid(); };
 
     friend bool operator==(ID a, ID b)    { return a.value      == b.value; };
-    friend bool operator==(ID a, int b)   { return a.value      == (wxIntPtr) b; };
+    friend bool operator==(ID a, int b)   { return a.value      == (unsigned) b; };
 
     friend bool operator!=(ID a, ID b)    { return a.value      != b.value; };
-    friend bool operator!=(ID a, int b)   { return a.value      != (wxIntPtr) b; };
+    friend bool operator!=(ID a, int b)   { return a.value      != (unsigned) b; };
 };
 
 
 template<typename whatever> inline ID GetID()
 {
-    static wxIntPtr id = (wxIntPtr) -1;
+    static unsigned int id = (unsigned int) -1;
     return ID(++id);
-}
+};
 
-inline ID GetID() { return GetID<void>(); }
-inline ID ConstructID(wxIntPtr i) { return ID(i); }
+inline ID GetID() { return GetID<void>(); };
+inline ID ConstructID(unsigned int i) { return ID(i); };
 
-// Just included to possibly set _LIBCPP_VERSION
-#include <ciso646>
-
-#include <memory>
-
-// Add std::shared_ptr in a namespace, so different implementations can be used with different compilers
-namespace cb
-{
-    using std::shared_ptr;
-    using std::static_pointer_cast;
-    using std::weak_ptr;
-}
-
-#if defined(__APPLE__) && defined(__MACH__)
-    #define CB_LIBRARY_ENVVAR _T("DYLD_LIBRARY_PATH")
-#elif !defined(__WXMSW__)
-    #define CB_LIBRARY_ENVVAR _T("LD_LIBRARY_PATH")
-#else
-    #define CB_LIBRARY_ENVVAR _T("PATH")
-#endif
 
 #endif

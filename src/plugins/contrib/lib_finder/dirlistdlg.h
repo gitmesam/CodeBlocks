@@ -16,9 +16,9 @@
 * along with wxSmith; if not, write to the Free Software
 * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
 *
-* $Revision$
-* $Id$
-* $HeadURL$
+* $Revision: 4504 $
+* $Id: wxsmithpluginregistrants.cpp 4504 2007-10-02 21:52:30Z byo $
+* $HeadURL: svn+ssh://byo@svn.berlios.de/svnroot/repos/codeblocks/trunk/src/plugins/contrib/wxSmith/plugin/wxsmithpluginregistrants.cpp $
 */
 
 #ifndef DIRLISTDLG_H
@@ -30,22 +30,19 @@
 // moved to the cpp, forward declarations is what we need here
 
 //(*Headers(DirListDlg)
-#include "scrollingdialog.h"
-class wxTextCtrl;
-class wxStaticBoxSizer;
-class wxFlexGridSizer;
-class wxButton;
-class wxBoxSizer;
+#include <wx/sizer.h>
+#include <wx/textctrl.h>
+#include <wx/button.h>
+#include <wx/dialog.h>
 //*)
-
 
 class wxCommandEvent;
 
-class DirListDlg: public wxScrollingDialog
+class DirListDlg: public wxDialog
 {
 	public:
 
-		DirListDlg(wxWindow* parent,wxWindowID id = -1);
+		DirListDlg(wxWindow* parent,const wxArrayString& Dirs,wxWindowID id = -1);
 		virtual ~DirListDlg();
 
 		wxArrayString Dirs;
@@ -53,12 +50,12 @@ class DirListDlg: public wxScrollingDialog
 	private:
 
         //(*Declarations(DirListDlg)
-        wxFlexGridSizer* FlexGridSizer1;
         wxButton* Button4;
+        wxBoxSizer* BoxSizer2;
         wxButton* Button3;
         wxTextCtrl* DirList;
-        wxBoxSizer* BoxSizer2;
         wxBoxSizer* BoxSizer1;
+        wxFlexGridSizer* FlexGridSizer1;
         //*)
 
 		//(*Handlers(DirListDlg)

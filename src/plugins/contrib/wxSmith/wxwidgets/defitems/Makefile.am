@@ -1,11 +1,15 @@
-AM_CPPFLAGS = $(WX_CXXFLAGS) \
+AM_CPPFLAGS = -DWXMAKINGLIB_PROPGRID
+
+INCLUDES = $(WX_CXXFLAGS) \
 		-I$(top_srcdir)/src/include \
-		-I$(top_srcdir)/src/sdk/wxscintilla/include \
-		$(WXPROPGRID_INCLUDE)
+		-I$(top_srcdir)/src/include/wxFlatNotebook/include \
+		-I$(top_srcdir)/src/include/wxscintilla/include \
+		-I$(top_srcdir)/src/include/wxFlatNotebook \
+		-I$(top_srcdir)/src/plugins/contrib/wxSmith/propgrid/contrib/include
 
 noinst_LTLIBRARIES = libwxsmith_wxwidgets_defitems.la
 
-libwxsmith_wxwidgets_defitems_la_LDFLAGS = @MODULE_SHARED_LDFLAGS@ -version-info 0:1:0 -no-undefined -avoid-version
+libwxsmith_wxwidgets_defitems_la_LDFLAGS = -module -version-info 0:1:0 -shared -no-undefined -avoid-version
 
 libwxsmith_wxwidgets_defitems_la_LIBADD = ../../../../../sdk/libcodeblocks.la
 
@@ -30,7 +34,6 @@ libwxsmith_wxwidgets_defitems_la_SOURCES = \
 ./wxsspacer.cpp \
 ./wxsscrollbar.cpp \
 ./wxsdialog.cpp \
-./wxsscrollingdialog.cpp \
 ./wxsspinbutton.cpp \
 ./wxsbutton.cpp \
 ./wxslistbox.cpp \
@@ -66,43 +69,7 @@ libwxsmith_wxwidgets_defitems_la_SOURCES = \
 ./wxsdirdialog.cpp \
 ./wxsfiledialog.cpp \
 ./wxsmultichoicedialog.cpp \
-./wxssinglechoicedialog.cpp \
-./wxssashwindow.cpp \
-./wxssashlayoutwindow.cpp \
-./wxssingleinstancechecker.cpp \
-./wxsstopwatch.cpp \
-./wxssymbolpickerdialog.cpp \
-./wxsglcanvas.cpp \
-./wxshyperlinkctrl.cpp \
-./wxsanimationctrl.cpp \
-./wxsfindreplacedialog.cpp \
-./wxsfontdialog.cpp \
-./wxsmessagedialog.cpp \
-./wxspagesetupdialog.cpp \
-./wxspasswordentrydialog.cpp \
-./wxsprintdialog.cpp \
-./wxsprogressdialog.cpp \
-./wxsrichtextformattingdialog.cpp \
-./wxsrichtextstyleorganiserdialog.cpp \
-./wxstextentrydialog.cpp \
-./wxscolourpickerctrl.cpp \
-./wxsdirpickerctrl.cpp \
-./wxsfilepickerctrl.cpp \
-./wxsfontpickerctrl.cpp \
-./wxsbitmapcombobox.cpp \
-./wxscontexthelpbutton.cpp \
-./wxsdialupmanager.cpp \
-./wxshtmleasyprinting.cpp \
-./wxslistview.cpp \
-./wxsrichtextctrl.cpp \
-./wxssearchctrl.cpp \
-./wxssimplehtmllistbox.cpp \
-./wxstreebook.cpp \
-./wxsimage.cpp \
-./wxsimagelist.cpp \
-./wxsrichtextstylecomboctrl.cpp \
-./wxsrichtextstylelistbox.cpp \
-./wxsrichtextstylelistctrl.cpp
+./wxssinglechoicedialog.cpp
 
 noinst_HEADERS = \
 ./wxsgauge.h \
@@ -121,7 +88,6 @@ noinst_HEADERS = \
 ./wxsdatepickerctrl.h \
 ./wxsstatictext.h \
 ./wxsdialog.h \
-./wxsscrollingdialog.h \
 ./wxslistctrl.h \
 ./wxsspinbutton.h \
 ./wxsbutton.h \
@@ -161,48 +127,5 @@ noinst_HEADERS = \
 ./wxsdirdialog.h \
 ./wxsfiledialog.h \
 ./wxsmultichoicedialog.h \
-./wxssinglechoicedialog.h \
-./wxssashwindow.h \
-./wxssashlayoutwindow.h \
-./wxssingleinstancechecker.h \
-./wxsstopwatch.h \
-./wxssymbolpickerdialog.h \
-./wxsglcanvas.h \
-./wxshyperlinkctrl.h \
-./wxsanimationctrl.h \
-./wxsfindreplacedialog.h \
-./wxsfontdialog.h \
-./wxsmessagedialog.h \
-./wxspagesetupdialog.h \
-./wxspasswordentrydialog.h \
-./wxsprintdialog.h \
-./wxsprogressdialog.h \
-./wxsrichtextformattingdialog.h \
-./wxsrichtextstyleorganiserdialog.h \
-./wxstextentrydialog.h \
-./wxscolourpickerctrl.h \
-./wxsdirpickerctrl.h \
-./wxsfilepickerctrl.h \
-./wxsfontpickerctrl.h \
-./wxsbitmapcombobox.h \
-./wxscontexthelpbutton.h \
-./wxsdialupmanager.h \
-./wxshtmleasyprinting.h \
-./wxslistview.h \
-./wxsrichtextctrl.h \
-./wxssearchctrl.h \
-./wxssimplehtmllistbox.h \
-./wxstreebook.h \
-./wxsimage.h \
-./wxsimagelist.h \
-./wxsrichtextstylecomboctrl.h \
-./wxsrichtextstylelistbox.h \
-./wxsrichtextstylelistctrl.h
+./wxssinglechoicedialog.h
 
-if HAVE_WX29
-libwxsmith_wxwidgets_defitems_la_SOURCES += ./wxsspinctrldouble.cpp
-noinst_HEADERS += ./wxsspinctrldouble.h
-endif
-
-
-EXTRA_DIST = $(srcdir)/wxsmediactrl.*

@@ -39,6 +39,9 @@ namespace
     /** \brief Event type for background-fetching system */
     const int wxEVT_FETCH_SEQUENCE = wxNewEventType();
 
+    /** \brief Identifier used by internal DrawingPanel class inside wxsDrawingWindow */
+    const int DrawingPanelId = wxNewId();
+
     /** \brief Identifier used by refresh timer */
     const int RefreshTimerId = wxNewId();
 
@@ -123,7 +126,7 @@ void wxsDrawingWindow::OnPaint(wxPaintEvent& event)
             if ( m_Bitmap )
             {
                 wxBitmap BmpCopy = m_Bitmap->GetSubBitmap(wxRect(0,0,m_Bitmap->GetWidth(),m_Bitmap->GetHeight()));
-                wxBufferedDC DC(&PaintDC, BmpCopy, wxBUFFER_VIRTUAL_AREA);
+                wxBufferedDC DC(&PaintDC,BmpCopy);
                 PaintExtra(&DC);
             }
         }
@@ -160,7 +163,7 @@ void wxsDrawingWindow::StartFetchingSequence()
     GetEventHandler()->AddPendingEvent(event);
 }
 
-void wxsDrawingWindow::OnFetchSequence(cb_unused wxCommandEvent& event)
+void wxsDrawingWindow::OnFetchSequence(wxCommandEvent& event)
 {
     if ( m_IsDestroyed ) return;
 
@@ -205,14 +208,11 @@ void wxsDrawingWindow::OnFetchSequence(cb_unused wxCommandEvent& event)
             // while fetching bitmap.
             m_RefreshTimer.Start(1,true);
             break;
-
-        default:
-            break;
     }
 
 }
 
-void wxsDrawingWindow::OnRefreshTimer(cb_unused wxTimerEvent& event)
+void wxsDrawingWindow::OnRefreshTimer(wxTimerEvent& event)
 {
     FetchSequencePhase2();
 }
@@ -245,7 +245,7 @@ void wxsDrawingWindow::FastRepaint()
     wxClientDC ClientDC(this);
     PrepareDC(ClientDC);
     wxBitmap BmpCopy = m_Bitmap->GetSubBitmap(wxRect(0,0,m_Bitmap->GetWidth(),m_Bitmap->GetHeight()));
-    wxBufferedDC DC(&ClientDC,BmpCopy, wxBUFFER_VIRTUAL_AREA);
+    wxBufferedDC DC(&ClientDC,BmpCopy);
     PaintExtra(&DC);
 }
 

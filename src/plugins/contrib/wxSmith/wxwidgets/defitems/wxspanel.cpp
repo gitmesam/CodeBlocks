@@ -26,7 +26,7 @@
 
 namespace
 {
-    wxsRegisterItem<wxsPanel> Reg(_T("Panel"),wxsTContainer, _T("Standard"), 190);
+    wxsRegisterItem<wxsPanel> Reg(_T("Panel"),wxsTContainer, _T("Standard"), 75);
 
     WXS_ST_BEGIN(wxsPanelStyles,_T("wxTAB_TRAVERSAL"))
         WXS_ST_CATEGORY("wxPanel")
@@ -78,7 +78,6 @@ void wxsPanel::OnBuildCreatingCode()
             return;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsPanel::OnBuildCreatingCode"),GetLanguage());
@@ -103,6 +102,6 @@ wxObject* wxsPanel::OnBuildPreview(wxWindow* Parent,long Flags)
     return NewItem;
 }
 
-void wxsPanel::OnEnumContainerProperties(cb_unused long Flags)
+void wxsPanel::OnEnumContainerProperties(long Flags)
 {
 }

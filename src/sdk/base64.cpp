@@ -22,10 +22,6 @@
 
 #include "base64.h"
 
-#if wxCHECK_VERSION(3, 0, 0)
-#include <wx/unichar.h>
-#endif
-
 const wxChar fillchar = '=';
 
                         // 00000000001111111111222222
@@ -105,29 +101,17 @@ wxString wxBase64::Decode(const wxString& data)
         c1 = cvt.Find(data[i]);
         wxASSERT_MSG(c1 >= 0, _T("invalid base64 input"));
         c = (c << 2) | ((c1 >> 4) & 0x3);
-        #if wxCHECK_VERSION(3, 0, 0)
-        ret.Append(static_cast<wxUniChar>(c), 1);
-        #else
         ret.Append(c, 1);
-        #endif
         if (++i < len)
         {
             c = data[i];
             if ((char)fillchar == c)
                 break;
 
-            #if wxCHECK_VERSION(3, 0, 0)
-            c = cvt.Find(static_cast<wxUniChar>(c));
-            #else
             c = cvt.Find(c);
-            #endif
             wxASSERT_MSG(c >= 0, _T("invalid base64 input"));
             c1 = ((c1 << 4) & 0xf0) | ((c >> 2) & 0xf);
-            #if wxCHECK_VERSION(3, 0, 0)
-            ret.Append(static_cast<wxUniChar>(c1), 1);
-            #else
             ret.Append(c1, 1);
-            #endif
         }
 
         if (++i < len)
@@ -136,18 +120,10 @@ wxString wxBase64::Decode(const wxString& data)
             if ((char)fillchar == c1)
                 break;
 
-            #if wxCHECK_VERSION(3, 0, 0)
-            c1 = cvt.Find(static_cast<wxUniChar>(c1));
-            #else
             c1 = cvt.Find(c1);
-            #endif
             wxASSERT_MSG(c1 >= 0, _T("invalid base64 input"));
             c = ((c << 6) & 0xc0) | c1;
-            #if wxCHECK_VERSION(3, 0, 0)
-            ret.Append(static_cast<wxUniChar>(c), 1);
-            #else
             ret.Append(c, 1);
-            #endif
         }
     }
 

@@ -27,35 +27,40 @@
 #include <wx/sizer.h>
 #include <wx/stattext.h>
 #include <wx/checkbox.h>
-#include "scrollingdialog.h"
+#include <wx/dialog.h>
 //*)
 
-class wxsDeleteItemRes: public wxScrollingDialog
+class wxsDeleteItemRes: public wxDialog
 {
-    public:
+	public:
 
-        wxsDeleteItemRes();
-        virtual ~wxsDeleteItemRes();
+		wxsDeleteItemRes();
+		virtual ~wxsDeleteItemRes();
 
-        //(*Identifiers(wxsDeleteItemRes)
-        static const long ID_CHECKBOX1;
-        static const long ID_CHECKBOX2;
-        static const long ID_CHECKBOX3;
-        //*)
+		//(*Identifiers(wxsDeleteItemRes)
+		static const long ID_CHECKBOX1;
+		static const long ID_CHECKBOX2;
+		static const long ID_CHECKBOX3;
+		static const long ID_STATICTEXT1;
+		//*)
 
-        //(*Handlers(wxsDeleteItemRes)
-        void Onm_DeleteSourcesClick(wxCommandEvent& event);
-        //*)
+		//(*Handlers(wxsDeleteItemRes)
+		void Onm_DeleteSourcesClick(wxCommandEvent& event);
+		//*)
 
-        //(*Declarations(wxsDeleteItemRes)
-        wxCheckBox* m_PhysDeleteSources;
-        wxCheckBox* m_DeleteSources;
-        wxCheckBox* m_PhysDeleteWXS;
-        //*)
+		//(*Declarations(wxsDeleteItemRes)
+		wxStaticText* StaticText1;
+		wxCheckBox* m_PhisDeleteSources;
+		wxBoxSizer* BoxSizer1;
+		wxCheckBox* m_DeleteSources;
+		wxStaticBoxSizer* StaticBoxSizer1;
+		wxCheckBox* m_PhisDeleteWXS;
+		wxStdDialogButtonSizer* StdDialogButtonSizer1;
+		//*)
 
-    private:
+	private:
 
-        DECLARE_EVENT_TABLE()
+		DECLARE_EVENT_TABLE()
 };
 
 #endif

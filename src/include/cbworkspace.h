@@ -23,7 +23,7 @@
   * @note The way WorkspaceLoader works now, requires that you save and delete the
   * loaded workspace *before* creating a new one...
   */
-class DLLIMPORT cbWorkspace
+class cbWorkspace
 {
     public:
         /** @brief Constructor
@@ -77,9 +77,9 @@ class DLLIMPORT cbWorkspace
           */
         virtual void SetTitle(const wxString& title);
 
-        /** @brief Was this workspace loaded successfully?
+        /** @brief Was this workspace loaded succesfully?
           *
-          * @return True if the workspace was loaded successfully, false if not.
+          * @return True if the workspace was loaded succesfully, false if not.
           * @note Because the only way to load a workspace is through its
           * constructor, and because we don't use exceptions, this is the only
           * way to know if loading succeeded.
@@ -107,28 +107,14 @@ class DLLIMPORT cbWorkspace
           * false, the workspace will be marked as unmodified.
           */
         virtual void SetModified(bool modified);
-
-        /** @brief Set the preferred target for this workspace
-          */
-        void SetPreferredTarget(const wxString &target);
-
-        /** @brief Get the preferred target for this workspace
-          */
-        wxString GetPreferredTarget() const;
-
-        void ActiveProjectChanged();
-
-        bool SaveLayout();
     private:
         bool m_IsOK; // succeeded loading?
         bool m_IsDefault; // is this the Code::Blocks default workspace?
         bool m_Modified; // is it modified?
         wxFileName m_Filename; // filename
         wxString m_Title; // title
-        wxString m_PreferredTargetName;
 
         void Load(); // utility function
-        bool LoadLayout();
 };
 
 #endif // CBWORKSPACE_H

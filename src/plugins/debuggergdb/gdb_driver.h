@@ -8,7 +8,30 @@
 
 #include "debuggerdriver.h"
 #include "remotedebugging.h"
+#include <wx/dynarray.h>
 #include <wx/regex.h>
+
+struct ScriptedType
+{
+    wxString name;          // STL String
+    wxString regex_str;     // [^[:alnum:]_]*string[^[:alnum:]_]*
+    wxRegEx regex;
+    wxString eval_func;     // Evaluate_StlString
+    wxString parse_func;    // Parse_StlString
+
+    ScriptedType(){}
+    ScriptedType(const ScriptedType& rhs)
+    {
+        name = rhs.name;
+        regex_str = rhs.regex_str;
+        eval_func = rhs.eval_func;
+        parse_func = rhs.parse_func;
+
+        regex.Compile(regex_str);
+    }
+};
+
+WX_DECLARE_OBJARRAY(ScriptedType, TypesArray);
 
 class GDB_driver : public DebuggerDriver
 {
@@ -16,29 +39,23 @@ class GDB_driver : public DebuggerDriver
         GDB_driver(DebuggerGDB* plugin);
         virtual ~GDB_driver();
 
-        virtual wxString GetCommandLine(const wxString& debugger,
-                                        const wxString& debuggee,
-                                        const wxString &userArguments);
-        virtual wxString GetCommandLine(const wxString& debugger, int pid, const wxString &userArguments);
-        virtual void SetTarget(ProjectBuildTarget* target);
-        virtual void Prepare(bool isConsole, int printElements);
+        virtual wxString GetCommandLine(const wxString& debugger, const wxString& debuggee);
+        virtual wxString GetCommandLine(const wxString& debugger, int pid);
+        virtual void Prepare(ProjectBuildTarget* target, bool isConsole);
         virtual void Start(bool breakOnEntry);
         virtual void Stop();
 
         virtual void Continue();
         virtual void Step();
         virtual void StepInstruction();
-        virtual void StepIntoInstruction();
         virtual void StepIn();
         virtual void StepOut();
-        virtual void SetNextStatement(const wxString& filename, int line);
         virtual void Backtrace();
         virtual void Disassemble();
         virtual void CPURegisters();
         virtual void SwitchToFrame(size_t number);
         virtual void SetVarValue(const wxString& var, const wxString& value);
         virtual void MemoryDump();
-        virtual void Attach(int pid);
         virtual void Detach();
         virtual void RunningThreads();
 
@@ -48,29 +65,20 @@ class GDB_driver : public DebuggerDriver
         void InfoFPU();
         void InfoSignals();
 
-        void EnableCatchingThrow(bool enable);
-
         virtual void SwitchThread(size_t threadIndex);
 
-        virtual void AddBreakpoint(cb::shared_ptr<DebuggerBreakpoint> bp);
-        virtual void RemoveBreakpoint(cb::shared_ptr<DebuggerBreakpoint> bp);
+        virtual void AddBreakpoint(DebuggerBreakpoint* bp);
+        virtual void RemoveBreakpoint(DebuggerBreakpoint* bp);
         virtual void EvaluateSymbol(const wxString& symbol, const wxRect& tipRect);
-        virtual void UpdateWatches(cb::shared_ptr<GDBWatch> localsWatch, cb::shared_ptr<GDBWatch> funcArgsWatch,
-                                   WatchesContainer &watches);
-        virtual void UpdateWatch(const cb::shared_ptr<GDBWatch> &watch);
-        virtual void UpdateWatchLocalsArgs(cb::shared_ptr<GDBWatch> const &watch, bool locals);
+        virtual void UpdateWatches(bool doLocals, bool doArgs, DebuggerTree* tree);
         virtual void ParseOutput(const wxString& output);
-        virtual bool IsDebuggingStarted() const { return m_IsStarted; }
-
-        virtual void DetermineLanguage();
-#ifdef __WXMSW__
-        virtual bool UseDebugBreakProcess();
-#endif
         virtual wxString GetDisassemblyFlavour(void);
 
-        wxString AsmFlavour() {return flavour;}
+        wxString GetScriptedTypeCommand(const wxString& gdb_type, wxString& parse_func);
     protected:
     private:
+        void InitializeScripting();
+        void RegisterType(const wxString& name, const wxString& regex, const wxString& eval_func, const wxString& parse_func);
         void HandleMainBreakPoint(const wxRegEx& reBreak, wxString line);
 
         // win/Cygwin platform checking
@@ -82,6 +90,8 @@ class GDB_driver : public DebuggerDriver
 
         bool m_CygwinPresent;
         wxString m_CygdrivePrefix;
+
+        TypesArray m_Types;
 
         // Seems to be intended to allow step before program has started.
         // Was always false.  HC changed to take value from DebuggerGDB::m_BreakOnEntry.
@@ -103,15 +113,11 @@ class GDB_driver : public DebuggerDriver
         long m_GDBVersionMinor;
         wxString flavour;
 
-        bool m_attachedToProcess;
+        bool want_debug_events;
+        bool disable_debug_events;
 
         // for remote debugging usage (mainly)
         ProjectBuildTarget* m_pTarget;
-
-        // merged remote debugging (project-level + target-level)
-        RemoteDebugging m_MergedRDInfo;
-
-        int m_catchThrowIndex;
 
 }; // GDB_driver
 

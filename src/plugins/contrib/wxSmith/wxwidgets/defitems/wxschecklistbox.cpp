@@ -26,7 +26,7 @@
 
 namespace
 {
-    wxsRegisterItem<wxsCheckListBox> Reg(_T("CheckListBox"),wxsTWidget,_T("Standard"),320);
+    wxsRegisterItem<wxsCheckListBox> Reg(_T("CheckListBox"),wxsTWidget,_T("Standard"),50);
 
     WXS_ST_BEGIN(wxsCheckListBoxStyles,_T(""))
         WXS_ST_CATEGORY("wxCheckListBox")
@@ -43,9 +43,6 @@ namespace
 
     WXS_EV_BEGIN(wxsCheckListBoxEvents)
         WXS_EVI(EVT_CHECKLISTBOX,wxEVT_COMMAND_CHECKLISTBOX_TOGGLED,wxCommandEvent,Toggled)
-        // Derived from wxListBox:
-        WXS_EVI(EVT_LISTBOX,wxEVT_COMMAND_LISTBOX_SELECTED,wxCommandEvent,Select)
-        WXS_EVI(EVT_LISTBOX_DCLICK,wxEVT_COMMAND_LISTBOX_DOUBLECLICKED,wxCommandEvent,DClick)
     WXS_EV_END()
 }
 
@@ -73,7 +70,7 @@ void wxsCheckListBox::OnBuildCreatingCode()
                 {
                     Codef( _T("%ACheck("));
                 }
-                Codef( _T("%AAppend(%t)"), ArrayChoices[i].wx_str());
+                Codef( _T("%AAppend(%t)"), ArrayChoices[i].c_str());
                 if ( ArrayChecks[i] )
                 {
                     Codef(_T(")"));
@@ -84,7 +81,6 @@ void wxsCheckListBox::OnBuildCreatingCode()
             return;
         }
 
-        case wxsUnknownLanguage: // fall through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsCheckListBox::OnBuildCreatingCode"),GetLanguage());
@@ -107,7 +103,7 @@ wxObject* wxsCheckListBox::OnBuildPreview(wxWindow* Parent,long Flags)
     return SetupWindow(Preview,Flags);
 }
 
-void wxsCheckListBox::OnEnumWidgetProperties(cb_unused long Flags)
+void wxsCheckListBox::OnEnumWidgetProperties(long Flags)
 {
     WXS_ARRAYSTRINGCHECK(wxsCheckListBox,ArrayChoices,ArrayChecks,_("Choices"),_T("content"),_T("item"));
 }

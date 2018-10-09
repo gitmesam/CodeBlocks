@@ -1,11 +1,13 @@
-AM_CPPFLAGS = $(WX_CXXFLAGS) \
+AM_CPPFLAGS = -DWXMAKINGLIB_PROPGRID
+
+INCLUDES = $(WX_CXXFLAGS) \
 		-I$(top_srcdir)/src/include \
-		-I$(top_srcdir)/src/sdk/wxscintilla/include \
-		$(WXPROPGRID_INCLUDE)
+		-I$(top_srcdir)/src/include/wxscintilla/include \
+		-I$(top_srcdir)/src/plugins/contrib/wxSmith/propgrid/contrib/include
 
 noinst_LTLIBRARIES = libwxsmith_properties.la
 
-libwxsmith_properties_la_LDFLAGS = @MODULE_SHARED_LDFLAGS@ -version-info 0:1:0 -no-undefined -avoid-version
+libwxsmith_properties_la_LDFLAGS = -module -version-info 0:1:0 -shared -no-undefined -avoid-version
 
 libwxsmith_properties_la_LIBADD = ../../../../sdk/libcodeblocks.la
 
@@ -14,7 +16,6 @@ libwxsmith_properties_la_SOURCES = \
 ./wxsboolproperty.cpp \
 ./wxspropertystream.cpp \
 ./wxsflagsproperty.cpp \
-./wxsfloatproperty.cpp \
 ./wxsemptyproperty.cpp \
 ./wxsstringproperty.cpp \
 ./wxslongproperty.cpp \
@@ -24,18 +25,14 @@ libwxsmith_properties_la_SOURCES = \
 ./wxsproperty.cpp \
 ./wxspropertygridmanager.cpp \
 ./wxscustomeditorproperty.cpp \
-./wxspropertycontainer.cpp \
-./wxseditenumproperty.cpp
+./wxspropertycontainer.cpp
 
-sdkdir=$(includedir)/wxsmith/properties
-
-sdk_HEADERS = \
+noinst_HEADERS = \
 ./wxspropertycontainer.h \
 ./wxsproperties.h \
 ./wxsboolproperty.h \
 ./wxspropertystream.h \
 ./wxsflagsproperty.h \
-./wxsfloatproperty.h \
 ./wxsemptyproperty.h \
 ./wxslongproperty.h \
 ./wxsarraystringeditordlg.h \
@@ -45,5 +42,4 @@ sdk_HEADERS = \
 ./wxsquickpropspanel.h \
 ./wxsproperty.h \
 ./wxspropertygridmanager.h \
-./wxscustomeditorproperty.h \
-./wxseditenumproperty.h
+./wxscustomeditorproperty.h

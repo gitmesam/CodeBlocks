@@ -25,7 +25,7 @@
 
 namespace
 {
-    wxsRegisterItem<wxsScrollBar> Reg(_T("ScrollBar"),wxsTWidget,_T("Standard"),150);
+    wxsRegisterItem<wxsScrollBar> Reg(_T("ScrollBar"),wxsTWidget,_T("Standard"),50);
 
     WXS_ST_BEGIN(wxsScrollBarStyles,_T(""))
         WXS_ST_CATEGORY("wxScrollBar")
@@ -79,7 +79,6 @@ void wxsScrollBar::OnBuildCreatingCode()
             return;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsScrollBar::OnBuildCreatingCode"),GetLanguage());
@@ -96,7 +95,7 @@ wxObject* wxsScrollBar::OnBuildPreview(wxWindow* Parent,long Flags)
 }
 
 
-void wxsScrollBar::OnEnumWidgetProperties(cb_unused long Flags)
+void wxsScrollBar::OnEnumWidgetProperties(long Flags)
 {
    WXS_LONG(wxsScrollBar,Value,_("Value"),_T("value"),0)
    WXS_LONG(wxsScrollBar,ThumbSize,_("ThumbSize"),_T("thumbsize"),0)

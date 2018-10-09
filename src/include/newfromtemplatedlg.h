@@ -6,7 +6,7 @@
 #ifndef NEWFROMTEMPLATEDLG_H
 #define NEWFROMTEMPLATEDLG_H
 
-#include "scrollingdialog.h"
+#include <wx/dialog.h>
 #include "globals.h"
 #include "pluginmanager.h"
 #include "cbplugin.h"
@@ -16,11 +16,11 @@ class wxListCtrl;
 class wxListEvent;
 class ProjectTemplateLoader;
 
-class NewFromTemplateDlg : public wxScrollingDialog
+class NewFromTemplateDlg : public wxDialog
 {
 	public:
 		NewFromTemplateDlg(TemplateOutputType initial, const wxArrayString& user_templates);
-		~NewFromTemplateDlg() override;
+		virtual ~NewFromTemplateDlg();
 
 		ProjectTemplateLoader* GetTemplate(){ return m_Template; }
 		cbWizardPlugin* GetWizard(){ return m_pWizard; }
@@ -29,7 +29,7 @@ class NewFromTemplateDlg : public wxScrollingDialog
 		bool SelectedUserTemplate() const;
 		wxString GetSelectedUserTemplate() const;
 
-		void EndModal(int retCode) override;
+		void EndModal(int retCode);
 	protected:
 		void FillTemplate(ProjectTemplateLoader* pt);
 		void BuildCategories();

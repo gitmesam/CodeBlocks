@@ -37,7 +37,7 @@ class wxsPropertyContainer;
  * else than text editor or combo box).
  *
  * Important thing is that when reading / writing properties to panel,
- * GetPropertiesContainer method should be used. And it must always be compared
+ * GetPropertiesContaier method should be used. And it must always be compared
  * to 0. If it's null, it does mean that property container has already been
  * deleted but quick properties window still remains.
  *

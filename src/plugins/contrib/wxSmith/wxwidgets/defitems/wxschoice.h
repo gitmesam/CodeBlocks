@@ -39,7 +39,7 @@ class wxsChoice: public wxsWidget
         virtual void OnEnumWidgetProperties(long Flags);
 
         wxArrayString ArrayChoices;
-        long DefaultSelection;
+        int DefaultSelection;
 };
 
 #endif

@@ -23,14 +23,13 @@
 #include "wxspanelres.h"
 #include "wxsitemresdata.h"
 #include "wxsflags.h"
-#include "scrollingdialog.h"
 #include <wx/button.h>
 
 using namespace wxsFlags;
 
 namespace
 {
-    class wxsPanelResPreview: public wxScrollingDialog
+    class wxsPanelResPreview: public wxDialog
     {
         public:
 
@@ -63,12 +62,12 @@ namespace
                 m_Data->NotifyPreviewClosed();
             }
 
-            void OnEscape(cb_unused wxCommandEvent& event)
+            void OnEscape(wxCommandEvent& event)
             {
                 Close();
             }
 
-            void OnClose(cb_unused wxCloseEvent& event)
+            void OnClose(wxCloseEvent& event)
             {
                 Destroy();
             }
@@ -89,7 +88,7 @@ namespace
             DECLARE_EVENT_TABLE()
     };
 
-    BEGIN_EVENT_TABLE(wxsPanelResPreview,wxScrollingDialog)
+    BEGIN_EVENT_TABLE(wxsPanelResPreview,wxDialog)
         EVT_MENU(wxID_EXIT,wxsPanelResPreview::OnEscape)
         EVT_CLOSE(wxsPanelResPreview::OnClose)
         EVT_BUTTON(wxID_ANY,wxsPanelResPreview::OnButton)
@@ -100,7 +99,7 @@ const wxString wxsPanelRes::ResType = _T("wxPanel");
 
 wxWindow* wxsPanelRes::OnBuildExactPreview(wxWindow* Parent,wxsItemResData* Data)
 {
-    wxScrollingDialog* Dlg = new wxsPanelResPreview(Parent,Data);
+    wxDialog* Dlg = new wxsPanelResPreview(Parent,Data);
     Dlg->Show();
     return Dlg;
 }

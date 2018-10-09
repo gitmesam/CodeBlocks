@@ -123,7 +123,7 @@
 
 #include <ctype.h>
 
-#include <unistd.h>
+//#include <unistd.h>
 #include <string.h>
 
 #include <stdio.h>
@@ -662,7 +662,7 @@ static void fill_old_character_definitions( void )
     for (size_t i = 0; i < sizeof(standardchar)/sizeof(CSTRDEF); i++)
     {
         const int nr = standardchar[i].nr;
-        const char temp[3] = { static_cast<char>(nr / 256), static_cast<char>(nr % 256), 0 };
+        const char temp[3] = { nr / 256, nr % 256, 0 };
         QByteArray name( temp );
         s_characterDefinitionMap.insert( name, StringDefinition( standardchar[i].slen, standardchar[i].st ) );
     }
@@ -3545,10 +3545,7 @@ static char *scan_request(char *c)
                             c++;
                         }
                         else if (*c=='+')
-                        {
-                            j=1;
-                            c++;
-                        }
+                            j=1;c++;
                         c=scan_expression(c, &i);
                         if (!j)
                         {

@@ -1,200 +1,116 @@
 # Make file for GCC compiler on Linux or compatible OS
+# The license.html file describes the conditions under which this software may be distributed.
 
-# list of source files for astyle
+# list of source files
 SRC = astyle_main.cpp \
       ASBeautifier.cpp \
       ASFormatter.cpp \
       ASEnhancer.cpp \
-      ASLocalizer.cpp \
       ASResource.cpp
 
-# list of source files for libraries without ASLocalizer
-SRCx = astyle_main.cpp \
-       ASBeautifier.cpp \
-       ASFormatter.cpp \
-       ASEnhancer.cpp \
-       ASResource.cpp
-
 # source directories
-vpath %.cpp ../../src
-vpath %.h   ../../src
+vpath %.cpp ../src
+vpath %.h   ../src
 
-# NOTE for java compiles the environment variable $JAVA_HOME must be set
-# example: export JAVA_HOME=/usr/lib/jvm/java-6-sun-1.6.0.00
-ifndef JAVA_HOME
-    JAVA_HOME = /usr/lib/jvm/default-java
-endif
-
+# install directory $(ipath)
 # set prefix if not defined on the command line
 ifndef prefix
-    prefix=/usr
+    prefix=/usr/bin
 endif
-SYSCONF_PATH=$(prefix)/share/doc/astyle
+ipath=$(prefix)
 
 # define macros
-bindir = bin
-objdir = obj
-ipath=$(prefix)/bin
-CBASEFLAGS = -Wall -Wextra -fno-rtti -fno-exceptions -std=c++11
-JAVAINCS   = -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux
-CXX = g++
+CBASEFLAGS = -W -Wall -fno-rtti -fno-exceptions
 INSTALL=install -o $(USER) -g $(USER)
 
 ##################################################
 
 # define compile options for each build
-ifdef CFLAGS
-    CFLAGSr   = -DNDEBUG $(CBASEFLAGS) $(CFLAGS)
-    CFLAGSd   = -g $(CBASEFLAGS) $(CFLAGS)
-else
-    CFLAGSr   = -DNDEBUG -O3 $(CBASEFLAGS)
-    CFLAGSd   = -g $(CBASEFLAGS)
-endif
-CFLAGSs   = -DASTYLE_LIB -fPIC $(CFLAGSr)
-CFLAGSsd  = -DASTYLE_LIB -fPIC $(CFLAGSd)
-CFLAGSa   = -DASTYLE_LIB $(CFLAGSr)
-CFLAGSad  = -DASTYLE_LIB $(CFLAGSd)
-CFLAGSsj  = -DASTYLE_JNI -fPIC $(CFLAGSr) $(JAVAINCS)
-CFLAGSsjd = -DASTYLE_JNI -fPIC $(CFLAGSd) $(JAVAINCS)
-
-# define link options
-ifdef LDFLAGS
-    LDFLAGSr   = $(LDFLAGS)
-    LDFLAGSd   = $(LDFLAGS)
-else
-    LDFLAGSr   = -s
-    LDFLAGSd   =
-endif
+CFLAGS   = -O3 $(CBASEFLAGS)
+CFLAGSd  = -g $(CBASEFLAGS)
+CFLAGSs  = -DASTYLE_LIB -O3 -fpic $(CBASEFLAGS)
+CFLAGSsd = -DASTYLE_LIB -g -fpic $(CBASEFLAGS)
+CFLAGSa  = -DASTYLE_LIB -O3 $(CBASEFLAGS)
+CFLAGSad = -DASTYLE_LIB -g $(CBASEFLAGS)
 
 # object files are built from the source list $(SRC)
 # a suffix is added for each build
-OBJ   = $(patsubst %.cpp,$(objdir)/%.o,$(SRC))
-OBJd  = $(patsubst %.cpp,$(objdir)/%_d.o,$(SRC))
-OBJs  = $(patsubst %.cpp,$(objdir)/%_s.o,$(SRCx))
-OBJsd = $(patsubst %.cpp,$(objdir)/%_sd.o,$(SRCx))
-OBJa  = $(patsubst %.cpp,$(objdir)/%_a.o,$(SRCx))
-OBJad = $(patsubst %.cpp,$(objdir)/%_ad.o,$(SRCx))
-OBJsj  = $(patsubst %.cpp,$(objdir)/%_sj.o,$(SRCx))
-OBJsjd = $(patsubst %.cpp,$(objdir)/%_sjd.o,$(SRCx))
+OBJ   = $(patsubst %.cpp,%.o,$(SRC))
+OBJd  = $(patsubst %.cpp,%_d.o,$(SRC))
+OBJs  = $(patsubst %.cpp,%_s.o,$(SRC))
+OBJsd = $(patsubst %.cpp,%_sd.o,$(SRC))
+OBJa  = $(patsubst %.cpp,%_a.o,$(SRC))
+OBJad = $(patsubst %.cpp,%_ad.o,$(SRC))
 
 # define object file rule (with the suffix) for each build
 
 # OBJ
-$(objdir)/%.o:  %.cpp  astyle.h  astyle_main.h
-	@ mkdir -p $(objdir)
-	$(CXX) $(CFLAGSr) -c $< -o $@
+%.o:  %.cpp  astyle.h
+	g++ $(CFLAGS) -c -o $@ $<
 
 # OBJd
-$(objdir)/%_d.o:  %.cpp  astyle.h  astyle_main.h
-	@ mkdir -p $(objdir)
-	$(CXX) $(CFLAGSd) -c $< -o $@
+%_d.o:  %.cpp  astyle.h
+	g++ $(CFLAGSd) -c -o $@ $<
 
 # OBJs
-$(objdir)/%_s.o:  %.cpp  astyle.h
-	@ mkdir -p $(objdir)
-	$(CXX) $(CFLAGSs) -c $< -o $@
+%_s.o:  %.cpp  astyle.h
+	g++ $(CFLAGSs) -c -o $@ $<
 
 # OBJsd
-$(objdir)/%_sd.o:  %.cpp  astyle.h
-	@ mkdir -p $(objdir)
-	$(CXX) $(CFLAGSsd) -c $< -o $@
+%_sd.o:  %.cpp  astyle.h
+	g++ $(CFLAGSsd) -c -o $@ $<
 
 # OBJa
-$(objdir)/%_a.o:  %.cpp  astyle.h
-	@ mkdir -p $(objdir)
-	$(CXX) $(CFLAGSa) -c $< -o $@
+%_a.o:  %.cpp  astyle.h
+	g++ $(CFLAGSa) -c -o $@ $<
 
 # OBJad
-$(objdir)/%_ad.o:  %.cpp  astyle.h
-	@ mkdir -p $(objdir)
-	$(CXX) $(CFLAGSad) -c $< -o $@
-
-# OBJsj
-$(objdir)/%_sj.o:  %.cpp  astyle.h
-	@ mkdir -p $(objdir)
-	$(CXX) $(CFLAGSsj) -c $< -o $@
-
-# OBJsjd
-$(objdir)/%_sjd.o:  %.cpp  astyle.h
-	@ mkdir -p $(objdir)
-	$(CXX) $(CFLAGSsjd) -c $< -o $@
+%_ad.o:  %.cpp  astyle.h
+	g++ $(CFLAGSad) -c -o $@ $<
 
 ##################################################
 # define build dependencies for each command
 
 release:  astyle
 astyle:  $(OBJ)
-	@ mkdir -p $(bindir)
-	$(CXX) $(LDFLAGSr) -o $(bindir)/$@ $^
-	@ echo
+	@ if [ ! -d ../bin ]; then mkdir ../bin; fi
+	g++ -o ../bin/$@ $^
+	strip ../bin/$@
 
 debug:  astyled
 astyled:  $(OBJd)
-	@ mkdir -p $(bindir)
-	$(CXX) $(LDFLAGSd) -o $(bindir)/$@ $^
-	@ echo
+	@ if [ ! -d ../bin ]; then mkdir ../bin; fi
+	g++ -o ../bin/$@ $^
 
 shared:  libastyle.so
 libastyle.so:  $(OBJs)
-	@ mkdir -p $(bindir)
-	$(CXX) -shared $(LDFLAGSr) -o $(bindir)/libastyle-2.7.so $^
-	@ echo
+	@ if [ ! -d ../bin ]; then mkdir ../bin; fi
+	g++ -shared -o ../bin/$@ $^
+	strip ../bin/$@
 
 shareddebug:  libastyled.so
 libastyled.so:  $(OBJsd)
-	@ mkdir -p $(bindir)
-	$(CXX) -shared $(LDFLAGSd) -o $(bindir)/libastyle-2.7d.so $^
-	@ echo
+	@ if [ ! -d ../bin ]; then mkdir ../bin; fi
+	g++ -shared -o ../bin/$@ $^
 
 static:  libastyle.a
 libastyle.a:  $(OBJa)
-	@ mkdir -p $(bindir)
-	ar crs $(bindir)/$@ $^
-	@ echo
+	@ if [ ! -d ../bin ]; then mkdir ../bin; fi
+	ar crs ../bin/$@ $^
 
 staticdebug:  libastyled.a
 libastyled.a:  $(OBJad)
-	@ mkdir -p $(bindir)
-	ar crs $(bindir)/$@ $^
-	@ echo
-
-java:  libastylej.so
-libastylej.so:  $(OBJsj)
-	@ mkdir -p $(bindir)
-	$(CXX) -shared $(LDFLAGSr) -o $(bindir)/libastyle-2.7j.so $^
-	@ echo
-
-javadebug:  libastylejd.so
-libastylejd.so:  $(OBJsjd)
-	@ mkdir -p $(bindir)
-	$(CXX) -shared $(LDFLAGSd) -o $(bindir)/libastyle-2.7jd.so $^
-	@ echo
+	@ if [ ! -d ../bin ]; then mkdir ../bin; fi
+	ar crs ../bin/$@ $^
 
 all:  release debug shared shareddebug static staticdebug
 
-javaall:  java javadebug
-
 clean:
-	rm -f $(objdir)/*.o $(bindir)/*astyle*
-
-cleanobj:
-	rm -f $(objdir)/*.o
+	rm -f *.o
 
 install:
-	$(INSTALL) -m 755 -d $(ipath)
-	@$(INSTALL) -m 755 $(bindir)/astyle  $(ipath)
-
-	@if [ -d $(SYSCONF_PATH)/html ]; then \
-		rm -rf  $(SYSCONF_PATH)/html; \
-	fi
-
-	$(INSTALL) -m 755 -d $(SYSCONF_PATH)
-	@mkdir -p $(SYSCONF_PATH)/html;
-	@for files in ../../doc/*.html  ../../doc/*.css; \
-	do \
-		$(INSTALL)  -m 644  $$files  $(SYSCONF_PATH)/html; \
-	done
+	@ $(INSTALL) -m 755 -d $(ipath)
+	$(INSTALL) -m 755 ../bin/astyle  $(ipath)
 
 uninstall:
 	rm -f $(ipath)/astyle
-	rm -rf $(SYSCONF_PATH)

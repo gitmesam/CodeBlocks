@@ -52,9 +52,8 @@ namespace
 wxsSplitterWindow::wxsSplitterWindow(wxsItemResData* Data):
     wxsContainer(Data,&Reg.Info,wxsSplitterWindowEvents,wxsSplitterWindowStyles),
     SashPos(0),
-    MinPaneSize(10),
-    Orientation(wxHORIZONTAL),
-    SashGravity(0.5f)
+    MinSize(10),
+    Orientation(wxHORIZONTAL)
 {
 }
 
@@ -62,9 +61,9 @@ wxObject* wxsSplitterWindow::OnBuildPreview(wxWindow* Parent,long Flags)
 {
     wxSplitterWindow* Splitter = new wxSplitterWindow(Parent,GetId(),Pos(Parent),Size(Parent),Style());
     SetupWindow(Splitter,Flags);
-    if ( MinPaneSize != -1 )
+    if ( MinSize != -1 )
     {
-        Splitter->SetMinimumPaneSize(MinPaneSize);
+        Splitter->SetMinimumPaneSize(MinSize);
     }
     AddChildrenPreview(Splitter,Flags);
     if ( GetChildCount() == 0 )
@@ -90,7 +89,6 @@ wxObject* wxsSplitterWindow::OnBuildPreview(wxWindow* Parent,long Flags)
                 wxDynamicCast(GetChild(1)->GetLastPreview(),wxWindow),
                 SashPos);
         }
-        Splitter->SetSashGravity(SashGravity);
 
         // Some trick to faster relayout splitter window
         Splitter->OnInternalIdle();
@@ -109,8 +107,7 @@ void wxsSplitterWindow::OnBuildCreatingCode()
             AddHeader(_T("<wx/splitter.h>"),_T("wxSplitterEvent"),0);
             Codef(_T("%C(%W, %I, %P, %S, %T, %N);\n"));
             BuildSetupWindowCode();
-            if ( MinPaneSize != -1 ) Codef(_T("%ASetMinimumPaneSize(%d);\n"),MinPaneSize);
-            Codef(_T("%ASetSashGravity(%f);\n"),SashGravity);
+            if ( MinSize != -1 ) Codef(_T("%ASetMinimumPaneSize(%d);\n"),MinSize);
             AddChildrenCode();
             if ( GetChildCount() == 0 )
             {
@@ -122,12 +119,10 @@ void wxsSplitterWindow::OnBuildCreatingCode()
             else
             {
                 Codef(_T("%ASplit%s(%o, %o);\n"),((Orientation==wxHORIZONTAL) ? _T("Horizontally") : _T("Vertically")),0,1);
-                if ( SashPos != 0 ) Codef(_T("%ASetSashPosition(%d);\n"),SashPos);
             }
             break;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsSplitterWindow::OnBuildCreatingCode"),GetLanguage());
@@ -135,46 +130,45 @@ void wxsSplitterWindow::OnBuildCreatingCode()
     }
 }
 
-void wxsSplitterWindow::OnEnumContainerProperties(cb_unused long Flags)
+void wxsSplitterWindow::OnEnumContainerProperties(long Flags)
 {
     static const long    OrientValues[] = { wxHORIZONTAL, wxVERTICAL, 0 };
     static const wxChar* OrientNames[]  = { _T("horizontal"), _T("vertical"), 0 };
 
     WXS_LONG(wxsSplitterWindow,SashPos,_("Sash position"),_T("sashpos"),0);
-    WXS_FLOAT(wxsSplitterWindow,SashGravity,_("Sash gravity"), _T("sashgravity"), 0.5);
-    WXS_LONG(wxsSplitterWindow,MinPaneSize,_("Min. pane size"),_T("minpanesize"),-1);
+    WXS_LONG(wxsSplitterWindow,MinSize,_("Min. pane size"),_T("minsize"),-1);
     WXS_ENUM(wxsSplitterWindow,Orientation,_("Orientation"),_T("orientation"),OrientValues,OrientNames,wxHORIZONTAL);
 }
 
 bool wxsSplitterWindow::OnCanAddChild(wxsItem* Item,bool ShowMessage)
 {
     // TODO: Allow more tools
-    if ( GetChildCount() == 2 )
-    {
-        if ( ShowMessage )
-        {
+	if ( GetChildCount() == 2 )
+	{
+	    if ( ShowMessage )
+	    {
             wxMessageBox(_("Splitter can have at most 2 children"));
-        }
-        return false;
-    }
+	    }
+		return false;
+	}
 
-    if ( Item->GetType() == wxsTSizer )
-    {
-        if ( ShowMessage )
-        {
+	if ( Item->GetType() == wxsTSizer )
+	{
+	    if ( ShowMessage )
+	    {
             wxMessageBox(_("Can not add sizer into Splitter.\nAdd panels first"));
-        }
-        return false;
-    }
+	    }
+		return false;
+	}
 
-    if ( Item->GetType() == wxsTSpacer )
-    {
-        if ( ShowMessage )
-        {
+	if ( Item->GetType() == wxsTSpacer )
+	{
+	    if ( ShowMessage )
+	    {
             wxMessageBox(_("Spacer can be added to sizers only"));
-        }
-        return false;
-    }
+	    }
+		return false;
+	}
 
     return true;
 }

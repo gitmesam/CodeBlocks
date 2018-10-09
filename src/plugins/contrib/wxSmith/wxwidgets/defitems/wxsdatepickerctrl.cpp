@@ -1,5 +1,4 @@
-/**  \file wxsdatepickerctrl.cpp
-*
+/*
 * This file is part of wxSmith plugin for Code::Blocks Studio
 * Copyright (C) 2006-2007  Bartlomiej Swiecki
 *
@@ -22,11 +21,12 @@
 */
 
 #include "wxsdatepickerctrl.h"
+
 #include <wx/datectrl.h>
 
 namespace
 {
-    wxsRegisterItem<wxsDatePickerCtrl> Reg(_T("DatePickerCtrl"),wxsTWidget,_T("Advanced"),130);
+    wxsRegisterItem<wxsDatePickerCtrl> Reg(_T("DatePickerCtrl"),wxsTWidget,_T("Standard"),30);
 
     WXS_ST_BEGIN(wxsDatePickerCtrlStyles,_T("wxDP_DEFAULT|wxDP_SHOWCENTURY"))
         WXS_ST_CATEGORY("wxDatePickerCtrl")
@@ -44,11 +44,6 @@ namespace
     WXS_EV_END()
 }
 
-/*! \brief Ctor
- *
- * \param Data wxsItemResData*    The control's resource data.
- *
- */
 wxsDatePickerCtrl::wxsDatePickerCtrl(wxsItemResData* Data):
     wxsWidget(
         Data,
@@ -57,11 +52,6 @@ wxsDatePickerCtrl::wxsDatePickerCtrl(wxsItemResData* Data):
         wxsDatePickerCtrlStyles)
 {}
 
-/*! \brief Create the initial control.
- *
- * \return void
- *
- */
 void wxsDatePickerCtrl::OnBuildCreatingCode()
 {
     switch ( GetLanguage() )
@@ -75,7 +65,6 @@ void wxsDatePickerCtrl::OnBuildCreatingCode()
             return;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsDatePickerCtrl::OnBuildCreatingCode"),GetLanguage());
@@ -83,25 +72,13 @@ void wxsDatePickerCtrl::OnBuildCreatingCode()
     }
 }
 
-/*! \brief    Build the control preview.
- *
- * \param parent wxWindow*    The parent window.
- * \param flags long                The control flags.
- * \return wxObject*                 The constructed control.
- *
- */
+
 wxObject* wxsDatePickerCtrl::OnBuildPreview(wxWindow* Parent,long Flags)
 {
     wxDatePickerCtrl* Preview = new wxDatePickerCtrl(Parent,GetId(),wxDefaultDateTime,Pos(Parent),Size(Parent),Style());
     return SetupWindow(Preview,Flags);
 }
 
-/*! \brief Enumerate the control's properties.
- *
- * \param flags long    The control flags.
- * \return void
- *
- */
-void wxsDatePickerCtrl::OnEnumWidgetProperties(cb_unused long Flags)
+void wxsDatePickerCtrl::OnEnumWidgetProperties(long Flags)
 {
 }

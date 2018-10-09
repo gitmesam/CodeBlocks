@@ -90,8 +90,6 @@ void wxsToolBarItem::OnBuildCreatingCode()
                     {
                         case Normal: ItemType = _T("wxITEM_NORMAL"); break;
                         case Radio:  ItemType = _T("wxITEM_RADIO");  break;
-                        case Check:     // fall-through
-                        case Separator: // fall-through
                         default:     ItemType = _T("wxITEM_CHECK");  break;
                     }
 
@@ -101,13 +99,13 @@ void wxsToolBarItem::OnBuildCreatingCode()
                     if ( Bitmap2Code.IsEmpty() ) Bitmap2Code = _T("wxNullBitmap");
 
                     Codef(_T("%v = %MAddTool(%I, %t, %i, %i, %s, %t, %t);\n"),
-                          GetVarName().wx_str(),
-                          m_Label.wx_str(),
-                          &m_Bitmap,_T("wxART_TOOLBAR"),
-                          &m_Bitmap2,_T("wxART_TOOLBAR"),
-                          ItemType,
-                          m_ToolTip.wx_str(),
-                          m_HelpText.wx_str());
+                        GetVarName().c_str(),
+                        m_Label.c_str(),
+                        &m_Bitmap,_T("wxART_TOOLBAR"),
+                        &m_Bitmap2,_T("wxART_TOOLBAR"),
+                        ItemType,
+                        m_ToolTip.c_str(),
+                        m_HelpText.c_str());
                     break;
                 }
 
@@ -117,19 +115,15 @@ void wxsToolBarItem::OnBuildCreatingCode()
                     break;
                 }
 
-                default:
-                    break;
-
             }
             break;
 
-        case wxsUnknownLanguage: // fall-through
         default:
             wxsCodeMarks::Unknown(_T("wxsToolBarItem::OnBuildCreatingCode"),GetLanguage());
     }
 }
 
-void wxsToolBarItem::OnEnumToolProperties(cb_unused long Flags)
+void wxsToolBarItem::OnEnumToolProperties(long Flags)
 {
 
     switch ( m_Type )
@@ -144,9 +138,7 @@ void wxsToolBarItem::OnEnumToolProperties(cb_unused long Flags)
             WXS_STRING(wxsToolBarItem,m_HelpText,_("Help text"),_T("longhelp"),_T(""),false);
             break;
 
-        case Separator: // fall-through
-        default:
-            break;
+        default:;
     }
 }
 
@@ -172,8 +164,7 @@ bool wxsToolBarItem::OnXmlWrite(TiXmlElement* Element,bool IsXRC,bool IsExtra)
                 Element->InsertEndChild(TiXmlElement("check"))->ToElement()->InsertEndChild(TiXmlText("1"));
                 break;
 
-            case Normal: // fall-through
-            default:
+            case Normal:
                 break;
         }
     }
@@ -228,16 +219,13 @@ bool wxsToolBarItem::OnCanAddToParent(wxsParent* Parent,bool ShowMessage)
     return true;
 }
 
-wxString wxsToolBarItem::OnGetTreeLabel(cb_unused int& Image)
+wxString wxsToolBarItem::OnGetTreeLabel(int& Image)
 {
     switch ( m_Type )
     {
         case Separator:
             return _T("--------");
 
-        case Radio:  // fall-through
-        case Check:  // fall-through
-        case Normal: // fall-through
         default:
             return _("Item: ") + m_Label;
     }

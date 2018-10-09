@@ -3,35 +3,33 @@
 	<FileVersion major="1" minor="6" />
 	<Project>
 		<Option title="ThreadSearch" />
+		<Option default_target="App - Win32" />
 		<Option compiler="gcc" />
 		<Build>
-			<Target title="default">
-				<Option output="../../../devel/share/CodeBlocks/plugins/ThreadSearch.dll" prefix_auto="0" extension_auto="0" />
-				<Option object_output="../../../.objs/plugins/contrib/ThreadSearch" />
-				<Option external_deps="../../../devel/wxcustombutton.dll;" />
+			<Target title="ThreadSearch - Win32">
+				<Option output="..\..\..\devel\share\CodeBlocks\plugins\ThreadSearch.dll" prefix_auto="0" extension_auto="0" />
+				<Option object_output="..\..\..\.objs\plugins\contrib\ThreadSearch" />
 				<Option type="3" />
 				<Option compiler="gcc" />
-				<Option parameters="--debug-log --multiple-instance -na -ns -nd -p debug" />
-				<Option host_application="../../../devel/codeblocks.exe" />
-				<Option run_host_application_in_terminal="0" />
+				<Option host_application="$(#cb)\devel\codeblocks.exe" />
 				<Compiler>
-					<Add option="$(#CB_RELEASE_TYPE)" />
+					<Add option="-g" />
 				</Compiler>
 				<Linker>
 					<Add library="codeblocks" />
 					<Add library="wxmsw28$(WX_SUFFIX)" />
-					<Add library="wxcustombutton" />
-					<Add directory="../../../devel" />
-					<Add directory="$(#wx.lib)/gcc_dll$(WX_CFG)" />
+					<Add library="wxscintilla" />
+					<Add directory="$(#CB)\devel" />
+					<Add directory="$(#WX.lib)\gcc_dll$(WX_CFG)" />
 				</Linker>
 			</Target>
 			<Environment>
-				<Variable name="WX_CFG" value="" />
 				<Variable name="WX_SUFFIX" value="u" />
+				<Variable name="WX_CFG" value="" />
 			</Environment>
 		</Build>
 		<VirtualTargets>
-			<Add alias="All" targets="default;" />
+			<Add alias="All" targets="ThreadSearch - Win32;" />
 		</VirtualTargets>
 		<Compiler>
 			<Add option="-Wall" />
@@ -39,7 +37,6 @@
 			<Add option="-mthreads" />
 			<Add option="-fmessage-length=0" />
 			<Add option="-fexceptions" />
-			<Add option="-fpermissive" />
 			<Add option="-Winvalid-pch" />
 			<Add option="-DWXUSINGDLL" />
 			<Add option="-DHAVE_W32API_H" />
@@ -50,25 +47,14 @@
 			<Add option="-DwxUSE_UNICODE" />
 			<Add option="-DBUILDING_PLUGIN" />
 			<Add option="-DNO_LOGGING" />
-			<Add option="-std=gnu++11" />
-			<Add directory="../../../include" />
-			<Add directory="../../../include/tinyxml" />
-			<Add directory="../../../sdk/wxscintilla/include" />
-			<Add directory="../../../include/mozilla_chardet" />
-			<Add directory="../../../include/mozilla_chardet/mfbt" />
-			<Add directory="../../../include/mozilla_chardet/nsprpub/pr/include" />
-			<Add directory="../../../include/mozilla_chardet/xpcom" />
-			<Add directory="../../../include/mozilla_chardet/xpcom/base" />
-			<Add directory="../../../include/mozilla_chardet/xpcom/glue" />
-			<Add directory="$(#wx.include)" />
-			<Add directory="$(#wx.lib)/gcc_dll$(WX_CFG)/msw$(WX_SUFFIX)" />
-			<Add directory="../wxContribItems/wxthings/include" />
+			<Add directory="$(#CB.include)" />
+			<Add directory="$(#CB.include)\wxscintilla\include" />
+			<Add directory="$(#cb.include)\wxFlatNotebook\include" />
+			<Add directory="$(#WX.include)" />
+			<Add directory="$(#WX.lib)\gcc_dll$(WX_CFG)\msw$(WX_SUFFIX)" />
 		</Compiler>
-		<Linker>
-			<Add option="-mthreads" />
-		</Linker>
 		<ExtraCommands>
-			<Add after="zip -j9 ..\..\..\devel\share\codeblocks\ThreadSearch.zip manifest.xml" />
+			<Add after="zip -j9 $(#cb)\devel\share\codeblocks\ThreadSearch.zip manifest.xml" />
 			<Add after="update.bat" />
 			<Mode after="always" />
 		</ExtraCommands>
@@ -88,7 +74,6 @@
 		<Unit filename="ThreadSearch.h" />
 		<Unit filename="ThreadSearchConfPanel.cpp" />
 		<Unit filename="ThreadSearchConfPanel.h" />
-		<Unit filename="ThreadSearchControlIds.cpp" />
 		<Unit filename="ThreadSearchControlIds.h" />
 		<Unit filename="ThreadSearchEvent.cpp" />
 		<Unit filename="ThreadSearchEvent.h" />

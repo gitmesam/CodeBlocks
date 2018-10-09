@@ -76,7 +76,7 @@ EnvVarsProjectOptionsDlg::~EnvVarsProjectOptionsDlg()
 
 void EnvVarsProjectOptionsDlg::OnUpdateUI(wxUpdateUIEvent& event)
 {
-#if defined(TRACE_ENVVARS)
+#if TRACE_ENVVARS
   Manager::Get()->GetLogManager()->DebugLog(F(_T("OnUpdateUI")));
 #endif
 
@@ -94,7 +94,7 @@ void EnvVarsProjectOptionsDlg::OnUpdateUI(wxUpdateUIEvent& event)
 
 void EnvVarsProjectOptionsDlg::OnApply()
 {
-#if defined(TRACE_ENVVARS)
+#if TRACE_ENVVARS
   Manager::Get()->GetLogManager()->DebugLog(F(_T("OnApply")));
 #endif
 

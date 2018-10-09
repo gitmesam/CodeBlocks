@@ -22,11 +22,9 @@
 
 #include "wxsbutton.h"
 
-#include <prep.h>
-
 namespace
 {
-    wxsRegisterItem<wxsButton> Reg(_T("Button"),wxsTWidget,_T("Standard"),340);
+    wxsRegisterItem<wxsButton> Reg(_T("Button"),wxsTWidget,_T("Standard"),90);
 
     WXS_ST_BEGIN(wxsButtonStyles,_T(""))
         WXS_ST_CATEGORY("wxButton")
@@ -60,13 +58,12 @@ void wxsButton::OnBuildCreatingCode()
         case wxsCPP:
         {
             AddHeader(_T("<wx/button.h>"),GetInfo().ClassName,hfInPCH);
-            Codef(_T("%C(%W, %I, %t, %P, %S, %T, %V, %N);\n"),Label.wx_str());
+            Codef(_T("%C(%W, %I, %t, %P, %S, %T, %V, %N);\n"),Label.c_str());
             if ( IsDefault ) Codef( _T("%ASetDefault();\n"));
             BuildSetupWindowCode();
             return;
         }
 
-        case wxsUnknownLanguage: // fall through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsButton::OnBuildCreatingCode"),GetLanguage());
@@ -81,7 +78,7 @@ wxObject* wxsButton::OnBuildPreview(wxWindow* Parent,long Flags)
     return SetupWindow(Preview,Flags);
 }
 
-void wxsButton::OnEnumWidgetProperties(cb_unused long Flags)
+void wxsButton::OnEnumWidgetProperties(long Flags)
 {
     WXS_STRING(wxsButton,Label,_("Label"),_T("label"),_T(""),false)
     WXS_BOOL(wxsButton,IsDefault,_("Is default"),_T("default"),false)

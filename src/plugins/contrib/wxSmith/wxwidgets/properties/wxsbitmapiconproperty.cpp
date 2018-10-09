@@ -64,27 +64,16 @@ wxString wxsBitmapIconData::BuildCode(bool NoResize,const wxString& SizeCode,wxs
             wxString Code;
             if ( Id.empty() )
             {
-                if ( FileName.empty() )
+                if ( FileName.empty() ) return wxEmptyString;
+
+                if ( NoResize )
                 {
-                    if ( CodeText.empty() )
-                    {
-                        return wxEmptyString;
-                    }
-                    else
-                    {
-                        Code << CodeText;
-                    }
+                    Code << _T("wxBitmap(wxImage(") << wxsCodeMarks::WxString(wxsCPP,FileName,false) << _T("))");
                 }
-                else{
-                    if ( NoResize )
-                    {
-                        Code << _T("wxBitmap(wxImage(") << wxsCodeMarks::WxString(wxsCPP,FileName,false) << _T("))");
-                    }
-                    else
-                    {
-                        Code << _T("wxBitmap(wxImage(") << wxsCodeMarks::WxString(wxsCPP,FileName,false) << _T(").Rescale(")
-                             << SizeCode << _T(".GetWidth(),") << SizeCode << _T(".GetHeight()))");
-                    }
+                else
+                {
+                    Code << _T("wxBitmap(wxImage(") << wxsCodeMarks::WxString(wxsCPP,FileName,false) << _T(").Rescale(")
+                         << SizeCode << _T(".GetWidth(),") << SizeCode << _T(".GetHeight()))");
                 }
             }
             else
@@ -126,7 +115,6 @@ wxString wxsBitmapIconData::BuildCode(bool NoResize,const wxString& SizeCode,wxs
             return Code;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsBitmapIconData::BuildCode"),Ctx->m_Language);
@@ -138,7 +126,7 @@ wxString wxsBitmapIconData::BuildCode(bool NoResize,const wxString& SizeCode,wxs
 
 bool wxsBitmapIconData::IsEmpty()
 {
-    return Id.IsEmpty() && FileName.IsEmpty() && CodeText.IsEmpty();
+    return Id.IsEmpty() && FileName.IsEmpty();
 }
 
 
@@ -150,14 +138,6 @@ wxsBitmapIconProperty::wxsBitmapIconProperty(const wxString& PGName,const wxStri
     Offset(_Offset),
     DefaultClient(_DefaultClient)
 {}
-
-wxString wxsBitmapIconProperty::GetStr(wxsPropertyContainer* Object)
-{
-    wxString res = VALUE.Id;
-    if(res.IsEmpty())
-        res = VALUE.FileName;
-    return res.IsEmpty()?wxString(_("Click to add")):res;
-}
 
 bool wxsBitmapIconProperty::ShowEditor(wxsPropertyContainer* Object)
 {
@@ -189,17 +169,10 @@ bool wxsBitmapIconProperty::XmlRead(wxsPropertyContainer* Object,TiXmlElement* E
 
     if ( VALUE.Id.IsEmpty() )
     {
-        // No wxART_PROVIDER Id, so it must be a filename or code
+        // No wxART_PROVIDER Id, do it must be filename
         VALUE.Id.Clear();
         VALUE.Client.Clear();
-
-        VALUE.CodeText = cbC2U(Element->Attribute("code"));
-        if ( VALUE.CodeText.IsEmpty() )
-        {
-            // It's a filename
-            VALUE.CodeText.Clear();
-            return XmlGetString(Element,VALUE.FileName);
-        }
+        return XmlGetString(Element,VALUE.FileName);
     }
 
     VALUE.FileName.Clear();
@@ -221,12 +194,6 @@ bool wxsBitmapIconProperty::XmlWrite(wxsPropertyContainer* Object,TiXmlElement* 
     if ( !VALUE.FileName.empty() )
     {
         XmlSetString(Element,VALUE.FileName);
-        return true;
-    }
-
-    if ( !VALUE.CodeText.empty() )
-    {
-        Element->SetAttribute("code",cbU2C(VALUE.CodeText));
         return true;
     }
 

@@ -24,7 +24,7 @@
 
 namespace
 {
-    wxsRegisterItem<wxsStaticBoxSizer> Reg(_T("StaticBoxSizer"),wxsTSizer,_T("Layout"),20);
+    wxsRegisterItem<wxsStaticBoxSizer> Reg(_T("StaticBoxSizer"),wxsTSizer,_T("Layout"),40);
 }
 
 
@@ -50,11 +50,10 @@ void wxsStaticBoxSizer::OnBuildSizerCreatingCode()
             AddHeader(_T("<wx/sizer.h>"),GetInfo().ClassName,hfInPCH);
             Codef(_T("%C(%s, %W, %t);\n"),
                     (Orient!=wxHORIZONTAL)?_T("wxVERTICAL"):_T("wxHORIZONTAL"),
-                    Label.wx_str());
+                    Label.c_str());
             return;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsStaticBoxSizer::OnBuildSizerCreatingCode"),GetLanguage());
@@ -62,7 +61,7 @@ void wxsStaticBoxSizer::OnBuildSizerCreatingCode()
     }
 }
 
-void wxsStaticBoxSizer::OnEnumSizerProperties(cb_unused long Flags)
+void wxsStaticBoxSizer::OnEnumSizerProperties(long Flags)
 {
     static const long    OrientValues[] = { wxHORIZONTAL, wxVERTICAL, 0 };
     static const wxChar* OrientNames[]  = { _T("wxHORIZONTAL"), _T("wxVERTICAL"), 0 };

@@ -11,11 +11,9 @@
 
 #ifndef CB_PRECOMP
     #include "xtra_res.h"
-    #include "scrollingdialog.h"
     #include <wx/wx.h>
 #endif
 
-#include <wx/xml/xml.h>
 
 /////////////////////////////////////////////////////////////////////////////
 // Name:        xh_toolb.cpp
@@ -38,6 +36,7 @@ wxToolBarAddOnXmlHandler::wxToolBarAddOnXmlHandler()
     XRC_ADD_STYLE(wxTB_DOCKABLE);
     XRC_ADD_STYLE(wxTB_VERTICAL);
     XRC_ADD_STYLE(wxTB_HORIZONTAL);
+    XRC_ADD_STYLE(wxTB_3DBUTTONS);
     XRC_ADD_STYLE(wxTB_TEXT);
     XRC_ADD_STYLE(wxTB_NOICONS);
     XRC_ADD_STYLE(wxTB_NODIVIDER);
@@ -69,7 +68,7 @@ wxBitmap wxToolBarAddOnXmlHandler::GetCenteredBitmap(const wxString& param,
         const unsigned char *alpha = image.GetAlpha();
         unsigned char *rgb = (unsigned char *) calloc(w * h, 3);
         unsigned char *a = (unsigned char *) calloc(w * h, 1);
-
+        
         // copy Data/Alpha from smaller bitmap to larger bitmap
         for (int row = 0; row < bh; row++)
         {
@@ -93,23 +92,16 @@ wxObject *wxToolBarAddOnXmlHandler::DoCreateResource()
         wxCHECK_MSG(m_toolbar, NULL, _("Incorrect syntax of XRC resource: tool not within a toolbar!"));
 
         wxSize bitmapSize = m_toolbar->GetToolBitmapSize();
-
+        
         if (GetPosition() != wxDefaultPosition)
         {
             m_toolbar->AddTool(GetID(),
-            #if wxCHECK_VERSION(3, 0, 0)
-                               wxEmptyString,
-            #endif
                                GetCenteredBitmap(_T("bitmap"), wxART_TOOLBAR, bitmapSize),
                                GetCenteredBitmap(_T("bitmap2"), wxART_TOOLBAR, bitmapSize),
-            #if !wxCHECK_VERSION(3, 0, 0)
                                GetBool(_T("toggle")),
                                GetPosition().x,
                                GetPosition().y,
                                NULL,
-            #else
-                               wxITEM_NORMAL,
-            #endif
                                GetText(_T("tooltip")),
                                GetText(_T("longhelp")));
            if (GetBool(_T("disabled")))
@@ -167,11 +159,7 @@ wxObject *wxToolBarAddOnXmlHandler::DoCreateResource()
             if (!(style & wxNO_BORDER)) style |= wxNO_BORDER;
             #endif
 
-            // XRC_MAKE_INSTANCE(toolbar, wxToolBar)
-            if (m_instance)
-                toolbar = wxStaticCast(m_instance, wxToolBar);
-            if (!toolbar)
-                toolbar = new wxToolBar;
+            XRC_MAKE_INSTANCE(toolbar, wxToolBar)
 
             toolbar->Create(m_parentAsWindow,
                              GetID(),
@@ -216,7 +204,7 @@ wxObject *wxToolBarAddOnXmlHandler::DoCreateResource()
                     control != NULL &&
                     control != toolbar)
                 {
-                    //Manager::Get()->GetLogManager()->DebugLog(F(_T("control=%p, parent=%p, toolbar=%p"), control, control->GetParent(), toolbar));
+                    wxLogDebug(_T("control=%p, parent=%p, toolbar=%p"), control, control->GetParent(), toolbar);
                     toolbar->AddControl(control);
                 }
             }
@@ -253,58 +241,11 @@ bool wxToolBarAddOnXmlHandler::CanHandle(wxXmlNode *node)
 //
 // Don't ask me why... >:-|
 
-    #if wxCHECK_VERSION(3, 0, 0)
-    bool istbar = node->GetAttribute(wxT("class"), wxEmptyString).Matches(_T("wxToolBarAddOn"));
-    bool istool = node->GetAttribute(wxT("class"), wxEmptyString).Matches(_T("tool"));
-    bool issep = node->GetAttribute(wxT("class"), wxEmptyString).Matches(_T("separator"));
-    #else
     bool istbar = node->GetPropVal(wxT("class"), wxEmptyString).Matches(_T("wxToolBarAddOn"));
     bool istool = node->GetPropVal(wxT("class"), wxEmptyString).Matches(_T("tool"));
     bool issep = node->GetPropVal(wxT("class"), wxEmptyString).Matches(_T("separator"));
-    #endif
 
     return ((!m_isInside && istbar) ||
             (m_isInside && istool) ||
             (m_isInside && issep));
-}
-
-
-
-IMPLEMENT_DYNAMIC_CLASS(wxScrollingDialogXmlHandler, wxDialogXmlHandler)
-
-wxScrollingDialogXmlHandler::wxScrollingDialogXmlHandler() : wxDialogXmlHandler()
-{
-}
-
-wxObject *wxScrollingDialogXmlHandler::DoCreateResource()
-{
-    XRC_MAKE_INSTANCE(dlg, wxScrollingDialog);
-
-    dlg->Create(m_parentAsWindow,
-                GetID(),
-                GetText(wxT("title")),
-                wxDefaultPosition, wxDefaultSize,
-                GetStyle(wxT("style"), wxDEFAULT_DIALOG_STYLE),
-                GetName());
-
-    if (HasParam(wxT("size")))
-        dlg->SetClientSize(GetSize(wxT("size"), dlg));
-    if (HasParam(wxT("pos")))
-        dlg->Move(GetPosition());
-    if (HasParam(wxT("icon")))
-        dlg->SetIcon(GetIcon(wxT("icon"), wxART_FRAME_ICON));
-
-    SetupWindow(dlg);
-
-    CreateChildren(dlg);
-
-    if (GetBool(wxT("centered"), false))
-        dlg->Centre();
-
-    return dlg;
-}
-
-bool wxScrollingDialogXmlHandler::CanHandle(wxXmlNode *node)
-{
-    return IsOfClass(node, wxT("wxScrollingDialog"));
 }

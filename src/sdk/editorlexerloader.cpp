@@ -14,7 +14,6 @@
     #include "manager.h"
     #include "logmanager.h"
     #include <wx/dynarray.h>
-    #include <wx/regex.h>
     #include <wx/wxscintilla.h>
 #endif
 
@@ -25,12 +24,12 @@
 EditorLexerLoader::EditorLexerLoader(EditorColourSet* target)
     : m_pTarget(target)
 {
-    //ctor
+	//ctor
 }
 
 EditorLexerLoader::~EditorLexerLoader()
 {
-    //dtor
+	//dtor
 }
 
 void EditorLexerLoader::Load(LoaderBase* loader)
@@ -75,7 +74,7 @@ void EditorLexerLoader::DoLexer(TiXmlElement* node)
 {
     if (!node->Attribute("name") || !node->Attribute("index"))
     {
-        Manager::Get()->GetLogManager()->Log(_("No name or index..."));
+    	Manager::Get()->GetLogManager()->Log(_("No name or index..."));
         return;
     }
 
@@ -91,15 +90,10 @@ void EditorLexerLoader::DoLexer(TiXmlElement* node)
     DoStyles(style, node);
     DoKeywords(style, node);
     DoSampleCode(style, node);
-    DoLangAttributes(style, node);
 }
 
 void EditorLexerLoader::DoStyles(HighlightLanguage language, TiXmlElement* node)
 {
-    bool foundSelection = false, foundActiveLine = false;
-    bool foundMatchBrace = false, foundBraceError = false;
-    bool foundIndentationGuide = false;
-
     TiXmlElement* style = node->FirstChildElement("Style");
     while (style)
     {
@@ -139,30 +133,10 @@ void EditorLexerLoader::DoStyles(HighlightLanguage language, TiXmlElement* node)
 
             for (size_t i = 0; i < indices.GetCount(); ++i)
             {
-                if (indices[i].IsEmpty())
+            	if (indices[i].IsEmpty())
                     continue;
                 long value = 0;
                 indices[i].ToLong(&value);
-
-                switch (value)
-                {
-                case cbSELECTION:
-                    foundSelection = true;
-                    break;
-                case cbHIGHLIGHT_LINE:
-                    foundActiveLine = true;
-                    break;
-                case wxSCI_STYLE_BRACELIGHT:
-                    foundMatchBrace = true;
-                    break;
-                case wxSCI_STYLE_BRACEBAD:
-                    foundBraceError = true;
-                    break;
-                case wxSCI_STYLE_INDENTGUIDE:
-                    foundIndentationGuide = true;
-                    break;
-                }
-
 //                LOGSTREAM << _("Adding style: ") << name << _T("(") << value << _T(")\n");
                 m_pTarget->AddOption(language, name, value,
                                     fgcolour,
@@ -174,32 +148,6 @@ void EditorLexerLoader::DoStyles(HighlightLanguage language, TiXmlElement* node)
             }
         }
         style = style->NextSiblingElement("Style");
-    }
-
-    if (!foundSelection)
-    {
-        m_pTarget->AddOption(language, wxT("Selection"), cbSELECTION, wxNullColour,
-                             wxColour(217, 217, 217), false, false, false, false);
-    }
-    if (!foundActiveLine)
-    {
-        m_pTarget->AddOption(language, wxT("Active line"), cbHIGHLIGHT_LINE, wxNullColour,
-                             wxColour(255, 255, 160), false, false, false, false);
-    }
-    if (!foundMatchBrace)
-    {
-        m_pTarget->AddOption(language, wxT("Matching brace highlight"), wxSCI_STYLE_BRACELIGHT,
-                             wxColour(0, 0, 0), wxColour(128, 255, 255), true, false, false, true);
-    }
-    if (!foundBraceError)
-    {
-        m_pTarget->AddOption(language, wxT("No matching brace highlight"), wxSCI_STYLE_BRACEBAD,
-                             wxColour(255, 255, 255), wxColour(255, 0, 0), true, false, false, true);
-    }
-    if (!foundIndentationGuide)
-    {
-        m_pTarget->AddOption(language, wxT("Indentation guide"), wxSCI_STYLE_INDENTGUIDE,
-                             wxColour(55, 55, 55), wxNullColour, false, false, false, true);
     }
 }
 
@@ -223,18 +171,7 @@ void EditorLexerLoader::DoSingleKeywordNode(HighlightLanguage language, TiXmlEle
         int keyidx = keywords->Attribute("index") ? atol(keywords->Attribute("index")) : -1;
     //    LOGSTREAM << "keyidx=" << keyidx << '\n';
         if (keyidx != -1)
-        {
-            // the lexer file contains keywords indented - remove the extra spacing and EOLs
-            wxRegEx regex(_T("[[:space:]]+"));
-            wxString value(keywords->Attribute("value"), wxConvUTF8);
-            regex.Replace(&value, _T(" "));
-
-            #if wxCHECK_VERSION(3, 0, 0)
-            m_pTarget->SetKeywords(language, keyidx, value );
-            #else
-            m_pTarget->SetKeywords(language, keyidx, wxString ( value, wxConvUTF8 ) );
-            #endif
-        }
+            m_pTarget->SetKeywords(language, keyidx, wxString ( keywords->Attribute("value"), wxConvUTF8 ) );
 
         keywords = keywords->NextSiblingElement(nodename.mb_str());
     }
@@ -252,62 +189,4 @@ void EditorLexerLoader::DoSampleCode(HighlightLanguage language, TiXmlElement* n
     int debugLine = sample->Attribute("debug_line") ? atol(sample->Attribute("debug_line")) : -1;
     int errorLine = sample->Attribute("error_line") ? atol(sample->Attribute("error_line")) : -1;
     m_pTarget->SetSampleCode(language, code, breakLine, debugLine, errorLine);
-}
-
-void EditorLexerLoader::DoLangAttributes(HighlightLanguage language, TiXmlElement* node)
-{
-    TiXmlElement* attribs = node->FirstChildElement("LanguageAttributes");
-    if ( !attribs )
-        return;
-
-    bool CaseSensitive = attribs->Attribute("CaseSensitive") ? atol(attribs->Attribute("CaseSensitive")) != 0 : false;
-    m_pTarget->SetCaseSensitivity(language, CaseSensitive);
-
-
-    CommentToken token;
-    token.lineComment = wxString( attribs->Attribute("LineComment"), wxConvUTF8 );
-    token.doxygenLineComment = wxString( attribs->Attribute("DoxygenLineComment"), wxConvUTF8 );
-    token.streamCommentStart = wxString( attribs->Attribute("StreamCommentStart"), wxConvUTF8 );
-    token.streamCommentEnd = wxString( attribs->Attribute("StreamCommentEnd"), wxConvUTF8 );
-    token.doxygenStreamCommentStart = wxString( attribs->Attribute("DoxygenStreamCommentStart"), wxConvUTF8 );
-    token.doxygenStreamCommentEnd = wxString( attribs->Attribute("DoxygenStreamCommentEnd"), wxConvUTF8 );
-    token.boxCommentStart = wxString( attribs->Attribute("BoxCommentStart"), wxConvUTF8 );
-    token.boxCommentMid = wxString( attribs->Attribute("BoxCommentMid"), wxConvUTF8 );
-    token.boxCommentEnd = wxString( attribs->Attribute("BoxCommentEnd"), wxConvUTF8 );
-
-    m_pTarget->SetCommentToken(language, token);
-
-    std::set<int> CommentLexerStyles, CharacterLexerStyles, StringLexerStyles, PreprocessorLexerStyles;
-    bool hasLexerStylesSet = false;
-    hasLexerStylesSet |= DoLangAttributesLexerStyles(attribs, "LexerCommentStyles", CommentLexerStyles);
-    hasLexerStylesSet |= DoLangAttributesLexerStyles(attribs, "LexerCharacterStyles", CharacterLexerStyles);
-    hasLexerStylesSet |= DoLangAttributesLexerStyles(attribs, "LexerStringStyles", StringLexerStyles);
-    hasLexerStylesSet |= DoLangAttributesLexerStyles(attribs, "LexerPreprocessorStyles", PreprocessorLexerStyles);
-
-    // only set styles if configured. Since different languages use the same lexer.
-    // So if any of the languages has these styles configured we use them.
-    // If another language has not configured them the previously defined wont get lost.
-    if ( hasLexerStylesSet )
-    {
-        m_pTarget->SetCommentLexerStyles(language, CommentLexerStyles);
-        m_pTarget->SetStringLexerStyles(language, StringLexerStyles);
-        m_pTarget->SetCharacterLexerStyles(language, CharacterLexerStyles);
-        m_pTarget->SetPreprocessorLexerStyles(language, PreprocessorLexerStyles);
-    }
-}
-
-bool EditorLexerLoader::DoLangAttributesLexerStyles(TiXmlElement* attribs, const char *attributeName, std::set<int> &styles)
-{
-    styles.clear();
-    wxString str = wxString ( attribs->Attribute(attributeName), wxConvUTF8 );
-    wxArrayString strarray = GetArrayFromString(str, _T(","));
-
-    for ( unsigned int i = 0; i < strarray.Count(); ++i )
-    {
-        long style;
-        strarray[i].ToLong(&style);
-        styles.insert((unsigned int)style);
-    }
-
-    return !str.IsEmpty();
 }

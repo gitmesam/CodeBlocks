@@ -22,7 +22,7 @@
 #include <wx/msgdlg.h>
 #include "editpathdlg.h"
 
-BEGIN_EVENT_TABLE(ExternalDepsDlg, wxScrollingDialog)
+BEGIN_EVENT_TABLE(ExternalDepsDlg, wxDialog)
     EVT_UPDATE_UI(-1, ExternalDepsDlg::OnUpdateUI)
     EVT_LISTBOX_DCLICK(XRCID("lstAdditionalFiles"), ExternalDepsDlg::OnEditAdditional)
     EVT_LISTBOX_DCLICK(XRCID("lstExternalFiles"), ExternalDepsDlg::OnEditExternal)
@@ -38,65 +38,64 @@ ExternalDepsDlg::ExternalDepsDlg(wxWindow* parent, cbProject* project, ProjectBu
     : m_pProject(project),
     m_pTarget(target)
 {
-    //ctor
-    wxXmlResource::Get()->LoadObject(this, parent, _T("dlgExternalDeps"),_T("wxScrollingDialog"));
-    XRCCTRL(*this, "wxID_CANCEL", wxButton)->SetDefault();
-    FillAdditional();
-    FillExternal();
+	//ctor
+	wxXmlResource::Get()->LoadDialog(this, parent, _T("dlgExternalDeps"));
+	FillAdditional();
+	FillExternal();
 }
 
 ExternalDepsDlg::~ExternalDepsDlg()
 {
-    //dtor
+	//dtor
 }
 
 void ExternalDepsDlg::FillAdditional()
 {
-    wxListBox* lst = XRCCTRL(*this, "lstAdditionalFiles", wxListBox);
-    lst->Clear();
+	wxListBox* lst = XRCCTRL(*this, "lstAdditionalFiles", wxListBox);
+	lst->Clear();
     wxArrayString array = GetArrayFromString(m_pTarget->GetAdditionalOutputFiles());
     for (unsigned int i = 0; i < array.GetCount(); ++i)
     {
-        lst->Append(array[i]);
+    	lst->Append(array[i]);
     }
 }
 
 void ExternalDepsDlg::FillExternal()
 {
-    wxListBox* lst = XRCCTRL(*this, "lstExternalFiles", wxListBox);
-    lst->Clear();
+	wxListBox* lst = XRCCTRL(*this, "lstExternalFiles", wxListBox);
+	lst->Clear();
     wxArrayString array = GetArrayFromString(m_pTarget->GetExternalDeps());
     for (unsigned int i = 0; i < array.GetCount(); ++i)
     {
-        lst->Append(array[i]);
+    	lst->Append(array[i]);
     }
 }
 
 void ExternalDepsDlg::EndModal(int retCode)
 {
-    wxString deps;
-    wxListBox* lst = XRCCTRL(*this, "lstExternalFiles", wxListBox);
+	wxString deps;
+	wxListBox* lst = XRCCTRL(*this, "lstExternalFiles", wxListBox);
     for (unsigned int i = 0; i < (unsigned int)lst->GetCount(); ++i)
     {
-        deps << lst->GetString(i) << _T(';');
+    	deps << lst->GetString(i) << _T(';');
     }
     m_pTarget->SetExternalDeps(deps);
 
-    wxString files;
-    lst = XRCCTRL(*this, "lstAdditionalFiles", wxListBox);
+	wxString files;
+	lst = XRCCTRL(*this, "lstAdditionalFiles", wxListBox);
     for (unsigned int i = 0; i < (unsigned int)lst->GetCount(); ++i)
     {
-        files << lst->GetString(i) << _T(';');
+    	files << lst->GetString(i) << _T(';');
     }
     m_pTarget->SetAdditionalOutputFiles(files);
 
-    return wxScrollingDialog::EndModal(retCode);
+	return wxDialog::EndModal(retCode);
 }
 
 //void ExternalDepsDlg::DoAdd(const wxString& listbox, const wxString& message)
 #define DoAdd(listbox,message)                              \
 {                                                           \
-    wxListBox* lst = XRCCTRL(*this, listbox, wxListBox);    \
+	wxListBox* lst = XRCCTRL(*this, listbox, wxListBox);    \
     EditPathDlg dlg(this,                                   \
                     m_pProject->GetBasePath(),              \
                     m_pProject->GetBasePath(),              \
@@ -111,9 +110,9 @@ void ExternalDepsDlg::EndModal(int retCode)
 //void ExternalDepsDlg::DoEdit(const wxString& listbox, const wxString& message)
 #define DoEdit(listbox,message)                             \
 {                                                           \
-    wxListBox* lst = XRCCTRL(*this, listbox, wxListBox);    \
-    int sel = lst->GetSelection();                          \
-    if (sel == -1)                                          \
+	wxListBox* lst = XRCCTRL(*this, listbox, wxListBox);    \
+	int sel = lst->GetSelection();                          \
+	if (sel == -1)                                          \
         return;                                             \
     EditPathDlg dlg(this,                                   \
                     lst->GetStringSelection(),              \
@@ -129,52 +128,52 @@ void ExternalDepsDlg::EndModal(int retCode)
 //void ExternalDepsDlg::DoDel(const wxString& listbox)
 #define DoDel(listbox)                                      \
 {                                                           \
-    wxListBox* lst = XRCCTRL(*this, listbox, wxListBox);    \
-    int sel = lst->GetSelection();                          \
-    if (sel == -1)                                          \
+	wxListBox* lst = XRCCTRL(*this, listbox, wxListBox);    \
+	int sel = lst->GetSelection();                          \
+	if (sel == -1)                                          \
         return;                                             \
-    if (cbMessageBox(_("Are you sure you want to remove this file?"), _("Remove file"), wxYES_NO | wxNO_DEFAULT, this) == wxID_NO)   \
+    if (cbMessageBox(_("Are you sure you want to remove this file?"), _("Remove file"), wxYES_NO | wxNO_DEFAULT) == wxID_NO)   \
         return;                                             \
     lst->Delete(sel);                                       \
 }
 
-void ExternalDepsDlg::OnAddAdditional(cb_unused wxCommandEvent& event)
+void ExternalDepsDlg::OnAddAdditional(wxCommandEvent& event)
 {
-    DoAdd("lstAdditionalFiles", _("Add additional output file"));
+	DoAdd("lstAdditionalFiles", _("Add additional output file"));
 }
 
-void ExternalDepsDlg::OnEditAdditional(cb_unused wxCommandEvent& event)
+void ExternalDepsDlg::OnEditAdditional(wxCommandEvent& event)
 {
-    DoEdit("lstAdditionalFiles", _("Edit additional output file"));
+	DoEdit("lstAdditionalFiles", _("Edit additional output file"));
 }
 
-void ExternalDepsDlg::OnDelAdditional(cb_unused wxCommandEvent& event)
+void ExternalDepsDlg::OnDelAdditional(wxCommandEvent& event)
 {
-    DoDel("lstAdditionalFiles");
+	DoDel("lstAdditionalFiles");
 }
 
-void ExternalDepsDlg::OnAddExternal(cb_unused wxCommandEvent& event)
+void ExternalDepsDlg::OnAddExternal(wxCommandEvent& event)
 {
-    DoAdd("lstExternalFiles", _("Add external dependency file"));
+	DoAdd("lstExternalFiles", _("Add external dependency file"));
 }
 
-void ExternalDepsDlg::OnEditExternal(cb_unused wxCommandEvent& event)
+void ExternalDepsDlg::OnEditExternal(wxCommandEvent& event)
 {
-    DoEdit("lstExternalFiles", _("Edit external dependency file"));
+	DoEdit("lstExternalFiles", _("Edit external dependency file"));
 }
 
-void ExternalDepsDlg::OnDelExternal(cb_unused wxCommandEvent& event)
+void ExternalDepsDlg::OnDelExternal(wxCommandEvent& event)
 {
-    DoDel("lstExternalFiles");
+	DoDel("lstExternalFiles");
 }
 
-void ExternalDepsDlg::OnUpdateUI(cb_unused wxUpdateUIEvent& event)
+void ExternalDepsDlg::OnUpdateUI(wxUpdateUIEvent& event)
 {
-    int selAdd = XRCCTRL(*this, "lstAdditionalFiles", wxListBox)->GetSelection();
-    int selExt = XRCCTRL(*this, "lstExternalFiles", wxListBox)->GetSelection();
+	int selAdd = XRCCTRL(*this, "lstAdditionalFiles", wxListBox)->GetSelection();
+	int selExt = XRCCTRL(*this, "lstExternalFiles", wxListBox)->GetSelection();
 
-    XRCCTRL(*this, "btnEditAdditional", wxButton)->Enable(selAdd != -1);
-    XRCCTRL(*this, "btnDelAdditional", wxButton)->Enable(selAdd != -1);
-    XRCCTRL(*this, "btnEditExternal", wxButton)->Enable(selExt != -1);
-    XRCCTRL(*this, "btnDelExternal", wxButton)->Enable(selExt != -1);
+	XRCCTRL(*this, "btnEditAdditional", wxButton)->Enable(selAdd != -1);
+	XRCCTRL(*this, "btnDelAdditional", wxButton)->Enable(selAdd != -1);
+	XRCCTRL(*this, "btnEditExternal", wxButton)->Enable(selExt != -1);
+	XRCCTRL(*this, "btnDelExternal", wxButton)->Enable(selExt != -1);
 }

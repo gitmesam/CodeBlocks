@@ -14,9 +14,9 @@
 
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
-	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+	Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
-// RCS-ID: $Id$
+// RCS-ID: $Id: version.cpp 26 2008-01-03 17:34:18Z Pecan $
 
 #ifdef WX_PRECOMP
     #include "wx_pch.h"
@@ -193,88 +193,15 @@ AppVersion::~AppVersion()
 //  Commit 1.2.73 2008/02/27
 //         73) Set default BrowseMarks to disabled
 // ----------------------------------------------------------------------------
-//  Commit 1.2.74 2008/03/15
-//         74) changed user interface
-//             Added Config settings panel to CB config settings menu
-// ----------------------------------------------------------------------------
-//  Commit 1.2.75 2009/04/26
-//         75) Added GetCBConfigDir() to call routines that check for APPDATA var
-// ----------------------------------------------------------------------------
-//  Commit 1.2.76 2009/04/28
-//         76) Add include ConfigManager for linux
-// ----------------------------------------------------------------------------
-//  Commit 1.2.78 2009/07/13
-//         77) Fix activation by keyboard after wxAuiNotebook added.
-//         78) Sort browse marks in idle time.
-// ----------------------------------------------------------------------------
-//  Commit  1.2.80 2009/07/22
-//      79) Call OnEditorActivated() from OnEditorOpened() because editors actived
-//          by Alt-G, "Swap header/source", and "Recent files" have no cbEditor
-//          associated in EVT_EDITOR_ACTIVATED, and GetActiveEditor() returns NULL.
-//      80) Hack to find editor's project. Since wxAuiNotebook, the initial
-//          EVT_EDITOR_ACTIVATED has no cbEditor or cbProject associated.
-// ----------------------------------------------------------------------------
-//  Commit 1.2.85 2009/11/9
-//       81) Set browse marks sorting flag in OnEditorActivated()
-//       82) Set BrowseSelector width window by filename width
-//       83) Added JumpTracker; record each activated cursor posn within a half-page
-//       84) Activate previously active editor when secondary project closes.
-//       85  Fix crash when disabling plugins (in BuildMenu)
-// ----------------------------------------------------------------------------
-//  Commit 1.2.90 2009/11/30
-//       86) Add Shutdown test to OnIdle
-//       87) OnCloseEditor, Activate the previously active edtor, not the last tab
-//           EditorManager::OnUpdateUI() used to do this. wxAuiNotebook broke it.
-//       88) OnProjectClosing() ignore recording closing editors
-//           OnProjectActivated() activate the current edtior for this project (not last tab).
-//       89) Record last deactivated editor; OnEditorClose activate last deactivated editor (vs. last tab)
-//       90) Fixed: loop in OnIdle() after svn 5939 changes
-// ----------------------------------------------------------------------------
-//  Commit 1.2.92 2009/12/11
-//       91) Clear m_bProjectClosing in OnProjectOpened() else no initial activation recorded after project closed.
-//       92) Fix JumpTracker inablility to switch between editors (caused by Editor Activation fix)
-// ----------------------------------------------------------------------------
-//  Commit 1.2.93 2010/02/19
-//       93) Diable Ctrl-Left_Mouse key usage when user sets editor multi-selection enabled.
-// ----------------------------------------------------------------------------
-//  Commit 1.2.94 2010/02/25
-//       94) Apply patch 2886 by techy
-//  Commit 1.2.95 2010/06/30
-//       95) Do not record firt source line in JumpTracker
-//  Commit 1.2.96 2011/12/13
-//       96) Remove wrap on JumpTracker jump back/forward
-//  Commit 1.2.97 2012/01/11
-//       96) Record last position for deactivated editor
-//           Remove recording position for activated editor
-//  Commit 1.2.98 2012/08/10
-//       98) Add Wrap Jump Entries option
-//  Commit 1.2.99 2012/11/18
-//       99) remove shadowed var from GetCurrentScreenPosition()
-//  Commit 1.2.100 2014/10/9
-//      100) Fix incorrect scintilla margin marker usage
-//           Better resolution of Jump line recording
-//           Add modifed user contrib tool bar (by sbezgodov)
-//  ICC    1.2.101 2018/01/3
-//           Fix shutdown crash //2017/12/7
-//           Begin elimination of BrowseMarks
-//           ICC restore BrowseTracker Toolbar, default unshown
-//           Set BookMarks as default. //2018/01/31-2018/01/2
-//  ICC    1.2.102 2018/01/6
-//           Elimination use of BrowseMarksStyle
-//           Set BookMarks as default. //2018/01/31-2018/01/2
-//  pecan  1.2.103 2018/02/6
-//           Port of above to CB 17.12 trunk
-//           changes to includes and .cbp for CB 17.12
-//  pecan  1.2.104 2018/02/17
-//           Re-patch wx30 and wx31 versions with shutdown fix 1.2.101
-//           Left out when creating CB 17.12
-// ----------------------------------------------------------------------------
-//  //FIXME: Bugs
-//      01) Requires CB to be restarted after Install before Alt-Left/Right work.
+//  Bugs
+//          When searching workspace w/o open project, BT is comatose.
+//              Should say "no project" or some such.
+//          Requires CB to be restarted after Install before Alt-Left/Right work.
 //          When CB reloads a changed editor, the marks are missing
-//       3) On first project load, browse/book marks dont set bec there's no active editor in arrays
+//          In one fell swoop: uninstall BrowseTracker, reInstall it,
+//              click on a project. CB::OnProjectHook call crashes.
 // ----------------------------------------------------------------------------
-//  //TODO:   All
+//  ToDo    All
 //          Config dialog: Max tracked editors Max tracked lines etc
 //          Navigation toolbar arrows
 //          Shadow the menuitem cmdkey definitions w/ wxMenuItem->GetAccel()

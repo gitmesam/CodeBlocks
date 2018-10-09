@@ -40,24 +40,24 @@ public:
     // begin wxGlade: ThreadSearchConfPanel::ids
     // end wxGlade
 
-    /** Constructor. */
+	/** Constructor. */
     ThreadSearchConfPanel(ThreadSearch& threadSearchPlugin, wxWindow* parent = NULL, wxWindowID id = -1);
 
-    /** Returns the title displayed in the left column of the "Settings/Environment" dialog. */
-    wxString GetTitle()          const {return _("Thread search");}
+	/** Returns the title displayed in the left column of the "Settings/Environment" dialog. */
+	wxString GetTitle()          const {return wxT("Thread search");}
 
-    /** Returns string used to build active/inactive images path in the left column
-      * of the "Settings/Environment" dialog.
-      */
-    wxString GetBitmapBaseName() const {return wxT("ThreadSearch");}
+	/** Returns string used to build active/inactive images path in the left column
+	  * of the "Settings/Environment" dialog.
+	  */
+	wxString GetBitmapBaseName() const {return wxT("ThreadSearch");}
 
-    /** Called automatically when user clicks on OK
-      */
-    void OnApply();
+	/** Called automatically when user clicks on OK
+	  */
+	void OnApply();
 
-    /** Called automatically when user clicks on Cancel
-      */
-    void OnCancel() {}
+	/** Called automatically when user clicks on Cancel
+	  */
+	void OnCancel() {}
 
 private:
     // begin wxGlade: ThreadSearchConfPanel::methods
@@ -73,6 +73,7 @@ protected:
     wxStaticBox* SizerListControlOptions_staticbox;
     wxStaticBox* SizerThreadSearchLayoutGlobal_staticbox;
     wxStaticBox* SizerThreadSearchOptions_staticbox;
+    wxStaticBox* SizerOptions_staticbox;
     wxStaticBox* SizerSearchIn_staticbox;
     SearchInPanel* m_pPnlSearchIn;
     DirectoryParamsPanel* m_pPnlDirParams;
@@ -82,15 +83,11 @@ protected:
     wxCheckBox* m_pChkRegExp;
     wxCheckBox* m_pChkThreadSearchEnable;
     wxCheckBox* m_pChkUseDefaultOptionsForThreadSearch;
-    wxCheckBox* m_pChkShowMissingFilesError;
-    wxCheckBox* m_pChkShowCantOpenFileError;
-    wxCheckBox* m_pChkDeletePreviousResults;
     wxCheckBox* m_pChkShowThreadSearchToolBar;
     wxCheckBox* m_pChkShowThreadSearchWidgets;
     wxCheckBox* m_pChkShowCodePreview;
     wxCheckBox* m_pChkDisplayLogHeaders;
     wxCheckBox* m_pChkDrawLogLines;
-    wxCheckBox* m_pChkAutosizeLogColumns;
     wxRadioBox* m_pRadPanelManagement;
     wxRadioBox* m_pRadLoggerType;
     wxRadioBox* m_pRadSplitterWndMode;
@@ -100,18 +97,15 @@ protected:
     DECLARE_EVENT_TABLE();
 
 public:
-    /** The m_pChkThreadSearchEnable checkbox is used to enable/disable 'Find occurrences'
-      * contextual menu integration.
-      * This method disables the m_pChkUseDefaultOptionsForThreadSearch checkbox if
-      * 'Find occurrences' is not present in the contextual menu.
-      */
+	/** The m_pChkThreadSearchEnable checkbox is used to enable/disable 'Find occurrences'
+	  * contextual menu integration.
+	  * This method disables the m_pChkUseDefaultOptionsForThreadSearch checkbox if
+	  * 'Find occurrences' is not present in the contextual menu.
+	  */
     void OnThreadSearchEnable(wxCommandEvent &event); // wxGlade: <event_handler>
     void OnChkShowThreadSearchToolBarClick(wxCommandEvent &event); // wxGlade: <event_handler>
     void OnChkCodePreview(wxCommandEvent &event); // wxGlade: <event_handler>
     void OnChkShowThreadSearchWidgetsClick(wxCommandEvent &event); // wxGlade: <event_handler>
-    void OnChkShowMissingFilesErrorClick(wxCommandEvent &event); // wxGlade: <event_handler>
-    void OnChkShowCantOpenFileErrorClick(wxCommandEvent &event); // wxGlade: <event_handler>
-
 }; // wxGlade: end class
 
 

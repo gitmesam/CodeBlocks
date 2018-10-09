@@ -21,7 +21,6 @@
 */
 #include "wxwidgetsresfactory.h"
 #include "wxsdialogres.h"
-#include "wxsscrollingdialogres.h"
 #include "wxsframeres.h"
 #include "wxspanelres.h"
 #include "wxsnewwindowdlg.h"
@@ -31,7 +30,7 @@
 #include "../wxsmith.h"
 
 #include <wx/choicdlg.h>
-#include <tinywxuni.h>
+#include <tinyxml/tinywxuni.h>
 #include <sqplus.h>
 #include <sc_base_types.h>
 
@@ -42,7 +41,6 @@ namespace
     enum Resources
     {
         wxDialogId = 0,
-        wxScrollingDialogId,
         wxFrameId,
         wxPanelId,
         /*=========*/
@@ -51,10 +49,9 @@ namespace
 
     const wxChar* NamesPtr[ResourcesCount] =
     {
-        _("wxDialog"),
-        _("wxScrollingDialog"),
-        _("wxFrame"),
-        _("wxPanel")
+        _T("wxDialog"),
+        _T("wxFrame"),
+        _T("wxPanel")
     };
 
     wxArrayString Names(ResourcesCount,NamesPtr);
@@ -195,11 +192,9 @@ wxsResource* wxWidgetsResFactory::OnCreate(int Number,wxsProject* Project)
 {
     switch ( Number )
     {
-        case wxDialogId:          return new wxsDialogRes(Project);
-        case wxScrollingDialogId: return new wxsScrollingDialogRes(Project);
-        case wxFrameId:           return new wxsFrameRes(Project);
-        case wxPanelId:           return new wxsPanelRes(Project);
-        default:                  break;
+        case wxDialogId: return new wxsDialogRes(Project);
+        case wxFrameId:  return new wxsFrameRes(Project);
+        case wxPanelId:  return new wxsPanelRes(Project);
     }
     return 0;
 }
@@ -243,7 +238,7 @@ wxsResource* wxWidgetsResFactory::OnBuildExternal(const wxString& FileName)
     int Choice = 0;
     if ( ResourcesFound.size() > 1 )
     {
-        Choice = ::cbGetSingleChoiceIndex(
+        Choice = ::wxGetSingleChoiceIndex(
             _("There's more than one resource in this file.\n"
               "Please select which one should be edited."),
             _("Choose resource to edit"),
@@ -260,11 +255,9 @@ wxsResource* wxWidgetsResFactory::OnBuildExternal(const wxString& FileName)
     wxString Class = cbC2U(Object->Attribute("class"));
     switch ( Names.Index(Class) )
     {
-        case wxDialogId:          return new wxsDialogRes(FileName,Object);
-        case wxScrollingDialogId: return new wxsScrollingDialogRes(FileName,Object);
-        case wxFrameId:           return new wxsFrameRes(FileName,Object);
-        case wxPanelId:           return new wxsPanelRes(FileName,Object);
-        default:                  break;
+        case wxDialogId: return new wxsDialogRes(FileName,Object);
+        case wxFrameId:  return new wxsFrameRes(FileName,Object);
+        case wxPanelId:  return new wxsPanelRes(FileName,Object);
     }
     return 0;
 }

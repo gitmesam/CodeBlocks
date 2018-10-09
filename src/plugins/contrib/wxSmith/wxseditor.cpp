@@ -30,7 +30,6 @@ wxsEditor::wxsEditor(wxWindow* parent, const wxString& title,wxsResource* Resour
     EditorBase(parent,title),
     m_Resource(Resource)
 {
-    //active the "Resources" Tab in the "Management" Panel
     wxSmith::Get()->ShowResourcesTab();
 }
 

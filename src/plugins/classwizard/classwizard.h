@@ -8,7 +8,7 @@
 
 #include "cbplugin.h"
 
-class ClassWizard : public cbPlugin
+class ClassWizard : public cbToolPlugin
 {
     public:
         ClassWizard();
@@ -16,15 +16,8 @@ class ClassWizard : public cbPlugin
 
         virtual void OnAttach();
         virtual void OnRelease(bool appShutDown);
-
-        virtual void BuildMenu(wxMenuBar* menuBar);
-
-		void OnLaunch(wxCommandEvent& event);
-
-	protected:
-		wxMenu* m_FileNewMenu;
-
-		DECLARE_EVENT_TABLE();
+        virtual int Configure(){ return -1; }
+        virtual int Execute();
 };
 
 #endif // CLASSWIZARD_H

@@ -6,18 +6,18 @@
 #ifndef CONFIGURETOOLSDLG_H
 #define CONFIGURETOOLSDLG_H
 
-#include "scrollingdialog.h"
+#include <wx/dialog.h>
 
 // forward decls
 class cbTool;
 class wxCommandEvent;
 class wxUpdateUIEvent;
 
-class ConfigureToolsDlg : public wxScrollingDialog
+class ConfigureToolsDlg : public wxDialog
 {
 	public:
 		ConfigureToolsDlg(wxWindow* parent);
-		~ConfigureToolsDlg() override;
+		~ConfigureToolsDlg();
 	private:
 		void DoFillList();
 		bool DoEditTool(cbTool* tool);

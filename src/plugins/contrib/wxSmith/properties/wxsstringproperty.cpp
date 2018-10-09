@@ -23,7 +23,6 @@
 #include "wxsstringproperty.h"
 
 #include <globals.h>
-#include <prep.h>
 
 // Helper macro for fetching variable
 #define VALUE   wxsVARIABLE(Object,Offset,wxString)
@@ -47,27 +46,23 @@ void wxsStringProperty::PGCreate(wxsPropertyContainer* Object,wxPropertyGridMana
     wxPGId Id;
     if ( IsLongString )
     {
-        Id = Grid->AppendIn(Parent,NEW_IN_WXPG14X wxLongStringProperty(GetPGName(),wxPG_LABEL,Fixed));
+        Id = Grid->AppendIn(Parent,wxLongStringProperty(GetPGName(),wxPG_LABEL,Fixed));
     }
     else
     {
-        Id = Grid->AppendIn(Parent,NEW_IN_WXPG14X wxStringProperty(GetPGName(),wxPG_LABEL,Fixed));
+        Id = Grid->AppendIn(Parent,wxStringProperty(GetPGName(),wxPG_LABEL,Fixed));
     }
     PGRegister(Object,Grid,Id);
 }
 
-bool wxsStringProperty::PGRead(cb_unused wxsPropertyContainer* Object,
-                               wxPropertyGridManager* Grid,wxPGId Id,
-                               cb_unused long Index)
+bool wxsStringProperty::PGRead(wxsPropertyContainer* Object,wxPropertyGridManager* Grid,wxPGId Id,long Index)
 {
     VALUE = Grid->GetPropertyValue(Id).GetString();
     VALUE.Replace(_T("\\n"),_T("\n"));
     return true;
 }
 
-bool wxsStringProperty::PGWrite(cb_unused wxsPropertyContainer* Object,
-                                wxPropertyGridManager* Grid,wxPGId Id,
-                                cb_unused long Index)
+bool wxsStringProperty::PGWrite(wxsPropertyContainer* Object,wxPropertyGridManager* Grid,wxPGId Id,long Index)
 {
     wxString Fixed = VALUE;
     Fixed.Replace(_T("\n"),_T("\\n"));
@@ -75,15 +70,14 @@ bool wxsStringProperty::PGWrite(cb_unused wxsPropertyContainer* Object,
     return true;
 }
 
-bool wxsStringProperty::XmlRead(cb_unused wxsPropertyContainer* Object,
-                                TiXmlElement* Element)
+bool wxsStringProperty::XmlRead(wxsPropertyContainer* Object,TiXmlElement* Element)
 {
     if ( !Element )
     {
         VALUE.Clear();
         return false;
     }
-    // TODO: Use proper encoding
+    // TODO: Use proper endocing
     wxString Base = cbC2U(Element->GetText());
     wxString Result;
     for ( const wxChar* Ch = Base.c_str(); *Ch; Ch++ )
@@ -119,8 +113,7 @@ bool wxsStringProperty::XmlRead(cb_unused wxsPropertyContainer* Object,
     return true;
 }
 
-bool wxsStringProperty::XmlWrite(cb_unused wxsPropertyContainer* Object,
-                                 TiXmlElement* Element)
+bool wxsStringProperty::XmlWrite(wxsPropertyContainer* Object,TiXmlElement* Element)
 {
     if ( XmlStoreEmpty || (VALUE != Default) )
     {
@@ -145,14 +138,12 @@ bool wxsStringProperty::XmlWrite(cb_unused wxsPropertyContainer* Object,
     return false;
 }
 
-bool wxsStringProperty::PropStreamRead(cb_unused wxsPropertyContainer* Object,
-                                       wxsPropertyStream* Stream)
+bool wxsStringProperty::PropStreamRead(wxsPropertyContainer* Object,wxsPropertyStream* Stream)
 {
     return Stream->GetString(GetDataName(),VALUE,Default);
 }
 
-bool wxsStringProperty::PropStreamWrite(cb_unused wxsPropertyContainer* Object,
-                                        wxsPropertyStream* Stream)
+bool wxsStringProperty::PropStreamWrite(wxsPropertyContainer* Object,wxsPropertyStream* Stream)
 {
     return Stream->PutString(GetDataName(),VALUE,Default);
 }

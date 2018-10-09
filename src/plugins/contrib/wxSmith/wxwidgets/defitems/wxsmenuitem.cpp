@@ -22,8 +22,6 @@
 
 #include "wxsmenuitem.h"
 
-#include <prep.h>
-
 namespace
 {
     class InfoHandler: public wxsItemInfo
@@ -99,9 +97,9 @@ void wxsMenuItem::OnBuildCreatingCode()
                         // Many parameters are passed in wxMenu::Append, so we call this function
                         // here, not in wxMenu
                         Codef(_T("%MAppend(%I, %t, %O, %t)%s;\n"),
-                              m_Label.wx_str(),
-                              m_Help.wx_str(),
-                              m_Enabled?_T(""):_T("->Enable(false)"));
+                            m_Label.c_str(),
+                            m_Help.c_str(),
+                            m_Enabled?_T(""):_T("->Enable(false)"));
                         break;
                     }
                 }
@@ -123,16 +121,13 @@ void wxsMenuItem::OnBuildCreatingCode()
                     {
                         case Normal: ItemType = _T("wxITEM_NORMAL"); break;
                         case Radio:  ItemType = _T("wxITEM_RADIO");  break;
-                        case Break:     // fall-through
-                        case Check:     // fall-through
-                        case Separator: // fall-through
                         default:     ItemType = _T("wxITEM_CHECK");  break;
                     }
 
                     Codef(_T("%C(%E, %I, %t, %t, %s);\n"),
-                          Text.wx_str(),
-                          m_Help.wx_str(),
-                          ItemType);
+                        Text.c_str(),
+                        m_Help.c_str(),
+                        ItemType);
 
                     if ( !m_Bitmap.IsEmpty() )
                     {
@@ -164,19 +159,16 @@ void wxsMenuItem::OnBuildCreatingCode()
                     break;
                 }
 
-                default:
-                    break;
             }
             BuildSetupWindowCode();
             break;
 
-        case wxsUnknownLanguage: // fall-through
         default:
             wxsCodeMarks::Unknown(_T("wxsMenuItem::OnBuildCreatingCode"),GetLanguage());
     }
 }
 
-void wxsMenuItem::OnEnumToolProperties(cb_unused long Flags)
+void wxsMenuItem::OnEnumToolProperties(long Flags)
 {
 
     switch ( m_Type )
@@ -193,6 +185,7 @@ void wxsMenuItem::OnEnumToolProperties(cb_unused long Flags)
             }
             // When there are no children, we threat this item as wxMenuItem
 
+     /* case Normal: */
         case Radio:
         case Check:
             WXS_SHORT_STRING(wxsMenuItem,m_Label,_("Label"),_T("label"),_T(""),true);
@@ -206,10 +199,7 @@ void wxsMenuItem::OnEnumToolProperties(cb_unused long Flags)
             }
             break;
 
-        case Separator: // fall-through
-        case Break:     // fall-through
-        default:
-            break;
+        default:;
     }
 }
 
@@ -235,13 +225,10 @@ bool wxsMenuItem::OnXmlWrite(TiXmlElement* Element,bool IsXRC,bool IsExtra)
                 break;
 
             case Check:
-                Element->InsertEndChild(TiXmlElement("checkable"))->ToElement()->InsertEndChild(TiXmlText("1"));
+                Element->InsertEndChild(TiXmlElement("check"))->ToElement()->InsertEndChild(TiXmlText("1"));
                 break;
 
             case Normal:
-                break;
-
-            default:
                 break;
         }
     }
@@ -272,26 +259,14 @@ bool wxsMenuItem::OnXmlRead(TiXmlElement* Element,bool IsXRC,bool IsExtra)
             {
                 m_Type = Radio;
             }
+            else if ( (Node = Element->FirstChildElement("check")) &&
+                      (cbC2U(Node->GetText())==_T("1")) )
+            {
+                m_Type = Check;
+            }
             else
             {
-                Node = Element->FirstChildElement("checkable");
-
-                // Backward BUG-compatibility
-                if ( !Node ) Node = Element->FirstChildElement("check");
-
-                if ( Node && (cbC2U(Node->GetText())==_T("1")) )
-                {
-                    m_Type = Check;
-                    // Now, we are going to check its state, either checked or not checked
-                    TiXmlElement* checkedNode = Element->FirstChildElement("checked");
-                    if (checkedNode && (cbC2U(checkedNode->GetText())==_T("1")))
-                        m_Checked = true;
-                    // otherwise, the m_Checked will default to false.
-                }
-                else
-                {
-                    m_Type = Normal;
-                }
+                m_Type = Normal;
             }
         }
     }
@@ -336,7 +311,7 @@ bool wxsMenuItem::OnXmlReadChild(TiXmlElement* Elem,bool IsXRC,bool IsExtra)
     return true;
 }
 
-wxString wxsMenuItem::OnGetTreeLabel(cb_unused int& Image)
+wxString wxsMenuItem::OnGetTreeLabel(int& Image)
 {
     switch ( m_Type )
     {
@@ -346,9 +321,6 @@ wxString wxsMenuItem::OnGetTreeLabel(cb_unused int& Image)
         case Break:
             return _("** BREAK **");
 
-        case Normal: // fall-through
-        case Radio:  // fall-through
-        case Check:  // fall-through
         default:
             return m_Label;
     }
@@ -364,11 +336,7 @@ void wxsMenuItem::OnBuildDeclarationsCode()
             case Separator:
                 return;
 
-            case Normal: // fall-through
-            case Radio:  // fall-through
-            case Check:  // fall-through
-            default:
-                break;
+            default:;
         }
     }
 
@@ -385,18 +353,3 @@ const wxString& wxsMenuItem::GetClassName()
     }
     return wxsTool::GetClassName();
 }
-
-void wxsMenuItem::OnBuildXRCFetchingCode()
-{
-    // Menu items can not be found through FindWindow stuff, we need to
-    // fetch them using wxMenuBar::FindItem.
-    long Flags = GetPropertiesFlags();
-    if ( (Flags&flVariable) && (Flags&flId) )
-    {
-        AddXRCFetchingCode(
-            GetVarName() + _T(" = GetMenuBar() ? ")
-            _T("(") + GetUserClass() + _T("*)")
-            _T("GetMenuBar()->FindItem(XRCID(\"") + GetIdName() + _T("\")) : NULL;\n"));
-    }
-}
-

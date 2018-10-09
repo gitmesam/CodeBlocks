@@ -27,7 +27,6 @@
 #include <wx/sizer.h>
 #include <wx/checkbox.h>
 #include <wx/spinctrl.h>
-#include <wx/statline.h>
 #include <wx/radiobut.h>
 #include <wx/panel.h>
 //*)
@@ -37,79 +36,78 @@
 
 class wxsSizerParentQP: public wxsAdvQPPChild
 {
-    public:
+	public:
 
-        wxsSizerParentQP(wxsAdvQPP* parent,wxsSizerExtra* Extra);
-        virtual ~wxsSizerParentQP();
+		wxsSizerParentQP(wxsAdvQPP* parent,wxsSizerExtra* Extra,wxWindowID id = -1);
+		virtual ~wxsSizerParentQP();
 
-        //(*Identifiers(wxsSizerParentQP)
-        static const long ID_CHECKBOX1;
-        static const long ID_CHECKBOX2;
-        static const long ID_CHECKBOX8;
-        static const long ID_CHECKBOX3;
-        static const long ID_CHECKBOX4;
-        static const long ID_SPINCTRL1;
-        static const long ID_CHECKBOX7;
-        static const long ID_RADIOBUTTON4;
-        static const long ID_RADIOBUTTON5;
-        static const long ID_RADIOBUTTON6;
-        static const long ID_RADIOBUTTON7;
-        static const long ID_RADIOBUTTON8;
-        static const long ID_RADIOBUTTON9;
-        static const long ID_RADIOBUTTON10;
-        static const long ID_RADIOBUTTON11;
-        static const long ID_RADIOBUTTON12;
-        static const long ID_STATICLINE1;
-        static const long ID_CHECKBOX6;
-        static const long ID_CHECKBOX5;
-        static const long ID_SPINCTRL2;
-        //*)
+		//(*Identifiers(wxsSizerParentQP)
+		static const long ID_CHECKBOX1;
+		static const long ID_CHECKBOX2;
+		static const long ID_CHECKBOX3;
+		static const long ID_CHECKBOX4;
+		static const long ID_SPINCTRL1;
+		static const long ID_CHECKBOX7;
+		static const long ID_RADIOBUTTON4;
+		static const long ID_RADIOBUTTON5;
+		static const long ID_RADIOBUTTON6;
+		static const long ID_RADIOBUTTON7;
+		static const long ID_RADIOBUTTON8;
+		static const long ID_RADIOBUTTON9;
+		static const long ID_RADIOBUTTON10;
+		static const long ID_RADIOBUTTON11;
+		static const long ID_RADIOBUTTON12;
+		static const long ID_CHECKBOX6;
+		static const long ID_CHECKBOX5;
+		static const long ID_SPINCTRL2;
+		//*)
 
-    protected:
+	protected:
 
-        //(*Handlers(wxsSizerParentQP)
-        void OnBrdChange(wxCommandEvent& event);
-        void OnBrdSizeChange(wxSpinEvent& event);
-        void OnPlaceChange(wxCommandEvent& event);
-        void OnProportionChange(wxSpinEvent& event);
-        void OnBrdDlgChange(wxCommandEvent& event);
-        void OnBrdAll(wxCommandEvent& event);
-        //*)
+		//(*Handlers(wxsSizerParentQP)
+		void OnBrdChange(wxCommandEvent& event);
+		void OnBrdSizeChange(wxSpinEvent& event);
+		void OnPlaceChange(wxCommandEvent& event);
+		void OnProportionChange(wxSpinEvent& event);
+		void OnBrdDlgChange(wxCommandEvent& event);
+		//*)
 
-        //(*Declarations(wxsSizerParentQP)
-        wxRadioButton* PlaceCB;
-        wxCheckBox* BrdAll;
-        wxCheckBox* PlaceShp;
-        wxCheckBox* BrdLeft;
-        wxSpinCtrl* BrdSize;
-        wxCheckBox* BrdTop;
-        wxCheckBox* BrdRight;
-        wxRadioButton* PlaceRT;
-        wxRadioButton* PlaceRC;
-        wxCheckBox* PlaceExp;
-        wxRadioButton* PlaceCT;
-        wxCheckBox* BrdDlg;
-        wxCheckBox* BrdBottom;
-        wxRadioButton* PlaceLB;
-        wxRadioButton* PlaceRB;
-        wxRadioButton* PlaceCC;
-        wxStaticLine* StaticLine1;
-        wxSpinCtrl* Proportion;
-        wxRadioButton* PlaceLT;
-        wxRadioButton* PlaceLC;
-        //*)
+		//(*Declarations(wxsSizerParentQP)
+		wxRadioButton* PlaceCB;
+		wxCheckBox* PlaceShp;
+		wxCheckBox* BrdLeft;
+		wxSpinCtrl* BrdSize;
+		wxCheckBox* BrdTop;
+		wxCheckBox* BrdRight;
+		wxFlexGridSizer* FlexGridSizer3;
+		wxRadioButton* PlaceRT;
+		wxRadioButton* PlaceRC;
+		wxCheckBox* PlaceExp;
+		wxRadioButton* PlaceCT;
+		wxCheckBox* BrdDlg;
+		wxStaticBoxSizer* StaticBoxSizer3;
+		wxCheckBox* BrdBottom;
+		wxRadioButton* PlaceLB;
+		wxRadioButton* PlaceRB;
+		wxRadioButton* PlaceCC;
+		wxBoxSizer* BoxSizer1;
+		wxSpinCtrl* Proportion;
+		wxFlexGridSizer* FlexGridSizer1;
+		wxRadioButton* PlaceLT;
+		wxRadioButton* PlaceLC;
+		wxGridSizer* GridSizer2;
+		//*)
 
         virtual void Update();
 
-    private:
+	private:
 
         void ReadData();
         void SaveData();
 
         wxsSizerExtra* m_Extra;
-        long m_ParentOrientation;
 
-        DECLARE_EVENT_TABLE()
+		DECLARE_EVENT_TABLE()
 };
 
 #endif

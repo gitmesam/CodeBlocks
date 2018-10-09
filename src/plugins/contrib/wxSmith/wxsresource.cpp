@@ -24,7 +24,7 @@
 #include "wxsextresmanager.h"
 #include "wxsresourcetreeitemdata.h"
 
-#include "cbauibook.h"
+#include <wx/wxFlatNotebook/wxFlatNotebook.h>
 #include <editormanager.h>
 
 namespace
@@ -124,10 +124,7 @@ wxsResource::~wxsResource()
         EditorStore->Close();
     }
 
-    if ( m_TreeItemId.IsOk() )
-    {
-        wxsTree()->Delete(m_TreeItemId);
-    }
+    wxsTree()->Delete(m_TreeItemId);
 }
 
 void wxsResource::EditOpen()

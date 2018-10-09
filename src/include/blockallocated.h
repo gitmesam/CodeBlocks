@@ -21,15 +21,16 @@ namespace BlkAllc
 
     const bool enable_global_debug = false;
     const bool verbose = false;
-}
+};
 
 
 template <class T, unsigned int pool_size, const bool debug>
 class BlockAllocator
 {
     template <class U>
-    union LinkedBlock
+    class LinkedBlock
     {
+    public:
         LinkedBlock<U> *next;
         char data[sizeof(U)];
     };
@@ -66,10 +67,9 @@ public:
 
     BlockAllocator() : first(0), ref_count(0), max_refs(0), total_refs(0)
     {
-    #if defined(__GNUC__)
+	if(platform::gcc)
         assert(__builtin_constant_p(debug));
-    #endif
-    };
+	};
 
     ~BlockAllocator()
     {
@@ -94,7 +94,7 @@ public:
         if(first == 0)
             AllocBlockPushBack();
 
-        void *p = first;
+        void *p = &(first->data);
         first = first->next;
         return p;
     };
@@ -104,7 +104,7 @@ public:
         if(BlkAllc::enable_global_debug || debug)
             --ref_count;
 
-        PushFront((LinkedBlock<T> *) ptr);
+        PushFront((LinkedBlock<T> *) ((char *) ptr - sizeof(void*)));
     };
 };
 
@@ -116,7 +116,7 @@ class BlockAllocated
 
 public:
 
-    inline void* operator new(cb_unused size_t size)
+    inline void* operator new(size_t size)
     {
         return allocator.New();
     };
@@ -130,5 +130,7 @@ public:
 };
 template<class T, unsigned int pool_size, const bool debug>
 BlockAllocator<T, pool_size, debug> BlockAllocated<T, pool_size, debug>::allocator;
+
+
 
 #endif

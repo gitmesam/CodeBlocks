@@ -6,30 +6,23 @@
  * $Id$
  * $HeadURL$
  */
-#include <sdk.h>
-
-#ifndef CB_PRECOMP
-  #include <map>
-  #include <wx/arrstr.h>
-  #include <wx/button.h>
-  #include <wx/dir.h>
-  #include <wx/filename.h>
-  #include <wx/regex.h>
-  #include <wx/sizer.h>
-  #include <globals.h> // cbC2U
-#endif
-
-#include <bzlib.h>
-#include <zlib.h>
-
-#include <stdio.h>
-
-#include <wx/sstream.h>
-#include <wx/wfstream.h>
 
 #include "MANFrame.h"
 #include "man2html.h"
 
+#include <wx/sizer.h>
+#include <wx/dir.h>
+#include <wx/sstream.h>
+#include <wx/wfstream.h>
+#include <wx/filename.h>
+#include <wx/arrstr.h>
+#include <stdio.h>
+#include <bzlib.h>
+#include <zlib.h>
+
+#ifndef CB_PRECOMP
+    #include "globals.h" // cbC2U
+#endif
 
 namespace
 {
@@ -39,7 +32,7 @@ namespace
     int textEntryID = wxNewId();
     int htmlWindowID = wxNewId();
 
-    const wxString NoSearchDirsSet = _("<html>\n"
+    wxString NoSearchDirsSet = _("<html>\n"
         "<head>\n"
         "<meta content=\"text/html; charset=ISO-8859-1\"\n"
         "http-equiv=\"content-type\">\n"
@@ -52,7 +45,7 @@ namespace
         "</body>\n"
         "</html>");
 
-    const wxString ManPageNotFound = _("<html>\n"
+    wxString ManPageNotFound = _("<html>\n"
         "<head>\n"
         "<meta content=\"text/html; charset=ISO-8859-1\"\n"
         "http-equiv=\"content-type\">\n"
@@ -91,6 +84,29 @@ namespace
     }
 
     int font_sizes[7] = { 0 };
+
+    class MatchTraverser : public wxDirTraverser
+    {
+        private:
+            std::vector<wxString> *m_files;
+
+        public:
+            MatchTraverser(std::vector<wxString> *files)
+            : m_files(files)
+            {
+            }
+
+            wxDirTraverseResult OnFile(const wxString &filename)
+            {
+                m_files->push_back(filename);
+                return wxDIR_CONTINUE;
+            }
+
+            wxDirTraverseResult OnDir(const wxString &dirname)
+            {
+                return wxDIR_CONTINUE;
+            }
+    };
 }
 
 BEGIN_EVENT_TABLE(MANFrame, wxPanel)
@@ -174,7 +190,7 @@ void MANFrame::OnLinkClicked(wxHtmlLinkEvent &event)
                 name += _T(".") + section;
             }
 
-            SearchManPage(name);
+            SearchManPage(wxEmptyString, name);
         }
     }
     else if (link.StartsWith(_T("fman:"), &link))
@@ -195,9 +211,9 @@ void MANFrame::OnLinkClicked(wxHtmlLinkEvent &event)
     }
 }
 
-void MANFrame::OnSearch(wxCommandEvent &/*event*/)
+void MANFrame::OnSearch(wxCommandEvent &event)
 {
-    SearchManPage(m_entry->GetValue());
+    SearchManPage(wxEmptyString, m_entry->GetValue());
 }
 
 bool MANFrame::Decompress(const wxString& filename, const wxString& tmpfile)
@@ -313,16 +329,38 @@ wxString MANFrame::GetManPage(wxString filename, int depth)
         return wxString();
     }
 
-    wxString ret;
-    if (filename.EndsWith(_T(".gz")))
+    if (filename.EndsWith(_T(".bz2")))
+    {
+        if (!m_tmpfile.IsEmpty())
+        {
+            if (wxFileName::FileExists(m_tmpfile))
+            {
+                wxRemoveFile(m_tmpfile);
+            }
+        }
+
+        m_tmpfile = wxFileName::CreateTempFileName(_T("manbz2"));
+
+        if (!Decompress(filename, m_tmpfile))
+        {
+            wxRemoveFile(m_tmpfile);
+            m_tmpfile.Clear();
+            return wxString();
+        }
+
+        filename = m_tmpfile;
+    }
+    else if (filename.EndsWith(_T(".gz")))
     {
         gzFile f = gzopen(filename.mb_str(), "rb");
+
         if (!f)
         {
             return wxString();
         }
 
         char buffer[4096];
+        wxString ret;
         int read_bytes = -1;
 
         while (true)
@@ -343,42 +381,21 @@ wxString MANFrame::GetManPage(wxString filename, int depth)
         {
             return wxString();
         }
+
+        return ret;
     }
-    else
+
+    wxStringOutputStream sos;
+    wxFileInputStream f(filename);
+
+    if (!f.IsOk())
     {
-        if (filename.EndsWith(_T(".bz2")))
-        {
-            if (!m_tmpfile.IsEmpty())
-            {
-                if (wxFileName::FileExists(m_tmpfile))
-                {
-                    wxRemoveFile(m_tmpfile);
-                }
-            }
-
-            m_tmpfile = wxFileName::CreateTempFileName(_T("manbz2"));
-
-            if (!Decompress(filename, m_tmpfile))
-            {
-                wxRemoveFile(m_tmpfile);
-                m_tmpfile.Clear();
-                return wxString();
-            }
-
-            filename = m_tmpfile;
-        }
-
-        wxStringOutputStream sos;
-        wxFileInputStream f(filename);
-
-        if (!f.IsOk())
-        {
-            return wxString();
-        }
-
-        f.Read(sos);
-        ret = sos.GetString();
+        return wxString();
     }
+
+    f.Read(sos);
+
+    wxString ret = sos.GetString();
 
     // Check if we should follow the link
     if (ret.StartsWith(_T(".so "), &ret))
@@ -391,21 +408,13 @@ wxString MANFrame::GetManPage(wxString filename, int depth)
         wxFileName::SplitPath(path, 0, &name, &ext, wxPATH_UNIX); // man pages "always" use /
         newfilename = name + _T(".") + ext;
         wxFileName::SplitPath(orgFilename, &path, 0, &ext);
-        newfilename = path + wxFileName::GetPathSeparator() + newfilename;
 
         if (ext == _T("bz2") || ext == _T("gz"))
         {
             newfilename += _T(".") + ext;
         }
-        else if (!wxFileName::FileExists(newfilename))
-        {
-            if (wxFileName::FileExists(newfilename + wxT(".bz2")))
-                newfilename += wxT(".bz2");
-            else if (wxFileName::FileExists(newfilename + wxT(".gz")))
-                newfilename += wxT(".gz");
-        }
 
-        return GetManPage(newfilename, depth + 1);
+        return GetManPage(path + wxFileName::GetPathSeparator() + newfilename, depth + 1);
     }
 
     return ret;
@@ -454,48 +463,21 @@ wxString MANFrame::CreateLinksPage(const std::vector<wxString> &files)
         "<h2>Multiple entries found</h2>\n"
         "<br>\n");
 
-    typedef std::multimap<wxString, wxString> ResultsMap;
-    ResultsMap sortedResults;
-
-    wxRegEx reMatchLocale(wxT("^(.+)/(man.+)$"));
     for (std::vector<wxString>::const_iterator i = files.begin(); i != files.end(); ++i)
     {
         wxString filename = *i;
-        wxString linkname, ext, path;
+        wxString linkname;
+        wxString ext;
 
-        wxFileName::SplitPath(filename, &path, &linkname, &ext);
+        wxFileName::SplitPath(filename, 0, &linkname, &ext);
 
         if (ext != _T("bz2") && ext != _T("gz"))
         {
             linkname += _T(".") + ext;
         }
 
-        // Strip the common directory from the path, so we can detect the language of the man page.
-        for (std::vector<wxString>::const_iterator dir = m_dirsVect.begin(); dir != m_dirsVect.end(); ++dir)
-        {
-            if (path.StartsWith(*dir))
-            {
-                path.Remove(0, dir->length());
-                if (!path.empty() && path[0] == wxFileName::GetPathSeparator())
-                    path.Remove(0, 1);
-                break;
-            }
-        }
-
-        // Detect the language of the man page.
-        if (reMatchLocale.Matches(path))
-        {
-            const wxString &locale = reMatchLocale.GetMatch(path, 1);
-            if (!locale.empty())
-                linkname += wxT(" (") + locale + wxT(")");
-        }
-
-        const wxString &aTag = _T("<a href=\"fman:") + filename + _T("\">") + linkname + _T("</a><br>");
-        sortedResults.insert(ResultsMap::value_type(linkname, aTag));
+        ret += _T("<a href=\"fman:") + filename + _T("\">") + linkname + _T("</a><br>");
     }
-
-    for (ResultsMap::const_iterator it = sortedResults.begin(); it != sortedResults.end(); ++it)
-        ret += it->second;
 
     ret += _T("</body>\n"
         "</html>");
@@ -503,8 +485,10 @@ wxString MANFrame::CreateLinksPage(const std::vector<wxString> &files)
     return ret;
 }
 
-bool MANFrame::SearchManPage(const wxString &keyword)
+bool MANFrame::SearchManPage(const wxString &dirs, const wxString &keyword)
 {
+    SetDirs(dirs);
+
     if (keyword.IsEmpty())
     {
         if (m_dirsVect.empty())

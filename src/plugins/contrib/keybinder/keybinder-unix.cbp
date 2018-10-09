@@ -2,22 +2,20 @@
 <CodeBlocks_project_file>
 	<FileVersion major="1" minor="6" />
 	<Project>
-		<Option title="C::B KeyBinder (Unix)" />
+		<Option title="C::B KeyBinder" />
 		<Option pch_mode="0" />
 		<Option compiler="gcc" />
 		<Build>
 			<Target title="KeyBinder plugin">
-				<Option output="../../../devel/share/codeblocks/plugins/libkeybinder" prefix_auto="0" extension_auto="1" />
+				<Option output="../../../devel/share/codeblocks/plugins/libkeybinder.so" prefix_auto="0" extension_auto="0" />
+				<Option working_dir="../keybinder" />
 				<Option object_output="../../../.objs/plugins/contrib/keybinder" />
 				<Option type="3" />
 				<Option compiler="gcc" />
-				<Option parameters="--debug-log --multiple-instance -ns -ni -p debug" />
 				<Option host_application="../../../devel/codeblocks" />
-				<Option run_host_application_in_terminal="0" />
 				<Compiler>
 					<Add directory="../../../include" />
-					<Add directory="../../../include/tinyxml" />
-					<Add directory="../../../sdk/wxscintilla/include" />
+					<Add directory="../../../include/wxscintilla/include" />
 				</Compiler>
 				<Linker>
 					<Add library="libcodeblocks.a" />
@@ -29,28 +27,20 @@
 			<Add alias="All" targets="KeyBinder plugin;" />
 		</VirtualTargets>
 		<Compiler>
-			<Add option="-Wshadow" />
-			<Add option="-Winit-self" />
-			<Add option="-Wunreachable-code" />
-			<Add option="-Wmissing-declarations" />
-			<Add option="-Wmissing-include-dirs" />
-			<Add option="-Wswitch-enum" />
-			<Add option="-Wswitch-default" />
-			<Add option="-Wextra" />
 			<Add option="-Wall" />
-			<Add option="$(#CB_RELEASE_TYPE)" />
-			<Add option="`wx-config --version=2.8 --cflags`" />
+			<Add option="-g" />
+			<Add option="-Ulinux" />
+			<Add option="-Uunix" />
+			<Add option="`wx-config --cflags`" />
 			<Add option="-fmessage-length=0" />
 			<Add option="-fexceptions" />
 			<Add option="-Winvalid-pch" />
 			<Add option="-fPIC" />
 			<Add option="-DcbDEBUG" />
 			<Add option="-DCB_PRECOMP" />
-			<Add option="-std=c++11" />
 		</Compiler>
 		<Linker>
-			<Add option="`wx-config --version=2.8 --libs`" />
-			<Add option="-Wl,--no-undefined" />
+			<Add option="`wx-config --libs`" />
 		</Linker>
 		<ExtraCommands>
 			<Add after="zip -j9 ../../../devel/share/codeblocks/keybinder.zip manifest.xml" />
@@ -86,8 +76,6 @@
 		</Unit>
 		<Extensions>
 			<code_completion />
-			<envvars />
-			<debugger />
 		</Extensions>
 	</Project>
 </CodeBlocks_project_file>

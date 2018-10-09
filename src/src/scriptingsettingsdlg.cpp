@@ -26,7 +26,7 @@
 #include <wx/filename.h>
 #include <wx/intl.h>
 
-BEGIN_EVENT_TABLE(ScriptingSettingsDlg, wxScrollingDialog)
+BEGIN_EVENT_TABLE(ScriptingSettingsDlg, wxDialog)
     EVT_LIST_ITEM_SELECTED(XRCID("chkStartupScripts"), ScriptingSettingsDlg::OnListSelection)
     EVT_LIST_ITEM_DESELECTED(XRCID("chkStartupScripts"), ScriptingSettingsDlg::OnListDeselection)
     EVT_TEXT(XRCID("txtScript"), ScriptingSettingsDlg::OnScriptChanged)
@@ -47,8 +47,7 @@ ScriptingSettingsDlg::ScriptingSettingsDlg(wxWindow* parent)
     : m_IgnoreTextEvents(false)
 {
     //ctor
-    wxXmlResource::Get()->LoadObject(this, parent, _T("dlgScriptingSettings"),_T("wxScrollingDialog"));
-    XRCCTRL(*this, "wxID_OK", wxButton)->SetDefault();
+    wxXmlResource::Get()->LoadDialog(this, parent, _T("dlgScriptingSettings"));
 
     wxListCtrl* list = XRCCTRL(*this, "chkStartupScripts", wxListCtrl);
     list->InsertColumn(0, _("Script"), wxLIST_FORMAT_LEFT, 160);
@@ -179,7 +178,7 @@ void ScriptingSettingsDlg::EndModal(int retCode)
         mgr->Write(_T("Execute"), XRCCTRL(*this, "chkExec", wxCheckBox)->GetValue());
     }
 
-    wxScrollingDialog::EndModal(retCode);
+    wxDialog::EndModal(retCode);
 }
 
 void ScriptingSettingsDlg::LoadItem(long item)
@@ -239,7 +238,7 @@ void ScriptingSettingsDlg::OnListDeselection(wxListEvent& event)
     UpdateState();
 }
 
-void ScriptingSettingsDlg::OnScriptChanged(cb_unused wxCommandEvent& event)
+void ScriptingSettingsDlg::OnScriptChanged(wxCommandEvent& event)
 {
     if (m_IgnoreTextEvents)
         return;
@@ -249,7 +248,7 @@ void ScriptingSettingsDlg::OnScriptChanged(cb_unused wxCommandEvent& event)
     UpdateState();
 }
 
-void ScriptingSettingsDlg::OnScriptMenuChanged(cb_unused wxCommandEvent& event)
+void ScriptingSettingsDlg::OnScriptMenuChanged(wxCommandEvent& event)
 {
     if (m_IgnoreTextEvents)
         return;
@@ -259,7 +258,7 @@ void ScriptingSettingsDlg::OnScriptMenuChanged(cb_unused wxCommandEvent& event)
     UpdateState();
 }
 
-void ScriptingSettingsDlg::OnEnable(cb_unused wxCommandEvent& event)
+void ScriptingSettingsDlg::OnEnable(wxCommandEvent& event)
 {
     wxListCtrl* list = XRCCTRL(*this, "chkStartupScripts", wxListCtrl);
     long sel = list->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
@@ -267,7 +266,7 @@ void ScriptingSettingsDlg::OnEnable(cb_unused wxCommandEvent& event)
     UpdateState();
 }
 
-void ScriptingSettingsDlg::OnRegister(cb_unused wxCommandEvent& event)
+void ScriptingSettingsDlg::OnRegister(wxCommandEvent& event)
 {
     wxListCtrl* list = XRCCTRL(*this, "chkStartupScripts", wxListCtrl);
     long sel = list->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
@@ -295,7 +294,7 @@ void ScriptingSettingsDlg::OnAddScript(wxCommandEvent& event)
     OnBrowse(event);
 }
 
-void ScriptingSettingsDlg::OnRemoveScript(cb_unused wxCommandEvent& event)
+void ScriptingSettingsDlg::OnRemoveScript(wxCommandEvent& event)
 {
     wxListCtrl* list = XRCCTRL(*this, "chkStartupScripts", wxListCtrl);
     long sel = list->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
@@ -311,18 +310,18 @@ void ScriptingSettingsDlg::OnRemoveScript(cb_unused wxCommandEvent& event)
     UpdateState();
 }
 
-void ScriptingSettingsDlg::OnBrowse(cb_unused wxCommandEvent& event)
+void ScriptingSettingsDlg::OnBrowse(wxCommandEvent& event)
 {
-    wxFileDialog dlg(this,
-                     _("Select script file"),
-                     XRCCTRL(*this, "txtScript", wxTextCtrl)->GetValue(),
-                     XRCCTRL(*this, "txtScript", wxTextCtrl)->GetValue(),
-                     FileFilters::GetFilterString(_T(".script")),
-                     wxFD_OPEN | compatibility::wxHideReadonly );
-    PlaceWindow(&dlg);
-    if (dlg.ShowModal() == wxID_OK)
+    wxFileDialog* dlg = new wxFileDialog(this,
+                            _("Select script file"),
+                            XRCCTRL(*this, "txtScript", wxTextCtrl)->GetValue(),
+                            XRCCTRL(*this, "txtScript", wxTextCtrl)->GetValue(),
+                            FileFilters::GetFilterString(_T(".script")),
+                            wxOPEN | compatibility::wxHideReadonly );
+    PlaceWindow(dlg);
+    if (dlg->ShowModal() == wxID_OK)
     {
-        wxString sel = UnixFilename(dlg.GetPath());
+        wxString sel = UnixFilename(dlg->GetPath());
         wxString userdir = UnixFilename(ConfigManager::GetFolder(sdScriptsUser));
         wxString globaldir = UnixFilename(ConfigManager::GetFolder(sdScriptsGlobal));
         wxFileName f(sel);
@@ -336,14 +335,15 @@ void ScriptingSettingsDlg::OnBrowse(cb_unused wxCommandEvent& event)
         }
         XRCCTRL(*this, "txtScript", wxTextCtrl)->SetValue(f.GetFullPath());
     }
+    dlg->Destroy();
 }
 
-void ScriptingSettingsDlg::OnTrustSelection(cb_unused wxListEvent& event)
+void ScriptingSettingsDlg::OnTrustSelection(wxListEvent& event)
 {
     UpdateTrustsState();
 }
 
-void ScriptingSettingsDlg::OnDeleteTrust(cb_unused wxCommandEvent& event)
+void ScriptingSettingsDlg::OnDeleteTrust(wxCommandEvent& event)
 {
     wxListCtrl* list = XRCCTRL(*this, "lstTrustedScripts", wxListCtrl);
     long sel = list->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
@@ -355,7 +355,7 @@ void ScriptingSettingsDlg::OnDeleteTrust(cb_unused wxCommandEvent& event)
     UpdateTrustsState();
 }
 
-void ScriptingSettingsDlg::OnValidateTrusts(cb_unused wxCommandEvent& event)
+void ScriptingSettingsDlg::OnValidateTrusts(wxCommandEvent& event)
 {
     bool check = true;
     wxListCtrl* list = XRCCTRL(*this, "lstTrustedScripts", wxListCtrl);
@@ -367,5 +367,5 @@ void ScriptingSettingsDlg::OnValidateTrusts(cb_unused wxCommandEvent& event)
     }
 
     if (check)
-        cbMessageBox(_("All script trusts are valid!"), _("Information"), wxICON_INFORMATION, this);
+        cbMessageBox(_("All script trusts are valid!"), _("Information"), wxICON_INFORMATION);
 }

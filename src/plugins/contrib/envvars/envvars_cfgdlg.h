@@ -11,7 +11,6 @@
 #include <wx/window.h>
 
 #include "configurationpanel.h"
-#include "envvars.h"
 
 class EnvVars;
 class wxChoice;
@@ -22,14 +21,14 @@ class EnvVarsConfigDlg : public cbConfigurationPanel
 {
 public:
   /// Ctor
-  EnvVarsConfigDlg(wxWindow* parent, EnvVars* plugin);
-
+           EnvVarsConfigDlg(wxWindow* parent, EnvVars* plugin);
   /// Dtor
-  virtual ~EnvVarsConfigDlg();
+  virtual ~EnvVarsConfigDlg()
+  { };
 
   /// returns the title of the plugin configuration panel
   virtual wxString GetTitle() const
-  { return _("Environment variables"); }
+  { return _T("Environment variables"); }
 
   /// returns the title of the plugin's bitmap to use for configuration dialog
   virtual wxString GetBitmapBaseName() const
@@ -80,7 +79,7 @@ private:
   /// Verifies that an envvar set is unique
   bool VerifySetUnique(const wxChoice* choSet, wxString set);
 
-  EnvVars* m_plugin;
+  EnvVars* m_pPlugin; //!< pointer to the EnvVars plugin (the parent)
 
   DECLARE_EVENT_TABLE()
 };

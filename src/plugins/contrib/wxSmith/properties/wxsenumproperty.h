@@ -33,7 +33,7 @@
  */
 class wxsEnumProperty: public wxsProperty
 {
-    public:
+	public:
 
         /** \brief Ctor
          *  \param PGName           name of property used in Property Grid
@@ -41,18 +41,18 @@ class wxsEnumProperty: public wxsProperty
          *  \param Offset           offset of long integer holding enumerated value (taken from wxsOFFSET macro)
          *  \param Values           array of long integer values which can be enumerated
          *  \param Names            array of names used for items in Values array, ending with 0
-         *  \param UpdateEntries   posting true here notifies, that arrays may change while property is shown in property grid
+         *  \param UpdateEnteries   posting true here notifies, that arrays may change while property is shown in property grid
          *  \param Default          defaut value applied on read errors
          *  \param UseNamesInXml    if true, names will be stored inside xml node instead of values
          *  \param Priority         priority of this property
          */
-        wxsEnumProperty(
+		wxsEnumProperty(
             const wxString& PGName,
             const wxString& DataName,
             long Offset,
             const long* Values,
             const wxChar** Names,
-            bool UpdateEntries=false,
+            bool UpdateEnteries=false,
             long Default=0,
             bool UseNamesInXml=false,
             int Priority=100);
@@ -68,10 +68,10 @@ class wxsEnumProperty: public wxsProperty
         virtual bool PropStreamRead(wxsPropertyContainer* Object,wxsPropertyStream* Stream);
         virtual bool PropStreamWrite(wxsPropertyContainer* Object,wxsPropertyStream* Stream);
 
-    private:
+	private:
         long Offset;
         long Default;
-        bool UpdateEntries;
+        bool UpdateEnteries;
         const long* Values;
         const wxChar** Names;
         bool UseNamesInXml;

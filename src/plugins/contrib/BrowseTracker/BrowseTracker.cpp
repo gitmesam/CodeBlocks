@@ -14,18 +14,16 @@
 
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
-	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+	Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
-// RCS-ID: $Id$
+// RCS-ID: $Id: BrowseTracker.cpp 47 2008-01-12 20:18:59Z Pecan $
 
 // Notes:
-//
 //      There is no way to know when a project is loading. So we have to accept
-//      all editors which are activated during the loading process, then remove them
-//      after the loading finishes. This gives us editors that are only activated
-//      by the user, not by the loading process. Which is what we want.
-//      Trying to use OnProjectLoadingHook does not always work because it is
-//      not called if the project xml file has no "extensions" entry.
+//      editors that are activated during the loading process, then remove them
+//      after the loading finishes.
+//      Trying to use OnProjectLoadingHook did not work because it is not called
+//      if the project xml file has no "extensions" entry.
 //
 //      cbProject::IsLoading/IsLoadingProject is actually turned OFF while editor
 //      loading takes place. Very wierd.
@@ -48,14 +46,14 @@
 //      Copy the editor BrowseMarks back to the BrowseMark archive so we can
 //      use them if the user reopens this editor.
 //      Clear this editor out of our containers and arrays. (Except the archive)
-//  OnStartShutdown
+//  OnStartShutdown/OnRelease
 //      This happens before the editors are actually closed.
 //      We simulate closing the editors to force the current Markers into
 //      the ProjectData archive markers. Then write a layout
 //      file containing the BrowseMarks for each open file.
 //      Free the ProjectData container for the current project
 //  Containers
-//      EbBrowse_MarksHash:      EditorBase*, BrowseMarks* (loads prev version browse marks)
+//      EbBrowse_MarksHash:      EditorBase*, BrowseMarks*
 //      EdBook_MarksHash:        EditorBase*, BrowseMarks*
 //      ProjectDataHash:         cbProject*,  ProjectData*
 //      ArrayOfEditorBasePtrs:   EditorBase*'s of user activated editors
@@ -68,6 +66,7 @@
 #if defined(CB_PRECOMP)
 #include "sdk.h"
 #else
+    #include "sdk_common.h"
 	#include "sdk_events.h"
 	#include "manager.h"
 	#include "editormanager.h"
@@ -75,13 +74,8 @@
 	#include "cbeditor.h"
 	#include "projectmanager.h"
 	#include "cbproject.h"
-	#include "configmanager.h"
-	#include "logmanager.h"
-	#include "cbauibook.h"
-	#include "infowindow.h"
 #endif
 #include "projectloader_hooks.h"
-#include "configurationpanel.h"
 
     #include <wx/dynarray.h> //for wxArray and wxSortedArray
     #include <cbstyledtextctrl.h>
@@ -91,19 +85,15 @@
 	#include <wx/app.h>
 	#include <wx/menu.h>
 	#include <wx/xrc/xmlres.h>
-	#include <wx/fileconf.h>
-	#include <wx/utils.h>
-    #include <wx/aui/auibook.h>
 
+//-#include "wx/wxFlatNotebook/wxFlatNotebook.h"
 #include "Version.h"
 #include "BrowseTracker.h"
 #include "BrowseSelector.h"
 #include "BrowseMarks.h"
 #include "BrowseTrackerDefs.h"
 #include "ProjectData.h"
-#include "BrowseTrackerConfPanel.h"
-#include "JumpTracker.h"
-
+#include "BrowseTrackerCfg.h"
 //#define BROWSETRACKER_MARKER        9
 //#define BROWSETRACKER_MARKER_STYLE  wxSCI_MARK_DOTDOTDOT
 // ----------------------------------------------------------------------------
@@ -136,11 +126,6 @@ namespace
     int idMenuTrackerDump           = wxNewId();
     #endif
     int idEditBookmarksToggle = XRCID("idEditBookmarksToggle");
-
-    int idToolMarkToggle = XRCID("idMarkToggle");
-    int idToolMarkPrev = XRCID("idMarkPrev");
-    int idToolMarkNext = XRCID("idMarkNext");
-    int idToolMarksClear = XRCID("idMarksClear");
 };
 
 // ----------------------------------------------------------------------------
@@ -148,13 +133,13 @@ namespace
 // ----------------------------------------------------------------------------
 BEGIN_EVENT_TABLE(BrowseTracker, cbPlugin)
 
-	EVT_UPDATE_UI(idToolMarkToggle, BrowseTracker::OnUpdateUI)
-	EVT_UPDATE_UI(idToolMarkPrev,   BrowseTracker::OnUpdateUI)
-	EVT_UPDATE_UI(idToolMarkNext,   BrowseTracker::OnUpdateUI)
-	EVT_UPDATE_UI(idToolMarksClear, BrowseTracker::OnUpdateUI)
-
+	//-EVT_UPDATE_UI(idMenuViewTracker, BrowseTracker::OnUpdateUI)
     EVT_IDLE(                BrowseTracker::OnIdle)
 	// --
+	// The following replaced by OnMenuTrackerSelect() dialog popup
+	//EVT_MENU(     idMenuTrackerBackward,  BrowseTracker::OnMenuTrackBackward)
+	//EVT_MENU(     idMenuTrackerforward,  BrowseTracker::OnMenuTrackforward)
+
 	EVT_MENU(     idMenuTrackerBackward,    BrowseTracker::OnMenuTrackerSelect)
 	EVT_MENU(     idMenuTrackerforward,     BrowseTracker::OnMenuTrackerSelect)
 	EVT_MENU(     idMenuTrackerClear,       BrowseTracker::OnMenuTrackerClear)
@@ -164,18 +149,14 @@ BEGIN_EVENT_TABLE(BrowseTracker, cbPlugin)
 	EVT_MENU(     idMenuClearBrowseMark,    BrowseTracker::OnMenuClearBrowseMark)
 	EVT_MENU(     idMenuClearAllBrowse_Marks,BrowseTracker::OnMenuClearAllBrowse_Marks)
 	EVT_MENU(     idMenuSortBrowse_Marks,    BrowseTracker::OnMenuSortBrowse_Marks)
-	EVT_MENU(     idMenuConfigBrowse_Marks,  BrowseTracker::OnMenuSettings)
+	EVT_MENU(     idMenuConfigBrowse_Marks,  BrowseTracker::OnMenuConfigBrowse_Marks)
    #ifdef LOGGING
 	EVT_MENU(     idMenuTrackerDump,        BrowseTracker::OnMenuTrackerDump)
    #endif
    // -- BOOK Marks --
     EVT_MENU(idEditBookmarksToggle, BrowseTracker::OnBook_MarksToggle)
-
-    EVT_TOOL(idToolMarkToggle,  BrowseTracker::OnMenuToggleBrowseMark)
-    EVT_TOOL(idToolMarkPrev,    BrowseTracker::OnMenuBrowseMarkPrevious)
-    EVT_TOOL(idToolMarkNext,    BrowseTracker::OnMenuBrowseMarkNext)
-    EVT_TOOL(idToolMarksClear,  BrowseTracker::OnMenuClearAllBrowse_Marks)
-
+    // --
+    //-EVT_FLATNOTEBOOK_PAGE_CHANGED(ID_NBEditorManager, BrowseTracker::OnPageChanged)
 END_EVENT_TABLE()
 
 // ----------------------------------------------------------------------------
@@ -186,65 +167,48 @@ BrowseTracker::BrowseTracker()
     //-m_nCurrentEditorIndex = 0;
     m_CurrEditorIndex = 0;
     m_LastEditorIndex = 0;
-    m_apEditors.Clear();
-
     m_bProjectIsLoading = false;
-	m_UpdateUIFocusEditor = 0;
+	m_UpdateUIFocusEditor = false;
     m_nRemoveEditorSentry = 0;
     m_nBrowseMarkPreviousSentry = 0;
     m_nBrowseMarkNextSentry = 0;
     m_nBrowsedEditorCount = 0;
-
-    m_pCfgFile = 0;
+    //-m_pLoadingProject = 0;
 
     m_MouseDownTime = 0;
     m_ToggleKey = Left_Mouse;
     m_LeftMouseDelay = 200;
     m_ClearAllKey = ClearAllOnSingleClick;
     m_IsMouseDoubleClick = false;
-    m_UpdateUIEditorIndex = 0;
-    m_pJumpTracker = 0;
-    m_bProjectClosing = false;
-    m_bAppShutdown = false;
-    m_nProjectClosingFileCount = 0;
-    m_LastEbDeactivated = 0;
 
-    if (!Manager::LoadResource(_T("BrowseTracker.zip")))
-        NotifyMissingFile(_T("BrowseTracker.zip"));
 }
 // ----------------------------------------------------------------------------
 BrowseTracker::~BrowseTracker()
 // ----------------------------------------------------------------------------
 {
     //dtor
-    m_bProjectClosing = false;
-    m_pMenuBar = 0;
-    m_pToolBar = 0;
 }
 
 // ----------------------------------------------------------------------------
 void BrowseTracker::OnAttach()
 // ----------------------------------------------------------------------------
 {
-    // Do not re-enable if previously disabled, must restart CB first. //2017/12/7
-    if (m_bAppShutdown)
-        return;
-
-    m_pJumpTracker = new JumpTracker();
-    m_pJumpTracker->OnAttach();
-    m_pJumpTracker->m_IsAttached = true;
 
 	m_InitDone = false;
 	m_CurrEditorIndex = 0;
 	m_LastEditorIndex = MaxEntries-1;
-    m_apEditors.SetCount(MaxEntries, 0);    //patch 2886
+	m_apEditors.Alloc(MaxEntries);
+	for (int i=0; i<MaxEntries ; ++i ) m_apEditors[i] = 0;
 	m_nBrowsedEditorCount = 0;
-	m_UpdateUIFocusEditor = 0;
+	m_UpdateUIFocusEditor = false;
 	m_nRemoveEditorSentry = 0;
     m_nBrowseMarkPreviousSentry = 0;
     m_nBrowseMarkNextSentry = 0;
     m_OnEditorEventHookIgnoreMarkerChanges = true; //used to avoid editor hook overhead
 
+    //-m_pActiveCBProject = 0;
+    //-m_pActiveProjectData = 0;
+    //-m_pLoadingProject = 0;
     m_LoadingProjectFilename = wxT("");
     m_pEdMgr = Manager::Get()->GetEditorManager();
     m_pPrjMgr = Manager::Get()->GetProjectManager();
@@ -272,14 +236,16 @@ void BrowseTracker::OnAttach()
     // ---------------------------------------
     // determine location of settings
     // ---------------------------------------
+    wxStandardPaths stdPaths;
     // memorize the key file name as {%HOME%}\codesnippets.ini
-    m_ConfigFolder = Manager::Get()->GetConfigManager(_T("app"))->GetConfigFolder();
+    m_ConfigFolder = stdPaths.GetUserDataDir();
     #if defined(LOGGING)
-     LOGIT( _T("BT Argv[0][%s] Cwd[%s]"), wxTheApp->argv[0], ::wxGetCwd().GetData() );
+     LOGIT( _T("Argv[0][%s] Cwd[%s]"), wxTheApp->argv[0], ::wxGetCwd().GetData() );
     #endif
     m_ExecuteFolder = FindAppPath(wxTheApp->argv[0], ::wxGetCwd(), wxEmptyString);
 
-    // remove the double //s from filename
+    //GTK GetConfigFolder is returning double "//?, eg, "/home/pecan//.codeblocks"
+    // remove the double //s from filename //+v0.4.11
     m_ConfigFolder.Replace(_T("//"),_T("/"));
     m_ExecuteFolder.Replace(_T("//"),_T("/"));
     #if defined(LOGGING)
@@ -311,17 +277,26 @@ void BrowseTracker::OnAttach()
     // ---------------------------------------
     TrackerCfgFullPath = m_CfgFilenameStr;
     #if defined(LOGGING)
-     LOGIT( _T("BT TrackerCfgFullPath[%s]"),TrackerCfgFullPath.c_str() );
+     LOGIT( _T("TrackerCfgFullPath[%s]"),TrackerCfgFullPath.c_str() );
     #endif
 
-    ReadUserOptions( m_CfgFilenameStr );
-
-    if (m_pJumpTracker)
-        m_pJumpTracker->SetWrapJumpEntries(m_WrapJumpEntries);
+    // SettingLoad() of user options;
+    BrowseTrackerCfg btCfg;
+    btCfg.ReadUserOptions(m_CfgFilenameStr);
+    m_BrowseMarksEnabled = btCfg.m_BrowseMarksEnabled;
+    m_UserMarksStyle    = btCfg.m_UserMarksStyle;
+    m_ToggleKey         = btCfg.m_ToggleKey;
+    m_LeftMouseDelay    = btCfg.m_LeftMouseDelay;
+    m_ClearAllKey       = btCfg.m_ClearAllKey;
 
     switch(m_UserMarksStyle)
     {
-        default:
+        case BrowseMarksStyle:
+        {
+            gBrowse_MarkerId = BROWSETRACKER_MARKER ;
+            gBrowse_MarkerStyle  = BROWSETRACKER_MARKER_STYLE;
+            break;
+        }
         case BookMarksStyle:
         {
             gBrowse_MarkerId = BOOKMARK_MARKER;
@@ -338,28 +313,26 @@ void BrowseTracker::OnAttach()
 
 	// Hook to plugin events
 
-    // EVT_APP_START_SHUTDOWN
+    // EVT_APP_START_SHUTDOWN(  BrowseTracker::OnRelease)
     Manager::Get()->RegisterEventSink(cbEVT_APP_START_SHUTDOWN, new cbEventFunctor<BrowseTracker, CodeBlocksEvent>(this, &BrowseTracker::OnStartShutdown));
-    // EVT_APP_STARTUP_DONE
-    Manager::Get()->RegisterEventSink(cbEVT_APP_STARTUP_DONE, new cbEventFunctor<BrowseTracker, CodeBlocksEvent>(this, &BrowseTracker::OnAppStartupDone));
 
     // -- Editor Events
-    // EVT_EDITOR_ACTIVATED
+    // EVT_EDITOR_ACTIVATED(   BrowseTracker::OnEditorActivated)
     Manager::Get()->RegisterEventSink(cbEVT_EDITOR_ACTIVATED, new cbEventFunctor<BrowseTracker, CodeBlocksEvent>(this, &BrowseTracker::OnEditorActivated));
-    // EVT_EDITOR_DEACTIVATED
-    Manager::Get()->RegisterEventSink(cbEVT_EDITOR_DEACTIVATED, new cbEventFunctor<BrowseTracker, CodeBlocksEvent>(this, &BrowseTracker::OnEditorDeactivated));
-    // EVT_EDITOR_CLOSE
+    // EVT_EDITOR_DEACTIVATED(   BrowseTracker::OnEditorActivated)
+    //-Manager::Get()->RegisterEventSink(cbEVT_EDITOR_DEACTIVATED, new cbEventFunctor<BrowseTracker, CodeBlocksEvent>(this, &BrowseTracker::OnEditorDeactivated));
+    // EVT_EDITOR_CLOSE(       BrowseTracker::OnEditorClosed)
     Manager::Get()->RegisterEventSink(cbEVT_EDITOR_CLOSE, new cbEventFunctor<BrowseTracker, CodeBlocksEvent>(this, &BrowseTracker::OnEditorClosed));
-    // EVT_EDITOR_OPEN
+    // EVT_EDITOR_OPEN(       BrowseTracker::OnEditorOpen)
     Manager::Get()->RegisterEventSink(cbEVT_EDITOR_OPEN, new cbEventFunctor<BrowseTracker, CodeBlocksEvent>(this, &BrowseTracker::OnEditorOpened));
 
     // -- Project events
-    // EVT_PROJECT_OPEN
+    // EVT_PROJECT_OPEN(       BrowseTracker::OnProjectOpened)
     Manager::Get()->RegisterEventSink(cbEVT_PROJECT_OPEN, new cbEventFunctor<BrowseTracker, CodeBlocksEvent>(this, &BrowseTracker::OnProjectOpened));
-    // EVT_PROJECT_CLOSE
+    // EVT_PROJECT_CLOSE(       BrowseTracker::OnProjectOpened)
     Manager::Get()->RegisterEventSink(cbEVT_PROJECT_CLOSE, new cbEventFunctor<BrowseTracker, CodeBlocksEvent>(this, &BrowseTracker::OnProjectClosing));
 
-    // EVT_PROJECT_ACTIVATE
+    // EVT_PROJECT_ACTIVATE(   BrowseTracker::OnProjectActivated)
     Manager::Get()->RegisterEventSink(cbEVT_PROJECT_ACTIVATE, new cbEventFunctor<BrowseTracker, CodeBlocksEvent>(this, &BrowseTracker::OnProjectActivatedEvent));
 
     // hook to project loading procedure
@@ -381,28 +354,69 @@ void BrowseTracker::OnRelease(bool appShutDown)
     // watch out, CodeBlocks can enter this routine multiple times
     // ------------------------------------------------------------
 
-    if (m_pJumpTracker)
+    if ( m_InitDone )
     {
-        m_pJumpTracker->OnRelease(appShutDown);
-        m_pJumpTracker->m_IsAttached = false;
-        //-delete m_pJumpTracker; causes crash on CB exit (heap area already freed)
-        m_pJumpTracker = 0;
-        m_ShowToolbar = IsViewToolbarEnabled();
-    }
+        //*SDK Gotcha* A cbEVT_PROJECT_CLOSE is issued, but only
+        // after the plugin OnRelease() is called. So we
+        // simulate closing all open projects in order to save
+        // current Browse/Book marks in layout
+        ProjectsArray* pPrjs = m_pPrjMgr->GetProjects();
+        for (size_t i=0; i<pPrjs->GetCount(); ++i )
+        {
+            CodeBlocksEvent evtpa(cbEVT_PROJECT_ACTIVATE);
+            evtpa.SetProject(pPrjs->Item(i));
+            OnProjectActivatedEvent(evtpa);
 
-    CodeBlocksEvent evt;    //2017/11/23
-    AppShuttingDown(evt);   //2017/12/7
+            CodeBlocksEvent evtpc(cbEVT_PROJECT_CLOSE);
+            evtpc.SetProject(pPrjs->Item(i));
+            OnProjectClosing(evtpc);
+        }
+
+        // remove project load/save hook
+        ProjectLoaderHooks::UnregisterHook(m_ProjectHookId, true);
+
+        // remove editor/scintilla hook
+        EditorHooks::UnregisterHook(m_EditorHookId, true);
+
+        //  Remove menu item
+        int idx = m_pMenuBar->FindMenu(_("View"));
+        if (idx != wxNOT_FOUND)
+        {
+            wxMenu* viewMenu = m_pMenuBar->GetMenu(idx);
+            viewMenu->Destroy(idMenuViewTracker);
+        }
+
+        // *Book_Marks* release the editor hash table ptrs to Book_Marks
+        for (EbBrowse_MarksHash::iterator it = m_EdBook_MarksHash.begin(); it != m_EdBook_MarksHash.end(); ++it)
+        {
+            delete it->second;
+        }
+        m_EdBook_MarksHash.clear();
+
+        // *BrowseMarks* release the editor hash table ptrs to BrowseMarks
+        for (EbBrowse_MarksHash::iterator it = m_EbBrowse_MarksHash.begin(); it != m_EbBrowse_MarksHash.end(); ++it)
+        {
+            delete it->second;
+        }
+        m_EbBrowse_MarksHash.clear();
+
+        // *ProjectData* release any ProjectData remaining in the ProjectDataHash
+        for (ProjectDataHash::iterator it = m_ProjectDataHash.begin(); it != m_ProjectDataHash.end(); ++it)
+        {
+            delete it->second;
+        }
+        m_ProjectDataHash.clear();
+
+    }
+	m_InitDone = false;
 }
 // ----------------------------------------------------------------------------
 void BrowseTracker::BuildMenu(wxMenuBar* menuBar)
 // ----------------------------------------------------------------------------
 {
-    if (m_pJumpTracker)
-        m_pJumpTracker->BuildMenu(menuBar);
-
     m_pMenuBar = menuBar;
 
-	int idx = menuBar->FindMenu(_("&View"));
+	int idx = menuBar->FindMenu(_("View"));
 	if (idx != wxNOT_FOUND)
 	{
 		wxMenu* viewMenu = menuBar->GetMenu(idx);
@@ -410,13 +424,8 @@ void BrowseTracker::BuildMenu(wxMenuBar* menuBar)
 	    wxMenu* pforwardBackwardSubMenu = new wxMenu(wxT(""));
         pforwardBackwardSubMenu->Append(idMenuTrackerBackward, _("Backward Ed\tAlt-Left"), _("Browse Backward"));
         pforwardBackwardSubMenu->Append(idMenuTrackerforward, _("Forward Ed\tAlt-Right"), _("Browse forward"));
-
-        //pforwardBackwardSubMenu->Append(idMenuBrowseMarkPrevious, _("Prev Mark\tAlt-Up"), _("Browse Up"));
-        pforwardBackwardSubMenu->Append(idMenuBrowseMarkPrevious, _("Prev Mark"), _("Browse Up"));
-
-        //pforwardBackwardSubMenu->Append(idMenuBrowseMarkNext, _("Next Mark\tAlt-Down"), _("Browse Down"));
-        pforwardBackwardSubMenu->Append(idMenuBrowseMarkNext, _("Next Mark"), _("Browse Down"));
-
+        pforwardBackwardSubMenu->Append(idMenuBrowseMarkPrevious, _("Prev Mark\tAlt-Up"), _("Browse Up"));
+        pforwardBackwardSubMenu->Append(idMenuBrowseMarkNext, _("Next Mark\tAlt-Down"), _("Browse Down"));
         pforwardBackwardSubMenu->AppendSeparator();
         pforwardBackwardSubMenu->Append(idMenuRecordBrowseMark, _("Set BrowseMark"), _("Record Browse Mark"));
         pforwardBackwardSubMenu->Append(idMenuClearBrowseMark,  _("Clear BrowseMark"), _("Unset Browse Mark"));
@@ -435,25 +444,10 @@ void BrowseTracker::BuildMenu(wxMenuBar* menuBar)
      LOGIT(wxT("Menubar[%p]idMenuViewTracker[%d]"),menuBar, idMenuViewTracker);
     #endif
 
-    idx = menuBar->FindMenu(_("&Edit"));
-    if (idx != wxNOT_FOUND)
-    {
-        wxMenu* editMenu = menuBar->GetMenu(idx);
-        idx = editMenu->FindItem(_("&Bookmarks"));
-        // main menu will be automatically recreated after plugin disable
-        //-editMenu->Destroy(idx);
-    }
-
 	m_InitDone = true;
-
-    EditorBase* eb = m_pEdMgr->GetActiveEditor();
-    if (eb) {
-        CodeBlocksEvent evtea(cbEVT_EDITOR_ACTIVATED, -1, 0, eb);
-        //OnEditorActivated(evtea);
-    }
 }
 // ----------------------------------------------------------------------------
-void BrowseTracker::BuildModuleMenu(const ModuleType type, wxMenu* popup, const FileTreeData* /*data*/)
+void BrowseTracker::BuildModuleMenu(const ModuleType type, wxMenu* popup, const FileTreeData* data)
 // ----------------------------------------------------------------------------
 {
 	//Some library module is ready to display a pop-up menu.
@@ -482,116 +476,17 @@ void BrowseTracker::BuildModuleMenu(const ModuleType type, wxMenu* popup, const 
     {
         wxMenuItem* item = pbtMenu->FindItemByPosition(i);
         int menuId = item->GetId();
-        wxString menuLabel = item->GetItemLabelText();
-        //LOGIT( _T("BT OnContextMenu insert[%s]"),menuLabel.c_str() );
-        wxMenuItem* pContextItem= new wxMenuItem(sub_menu, menuId, menuLabel); //patch 2886
+        wxString menuLabel = item->GetLabel();
+        ///LOGIT( _T("OnContextMenu insert[%s]"),menuLabel.c_str() );
+        wxMenuItem* pContextItem= new wxMenuItem(0, menuId, menuLabel);
         sub_menu->Append( pContextItem );
     }
     popup->AppendSeparator();
-    pbtMenuItem = new wxMenuItem(sub_menu, wxID_ANY, _("Browse Tracker"), _T(""), wxITEM_NORMAL);   //patch 2886
+    pbtMenuItem = new wxMenuItem(0, wxID_ANY, _("Browse Tracker"), _T(""), wxITEM_NORMAL);
     pbtMenuItem->SetSubMenu(sub_menu);
     popup->Append(pbtMenuItem);
 
 }//BuildModuleMenu
-// ----------------------------------------------------------------------------
-bool BrowseTracker::BuildToolBar(wxToolBar* toolBar)
-// ----------------------------------------------------------------------------
-{
-
-    if (m_pJumpTracker) {
-        m_pJumpTracker->BuildToolBar(toolBar);
-    }
-
-    m_pToolBar = toolBar;
-
-    if (!m_IsAttached || !toolBar)
-    {
-        return false;
-    }
-    wxString is16x16 = Manager::isToolBar16x16(toolBar) ? _T("_16x16") : _T("");
-    Manager::Get()->AddonToolBar(toolBar, _T("browse_tracker_toolbar") + is16x16);
-    m_pToolBar->Realize();
-
-    return true;
-}
-// ----------------------------------------------------------------------------
-int BrowseTracker::Configure()
-// ----------------------------------------------------------------------------
-{
-	if ( !IsAttached() )
-		return -1;
-
-	// Creates and displays the configuration dialog
-	cbConfigurationDialog dlg(Manager::Get()->GetAppWindow(), wxID_ANY, wxT("BrowseTracker"));
-	cbConfigurationPanel* panel = GetConfigurationPanel(&dlg);
-	if (panel)
-	{
-		dlg.AttachConfigurationPanel(panel);
-		PlaceWindow(&dlg);
-		return dlg.ShowModal() == wxID_OK ? 0 : -1;
-	}
-	return -1;
-}
-// ----------------------------------------------------------------------------
-cbConfigurationPanel* BrowseTracker::GetConfigurationPanel(wxWindow* parent)
-// ----------------------------------------------------------------------------
-{
-    // Called by plugin manager to show config panel in global Setting Dialog
-	if ( !IsAttached() )
-		return NULL;
-
-	return new BrowseTrackerConfPanel(*this, parent);
-}
-// ----------------------------------------------------------------------------
-void BrowseTracker::ReadUserOptions(wxString configFullPath)
-// ----------------------------------------------------------------------------
-{
-    if (not m_pCfgFile) m_pCfgFile = new wxFileConfig(
-                    wxEmptyString,              // appname
-                    wxEmptyString,              // vendor
-                    configFullPath,             // local filename
-                    wxEmptyString,              // global file
-                    wxCONFIG_USE_LOCAL_FILE);
-                    //0);
-    wxFileConfig& cfgFile = *m_pCfgFile;
-
-	cfgFile.Read( wxT("BrowseMarksEnabled"),        &m_BrowseMarksEnabled, 0 ) ;
-
-	//-cfgFile.Read( wxT("BrowseMarksStyle"),          &m_UserMarksStyle, 0 ) ;
-	cfgFile.Read( wxT("BrowseMarksStyle"),          &m_UserMarksStyle, BookMarksStyle ) ;
-	if (m_BrowseMarksEnabled) m_UserMarksStyle = BookMarksStyle;
-
-	cfgFile.Read( wxT("BrowseMarksToggleKey"),      &m_ToggleKey, Left_Mouse ) ;
-	cfgFile.Read( wxT("LeftMouseDelay"),            &m_LeftMouseDelay, 200 ) ;
-	cfgFile.Read( wxT("BrowseMarksClearAllMethod"), &m_ClearAllKey, ClearAllOnSingleClick ) ;
-	cfgFile.Read( wxT("WrapJumpEntries"),           &m_WrapJumpEntries, 0 ) ;
-	cfgFile.Read( wxT("ShowToolbar"),               &m_ShowToolbar, 0 ) ;
-
-}
-// ----------------------------------------------------------------------------
-void BrowseTracker::SaveUserOptions(wxString configFullPath)
-// ----------------------------------------------------------------------------
-{
-    if (not m_pCfgFile) m_pCfgFile = new wxFileConfig(
-                    wxEmptyString,              // appname
-                    wxEmptyString,              // vendor
-                    configFullPath,             // local filename
-                    wxEmptyString,              // global file
-                    wxCONFIG_USE_LOCAL_FILE);
-                    //0);
-    wxFileConfig& cfgFile = *m_pCfgFile;
-
-	cfgFile.Write( wxT("BrowseMarksEnabled"),       m_BrowseMarksEnabled ) ;
-	cfgFile.Write( wxT("BrowseMarksStyle"),         m_UserMarksStyle ) ;
-    cfgFile.Write( wxT("BrowseMarksToggleKey"),     m_ToggleKey ) ;
-    cfgFile.Write( wxT("LeftMouseDelay"),           m_LeftMouseDelay ) ;
-    cfgFile.Write( wxT("BrowseMarksClearAllMethod"),m_ClearAllKey ) ;
-	cfgFile.Write( wxT("WrapJumpEntries"),          m_WrapJumpEntries ) ;
-	cfgFile.Write( wxT("ShowToolbar"),               m_ShowToolbar ) ;
-
-    cfgFile.Flush();
-
-}
 // ----------------------------------------------------------------------------
 wxString BrowseTracker::GetPageFilename(int index)
 // ----------------------------------------------------------------------------
@@ -606,9 +501,9 @@ wxString BrowseTracker::GetPageFilename(int index)
     if (-1 == EdMgr->FindPageFromEditor(eb) )
     {   // this entry has been closed behind our backs
 
-        //#if defined(LOGGING)
-        // LOGIT( _T("BT GetEditorFilename Removing ed[%p]"), GetEditor(index) );
-        //#endif
+        ///#if defined(LOGGING)
+        /// LOGIT( _T("GetEditorFilename Removing ed[%p]"), GetEditor(index) );
+        ///#endif
         RemoveEditor( GetEditor(index) );
         return filename;
     }
@@ -686,7 +581,7 @@ int BrowseTracker::GetEditorBrowsedCount()
 // ----------------------------------------------------------------------------
 {
     #if defined(LOGGING)
-    ///LOGIT( _T("BT GetEditorBrowsedCount()[%d]"), m_nBrowsedEditorCount );
+    ///LOGIT( _T("GetEditorBrowsedCount()[%d]"), m_nBrowsedEditorCount );
     #endif
     return m_nBrowsedEditorCount;
 }
@@ -708,7 +603,7 @@ int BrowseTracker::GetPreviousEditorIndex()
     }//for
 
     #if defined(LOGGING)
-    /// LOGIT( _T("BT GetPreviousEditorIndex[%d][%p][%s]"), index, eb, eb?eb->GetShortName().c_str():wxEmptyString );
+    /// LOGIT( _T("GetPreviousEditorIndex[%d][%p][%s]"), index, eb, eb?eb->GetShortName().c_str():wxEmptyString );
     #endif
     if ( not eb) index = -1;
     return index;
@@ -724,14 +619,15 @@ void BrowseTracker::SetSelection(int index)
     EditorBase* eb = GetEditor(index);
     if (eb)
     {
+        //-int page = Manager::Get()->GetEditorManager()->FindPageFromEditor(eb);
         Manager::Get()->GetEditorManager()->SetActiveEditor(eb);
         #if defined(LOGGING)
-        LOGIT( _T("BT SetSelection[%d] editor[%p][%s]"), index, eb, eb->GetShortName().wx_str() );
+        LOGIT( _T("SetSelection[%d] editor[%p][%s]"), index, eb, eb->GetShortName().c_str() );
         #endif
 
         // Tell OnIdle to focus the new editor. CB sdk editorManager::OnUpdateUI used to
-        // do this for us, but something broke it.
-        m_UpdateUIFocusEditor = eb;
+        // do this for us, but someone broke it.
+        m_UpdateUIFocusEditor = true;
     }
 }
 // ----------------------------------------------------------------------------
@@ -750,9 +646,6 @@ void BrowseTracker::OnMenuTrackerSelect(wxCommandEvent& event)
     m_popupWin->ShowModal();
     m_popupWin->Destroy();
     m_popupWin = 0;
-    // BrowseSelector returns the index of the selected editor in m_UpdateUIEditorIndex
-    // Activate the new editor
-    SetSelection( m_UpdateUIEditorIndex );
 }
 // ----------------------------------------------------------------------------
 void BrowseTracker::OnMenuBrowseMarkPrevious(wxCommandEvent& event)
@@ -762,8 +655,6 @@ void BrowseTracker::OnMenuBrowseMarkPrevious(wxCommandEvent& event)
 
     EditorBase* eb = Manager::Get()->GetEditorManager()->GetActiveEditor();
     cbEditor* cbed = Manager::Get()->GetEditorManager()->GetBuiltinActiveEditor();
-    cbStyledTextCtrl* control = cbed?cbed->GetControl():nullptr;
-
     if (cbed) do
     {
         if (m_EbBrowse_MarksHash.find(eb) != m_EbBrowse_MarksHash.end() )
@@ -772,26 +663,18 @@ void BrowseTracker::OnMenuBrowseMarkPrevious(wxCommandEvent& event)
             BrowseMarks& EdBrowse_Marks = *m_EbBrowse_MarksHash[eb];
             int newPos = EdBrowse_Marks.GetMarkCurrent();
                 //#if defined(LOGGING)
-                //LOGIT( _T("BT curPos[%d]m_CurrScrTopPosn[%d]m_CurrScrLastPosn[%d]"),
+                //LOGIT( _T("curPos[%d]m_CurrScrTopPosn[%d]m_CurrScrLastPosn[%d]"),
                 //    newPos, m_CurrScrTopPosn, m_CurrScrLastPosn);
                 //#endif
 
             // if current browse mark is off screen, go to "current", not "pevious"
-            // The user, most likely, wants to go back to the off-screen position.
             if ( ((newPos < m_CurrScrTopPosn) || (newPos > m_CurrScrLastPosn))
                 && (newPos != -1) )
-                {;} //use current mark
-            else
-            {   // go to the previous marker
-                newPos = EdBrowse_Marks.GetMarkPrevious();
-                // if newPos == current line, get another marker
-                if (control && control->LineFromPosition(newPos) == control->GetCurrentLine())
-                    newPos = EdBrowse_Marks.GetMarkPrevious();
-            }
-            if ( (newPos == -1) //try twice for a new position
-                && (-1 == (newPos = EdBrowse_Marks.GetMarkPrevious())) )
-                  break;
+                /*use current mark*/;
+            else newPos = EdBrowse_Marks.GetMarkPrevious();
+            if (newPos == -1) break;
 
+            cbStyledTextCtrl* control = cbed->GetControl();
             int line = control->LineFromPosition(newPos);
             if ( LineHasBrowseMarker(control, line) )
             {   // center the BrowseMark line if off screen
@@ -800,8 +683,8 @@ void BrowseTracker::OnMenuBrowseMarkPrevious(wxCommandEvent& event)
                 control->GotoPos(newPos);          // gotopos puts cursor at correct offset
                 GetCurrentScreenPositions();
                 #if defined(LOGGING)
-                //LOGIT( _T("BT OnMenuBrowseMarkPrev: pos[%d]line[%d]eb[%p][%s]"),
-                //    newPos, control->LineFromPosition(newPos), eb, eb->GetShortName().c_str() );
+                ///LOGIT( _T("OnMenuBrowseMarkPrev: pos[%d]line[%d]eb[%p][%s]"),
+                ///    newPos, control->LineFromPosition(newPos), eb, eb->GetShortName().c_str() );
                 #endif
             }//if
             else
@@ -825,8 +708,6 @@ void BrowseTracker::OnMenuBrowseMarkNext(wxCommandEvent& event)
 
     EditorBase* eb = Manager::Get()->GetEditorManager()->GetActiveEditor();
     cbEditor* cbed = Manager::Get()->GetEditorManager()->GetBuiltinActiveEditor();
-    cbStyledTextCtrl* control = cbed ? cbed->GetControl() : nullptr;
-
     if (cbed) do
     {
         if (m_EbBrowse_MarksHash.find(eb) != m_EbBrowse_MarksHash.end() )
@@ -838,14 +719,10 @@ void BrowseTracker::OnMenuBrowseMarkNext(wxCommandEvent& event)
             if ( ((newPos < m_CurrScrTopPosn) || (newPos > m_CurrScrLastPosn))
                 && (newPos != -1) )
                 /*use current mark*/;
-            else
-            {
-                newPos = EdBrowse_Marks.GetMarkNext();
-                if (control && control->LineFromPosition(newPos) == control->GetCurrentLine())
-                    newPos = EdBrowse_Marks.GetMarkNext();
-            }
+            else newPos = EdBrowse_Marks.GetMarkNext();
             if (newPos == -1) break;
 
+            cbStyledTextCtrl* control = cbed->GetControl();
             int line = control->LineFromPosition(newPos);
             if ( LineHasBrowseMarker(control, line) )
             {   // center the BrowseMark line if off screen
@@ -854,8 +731,8 @@ void BrowseTracker::OnMenuBrowseMarkNext(wxCommandEvent& event)
                 control->GotoPos(newPos);          // gotopos puts cursor at correct offset
                 GetCurrentScreenPositions();
                 #if defined(LOGGING)
-                //LOGIT( _T("BT OnMenuBrowseMarkNext: pos[%d]line[%d]eb[%p][%s]"),
-                //    newPos, control->LineFromPosition(newPos), eb, eb->GetShortName().c_str() );
+                ///LOGIT( _T("OnMenuBrowseMarkNext: pos[%d]line[%d]eb[%p][%s]"),
+                ///    newPos, control->LineFromPosition(newPos), eb, eb->GetShortName().c_str() );
                 #endif
             }
             else
@@ -872,64 +749,20 @@ void BrowseTracker::OnMenuBrowseMarkNext(wxCommandEvent& event)
 
 }//OnMenuBrowseMarkNext
 // ----------------------------------------------------------------------------
-void BrowseTracker::OnMenuRecordBrowseMark(wxCommandEvent& WXUNUSED(event))
+void BrowseTracker::OnMenuRecordBrowseMark(wxCommandEvent& event)
 // ----------------------------------------------------------------------------
 {
     EditorBase* eb = Manager::Get()->GetEditorManager()->GetActiveEditor();
     if (eb) RecordBrowseMark(eb);
 }
 // ----------------------------------------------------------------------------
-void BrowseTracker::OnMenuClearBrowseMark(wxCommandEvent& WXUNUSED(event))
+void BrowseTracker::OnMenuClearBrowseMark(wxCommandEvent& event)
 // ----------------------------------------------------------------------------
 {
-    //LOGIT( _T("BT ClearBrowseMark") );
+    //LOGIT( _T("ClearBrowseMark") );
     bool removeScreenMark = true;
     ClearLineBrowseMark(removeScreenMark);
-}
-// ----------------------------------------------------------------------------
-void BrowseTracker::OnMenuToggleBrowseMark(wxCommandEvent& WXUNUSED(event))
-// ----------------------------------------------------------------------------
-{
-    EditorBase* eb = Manager::Get()->GetEditorManager()->GetActiveEditor();
-    cbEditor* cbed = Manager::Get()->GetEditorManager()->GetBuiltinActiveEditor();
-
-    if (cbed) {
-        cbStyledTextCtrl* control = cbed->GetControl();
-        int line = control->GetCurrentLine();
-
-        if (LineHasBrowseMarker(control, line))
-            ClearLineBrowseMark(true);
-        else
-            RecordBrowseMark(eb);
-    }
-}
-// ----------------------------------------------------------------------------
-void BrowseTracker::ClearLineBrowseMark(int line, bool removeScreenMark)
-// ----------------------------------------------------------------------------
-{
-    // clear BrowseMarks for a current line. If the line has no marker
-    // clear All markers.
-
-    ///LOGIT( _T("BT ClearBrowseMark") );
-    EditorBase* eb = Manager::Get()->GetEditorManager()->GetActiveEditor();
-    cbEditor* cbed = Manager::Get()->GetEditorManager()->GetBuiltinEditor(eb);
-    if (cbed) do
-    {
-        if (m_EbBrowse_MarksHash.find(eb) != m_EbBrowse_MarksHash.end() )
-        {
-            BrowseMarks& EdBrowse_Marks = *m_EbBrowse_MarksHash[eb];
-            cbStyledTextCtrl* control = cbed->GetControl();
-            GetCurrentScreenPositions();
-            int posn = control->PositionFromLine(line);
-            EdBrowse_Marks.ClearMark( posn, posn);
-            if ( removeScreenMark )
-                if ( LineHasBrowseMarker(control,line) )
-                    MarkRemove(cbed->GetControl(), line);
-            #if defined(LOGGING)
-            LOGIT( _T("BT ClearLineBROWSEMark Current Line[%d]"), line );
-            #endif
-        }
-    }while(0);
+    if ( GetBrowseMarkerId() == BOOKMARK_MARKER ) ClearLineBookMark();
 }
 // ----------------------------------------------------------------------------
 void BrowseTracker::ClearLineBrowseMark(bool removeScreenMark)
@@ -938,7 +771,7 @@ void BrowseTracker::ClearLineBrowseMark(bool removeScreenMark)
     // clear BrowseMarks for a current line. If the line has no marker
     // clear All markers.
 
-    ///LOGIT( _T("BT ClearBrowseMark") );
+    ///LOGIT( _T("ClearBrowseMark") );
     EditorBase* eb = Manager::Get()->GetEditorManager()->GetActiveEditor();
     cbEditor* cbed = Manager::Get()->GetEditorManager()->GetBuiltinEditor(eb);
     if (cbed) do
@@ -954,11 +787,38 @@ void BrowseTracker::ClearLineBrowseMark(bool removeScreenMark)
                 if ( LineHasBrowseMarker(control,line) )
                     MarkRemove(cbed->GetControl(), line);
             #if defined(LOGGING)
-            LOGIT( _T("BT ClearLineBROWSEMark Current Line[%d]"),m_CurrScrLine );
+            LOGIT( _T("ClearLineBROWSEMark Current Line[%d]"),m_CurrScrLine );
             #endif
         }
     }while(0);
 }
+////// ----------------------------------------------------------------------------
+////void BrowseTracker::ClearLineBrowseMark(int posn)
+////// ----------------------------------------------------------------------------
+////{
+////    // clear BrowseMarks for a single line
+////
+////    ///LOGIT( _T("ClearBrowseMark") );
+////    EditorBase* eb = Manager::Get()->GetEditorManager()->GetActiveEditor();
+////    cbEditor* cbed = Manager::Get()->GetEditorManager()->GetBuiltinEditor(eb);
+////    if (cbed) do
+////    {
+////        if (m_EbBrowse_MarksHash.find(eb) != m_EbBrowse_MarksHash.end() )
+////        {
+////            BrowseMarks& EdBrowse_Marks = *m_EbBrowse_MarksHash[eb];
+////            cbStyledTextCtrl* control = cbed->GetControl();
+////            int line = control->LineFromPosition(posn);
+////            int start = control->PositionFromLine( line );
+////            int end   = start + control->LineLength( line );
+////            EdBrowse_Marks.ClearMark( start, end );
+////            if ( LineHasBrowseMarker(control,line) )
+////                MarkRemove( control, line);
+////            #if defined(LOGGING)
+////            LOGIT( _T("ClearLineBrowse_MarksByPosn Line[%d]Posn[%d]"), line, posn );
+////            #endif
+////        }
+////    }while(0);
+////}
 // ----------------------------------------------------------------------------
 void BrowseTracker::SetBrowseMarksStyle( int userStyle)
 // ----------------------------------------------------------------------------
@@ -974,7 +834,7 @@ void BrowseTracker::SetBrowseMarksStyle( int userStyle)
     }//for
 }
 // ----------------------------------------------------------------------------
-void BrowseTracker::OnMenuSortBrowse_Marks( wxCommandEvent& WXUNUSED(event))
+void BrowseTracker::OnMenuSortBrowse_Marks( wxCommandEvent& event)
 // ----------------------------------------------------------------------------
 {
     // sort the BrowseMarks by simply importing them from scintilla
@@ -984,37 +844,51 @@ void BrowseTracker::OnMenuSortBrowse_Marks( wxCommandEvent& WXUNUSED(event))
     if (eb && pBrowse_Marks) pBrowse_Marks->ImportBrowse_Marks();
 }
 // ----------------------------------------------------------------------------
-void BrowseTracker::OnMenuSettings( wxCommandEvent& WXUNUSED(event))
+void BrowseTracker::OnMenuConfigBrowse_Marks( wxCommandEvent& event)
 // ----------------------------------------------------------------------------
 {
-    Configure();
-}
-// ----------------------------------------------------------------------------
-void BrowseTracker::OnConfigApply( )
-// ----------------------------------------------------------------------------
-{
-    // Called from OnApply() of BrowseTrackerConfPanel
+    // Show user options
+
+    int  oldUserMarksStyle = m_UserMarksStyle;
+    bool oldBrowseMarksEnabled = m_BrowseMarksEnabled;
+    //invoke user options dialog
+    BrowseTrackerCfg btCfg;
+    btCfg.GetUserOptions( m_CfgFilenameStr );
+
     // reset options according to user responses
+    m_BrowseMarksEnabled = btCfg.m_BrowseMarksEnabled;
+    m_UserMarksStyle = btCfg.m_UserMarksStyle;
+    m_ToggleKey = btCfg.m_ToggleKey;
+    m_LeftMouseDelay = btCfg.m_LeftMouseDelay;
+    m_ClearAllKey = btCfg.m_ClearAllKey;
 
     // Don't allow set and clear_all key to be the same
-    if ( (m_ToggleKey == Ctrl_Left_Mouse) && (m_ClearAllKey == ClearAllOnSingleClick) )
+    while ( (m_ToggleKey == Ctrl_Left_Mouse) && (m_ClearAllKey == ClearAllOnSingleClick) )
     {   wxString msg;
         msg.Printf(_("Program cannot use CTRL-LEFT_MOUSE as both a \nToggle key *AND* a Clear-All-Key"));
         cbMessageBox(msg, _("Error"), wxICON_ERROR);
 
         m_ClearAllKey = ClearAllOnDoubleClick;
+        btCfg.GetUserOptions( m_CfgFilenameStr );
+
+        m_UserMarksStyle = btCfg.m_UserMarksStyle;
+        m_ToggleKey = btCfg.m_ToggleKey;
+        m_LeftMouseDelay = btCfg.m_LeftMouseDelay;
+        m_ClearAllKey = btCfg.m_ClearAllKey;
     }
 
+    // Don't allow set and clear all key to be the same
+    if ( (m_ToggleKey == Ctrl_Left_Mouse) && (m_ClearAllKey == ClearAllOnSingleClick) )
+        m_ClearAllKey = ClearAllOnDoubleClick;
+
 	#if defined(LOGGING)
-	LOGIT( _T("BT New Config values: BrowseMarksStyle[%d]ToggleKey[%d]MouseDelay[%d]ClearKey[%d]"),
+	LOGIT( _T("New Config values: BrowseMarksStyle[%d]ToggleKey[%d]MouseDelay[%d]ClearKey[%d]"),
             m_UserMarksStyle, m_ToggleKey, m_LeftMouseDelay, m_ClearAllKey);
 	#endif
-	// FIXME (ph#): This may not be working when View/BrowseTracker/Settings used
-	// as opposed to Settings/Editor/Browstracker.
-    if (m_OldUserMarksStyle not_eq m_UserMarksStyle)
+    if (oldUserMarksStyle not_eq m_UserMarksStyle)
         SetBrowseMarksStyle( m_UserMarksStyle );
 
-    if (m_OldBrowseMarksEnabled not_eq m_BrowseMarksEnabled )
+    if (oldBrowseMarksEnabled not_eq m_BrowseMarksEnabled )
     {
         // Simulate activation of the current editor so mouse
         // events get connected.
@@ -1026,13 +900,9 @@ void BrowseTracker::OnConfigApply( )
             OnEditorActivated(evt);
         }
     }
-    if (m_pJumpTracker)
-    {
-        m_pJumpTracker->SetWrapJumpEntries(m_WrapJumpEntries);
-    }
 }
 // ----------------------------------------------------------------------------
-void BrowseTracker::OnMenuClearAllBrowse_Marks(wxCommandEvent& WXUNUSED(event))
+void BrowseTracker::OnMenuClearAllBrowse_Marks(wxCommandEvent& event)
 // ----------------------------------------------------------------------------
 {
     ClearAllBrowse_Marks(/*clearScreenMarks*/true);
@@ -1043,7 +913,7 @@ void BrowseTracker::ClearAllBrowse_Marks(bool clearScreenMarks)
 {
     // Clear every BrowseMark for the currently active editor
 
-    ///LOGIT( _T("BT ClearAllBrowseMark") );
+    ///LOGIT( _T("ClearAllBrowseMark") );
     EditorBase* eb = Manager::Get()->GetEditorManager()->GetActiveEditor();
     cbEditor* cbed = Manager::Get()->GetEditorManager()->GetBuiltinEditor(eb);
     if (cbed) do
@@ -1053,10 +923,21 @@ void BrowseTracker::ClearAllBrowse_Marks(bool clearScreenMarks)
             cbStyledTextCtrl* control = cbed->GetControl();
             BrowseMarks& EdBrowse_Marks = *m_EbBrowse_MarksHash[eb];
             EdBrowse_Marks.ClearAllBrowse_Marks();
-            if (clearScreenMarks)
-                control->MarkerDeleteAll( GetBrowseMarkerId());
+            if (clearScreenMarks) control->MarkerDeleteAll( GetBrowseMarkerId());
             #if defined(LOGGING)
-            LOGIT( _T("BT ClearAllBrowseMarks()") );
+            LOGIT( _T("ClearAllBrowseMarks()") );
+            #endif
+        }
+        // When using Book marks as Browse marks, clear book marks also
+        if ( GetBrowseMarkerId() == BOOKMARK_MARKER )
+        if (m_EdBook_MarksHash.find(eb) != m_EdBook_MarksHash.end() )
+        {
+            cbStyledTextCtrl* control = cbed->GetControl();
+            BrowseMarks& EdBook_Marks = *m_EdBook_MarksHash[eb];
+            EdBook_Marks.ClearAllBrowse_Marks();
+            if (clearScreenMarks) control->MarkerDeleteAll( GetBrowseMarkerId());
+            #if defined(LOGGING)
+            LOGIT( _T("ClearAllBookMarks()") );
             #endif
         }
     }while(0);
@@ -1075,7 +956,7 @@ void BrowseTracker::GetCurrentScreenPositions()
         {
             //-BrowseMarks& EdBrowse_Marks = *m_EbBrowse_MarksHash[eb];
             cbStyledTextCtrl* control = cbed->GetControl();
-            m_CurrScrPosn = control->GetCurrentPos();
+            int m_CurrScrPosn = control->GetCurrentPos();
             //-if (curPos == -1) break;
 
             m_CurrScrLine       = control->LineFromPosition(m_CurrScrPosn);
@@ -1094,9 +975,9 @@ void BrowseTracker::GetCurrentScreenPositions()
             m_CurrScrLineEndPosn    = m_CurrScrLineStartPosn + m_CurrScrLineLength;
 
             #if defined(LOGGING)
-                //LOGIT( _T("BT UpdateCurrent: CurentLine[%d]TopLine[%d]ScrnLines[%d]LastLine[%d]"),
+                //LOGIT( _T("UpdateCurrent: CurentLine[%d]TopLine[%d]ScrnLines[%d]LastLine[%d]"),
                 //    m_CurrScrLine, m_CurrScrTopLine, m_CurrLinesOnScreen, m_CurrScrLastLine );
-                //LOGIT( _T("BT UpdateCurrent: CurrPosn[%d]TopPosn[%d]LastPosn[%d]"),
+                //LOGIT( _T("UpdateCurrent: CurrPosn[%d]TopPosn[%d]LastPosn[%d]"),
                 //    m_CurrScrPosn, m_CurrScrTopPosn, m_CurrScrLastPosn );
             #endif
         }//if
@@ -1145,7 +1026,7 @@ void BrowseTracker::OnMouseKeyEvent(wxMouseEvent& event)
         if (event.GetEventType() == wxEVT_LEFT_DOWN)
         {   //Record the mouse down time
             #if defined(LOGGING)
-            //LOGIT( _T("BT Mouse DOWN") );
+            ////LOGIT( _T("Mouse DOWN") );
             #endif
             m_MouseDownTime = ::wxGetLocalTimeMillis();
             m_MouseXPosn = event.GetX(); m_MouseYPosn = event.GetY();
@@ -1159,7 +1040,7 @@ void BrowseTracker::OnMouseKeyEvent(wxMouseEvent& event)
         if (event.GetEventType() == wxEVT_LEFT_DCLICK)
         {   // Tell wxEVT_LEFT_UP about double clicks
             #if defined(LOGGING)
-            //LOGIT( _T("BT Double Click") );
+            ////LOGIT( _T("Double Click") );
             #endif
             m_IsMouseDoubleClick = true;
             break;
@@ -1169,7 +1050,7 @@ void BrowseTracker::OnMouseKeyEvent(wxMouseEvent& event)
         if (event.GetEventType() == wxEVT_LEFT_UP)
         {   // we're monitoring this editor, record/clear this cursor position
             #if defined(LOGGING)
-            //LOGIT( _T("BT Mouse UP") );
+            ////LOGIT( _T("Mouse UP") );
             #endif
 
             bool ctrlKeyIsDown          = ::wxGetMouseState().ControlDown();
@@ -1177,19 +1058,14 @@ void BrowseTracker::OnMouseKeyEvent(wxMouseEvent& event)
             bool useCtrlLeftMouse       = (m_ToggleKey == Ctrl_Left_Mouse);
             bool clearUsesDoubleClick   = (m_ClearAllKey == ClearAllOnDoubleClick);
             bool clearUsesSingleClick   = (m_ClearAllKey == ClearAllOnSingleClick);
-           //bool bEdMultiSelOn = Manager::Get()->GetConfigManager(_T("editor"))->ReadBool(_T("/selection/multi_select"), false);
-           bool bEdMultiSelOn = pControl->GetMultipleSelection();
 
             // -- ONLY_LEFT_MOUSE --
             if ( useOnlyLeftMouse )
-            {
-                if( ctrlKeyIsDown && bEdMultiSelOn)
-                    break;
-                if( ctrlKeyIsDown && clearUsesDoubleClick && m_IsMouseDoubleClick)
+            {   if( ctrlKeyIsDown && clearUsesDoubleClick && m_IsMouseDoubleClick)
                 {   //Clear all on Ctrl Double Click
                     ClearAllBrowse_Marks(/*clearScreenMarks*/true);
                     m_IsMouseDoubleClick = false;
-                    pControl->SetSelectionVoid (-1, pControl->GetCurrentPos()); //clear selection
+                    pControl->SetSelection (-1, pControl->GetCurrentPos()); //clear selection
                     break;
                 }
                 if (ctrlKeyIsDown && clearUsesSingleClick)
@@ -1206,14 +1082,12 @@ void BrowseTracker::OnMouseKeyEvent(wxMouseEvent& event)
             }//if useOnlyLeftMouse
 
             // -- CTRL-LEFT_MOUSE --
-            // Don't intercept Ctrl key if it belongs to editor multi-selection mechanism
-            if (bEdMultiSelOn) break;
             if ( useCtrlLeftMouse && ctrlKeyIsDown)
             {   if( clearUsesDoubleClick && m_IsMouseDoubleClick)
                 {   //Clear all on Ctrl Double Click
                     ClearAllBrowse_Marks(/*clearScreenMarks*/true);
                     m_IsMouseDoubleClick = false;
-                    pControl->SetSelectionVoid (-1, pControl->GetCurrentPos()); //clear selection
+                    pControl->SetSelection (-1, pControl->GetCurrentPos()); //clear selection
                     break;
                 }
                 RecordBrowseMark(eb);
@@ -1310,37 +1184,63 @@ void BrowseTracker::RecordBrowseMark(EditorBase* eb)
             if ( LineHasBrowseMarker(control, m_CurrScrLine) )
             {
                 ClearLineBrowseMark(/*removeScreenmark*/true); //clear previous marks
+                if ( GetBrowseMarkerId() == BOOKMARK_MARKER ) ClearLineBookMark();
                 return;
             }
             int pos = control->GetCurrentPos();
             EdBrowse_Marks.RecordMark(pos);
             MarkLine( control, m_CurrScrLine);
             #if defined(LOGGING)
-            LOGIT( _T("BT RecordBrowseMarkByEb: pos[%d]line[%d]eb[%p][%s]"),
+            LOGIT( _T("RecordBrowseMarkByEb: pos[%d]line[%d]eb[%p][%s]"),
                 pos, m_CurrScrLine, eb, eb->GetShortName().c_str() );
             if (not LineHasBrowseMarker(control, m_CurrScrLine)  ) {asm("int3"); /*trap*/}
             #endif
         }//if
     }while(0);//if do
 }//RecordBrowseMark
+////// ----------------------------------------------------------------------------
+////void BrowseTracker::RecordBrowseMarkPosition(EditorBase* eb, int posn)
+////// ----------------------------------------------------------------------------
+////{
+////    // stow a browse mark by editor cursor position
+////
+////    cbEditor* cbed = Manager::Get()->GetEditorManager()->GetBuiltinEditor(eb);
+////    if (cbed) do
+////    {
+////        if (m_EbBrowse_MarksHash.find(eb) != m_EbBrowse_MarksHash.end() )
+////        {
+////            cbStyledTextCtrl* control = cbed->GetControl();
+////            BrowseMarks& EdBrowse_Marks = *m_EbBrowse_MarksHash[eb];
+////            int line = control->LineFromPosition(posn);
+////            ClearLineBrowseMark( posn ); //clear previous marks
+////            EdBrowse_Marks.RecordMark( posn );
+////            //-if (not LineHasMarker( control,line))
+////                MarkLine( control, line);
+////            #if defined(LOGGING)
+////            LOGIT( _T("RecordBrowseMarkByPosn: pos[%d]line[%d]eb[%p][%s]"),
+////                posn, line,eb, eb->GetShortName().c_str() );
+////            if (not LineHasBrowseMarker(control, line)) {asm("int3"); /*trap*/}
+////            #endif
+////        }//if
+////    }while(0);//if do
+////}//RecordBrowseMarkPosition
 // ----------------------------------------------------------------------------
-void BrowseTracker::OnMenuTrackerDump(wxCommandEvent& WXUNUSED(event))
+void BrowseTracker::OnMenuTrackerDump(wxCommandEvent& event)
 // ----------------------------------------------------------------------------
 {
     // For debugging. Dump arrays and pointers
 
    #ifdef LOGGING
-        LOGIT( _T("BT --Browsed--Editors-------------") );
-        LOGIT( _T("BT CurrIndex[%d]LastIndex[%d]count[%d]"), m_CurrEditorIndex, m_LastEditorIndex, GetEditorBrowsedCount() );
+        LOGIT( _T("--Browsed--Editors-------------") );
+        LOGIT( _T("CurrIndex[%d]LastIndex[%d]count[%d]"), m_CurrEditorIndex, m_LastEditorIndex, GetEditorBrowsedCount() );
         for (int i=0;i<MaxEntries ;++i )
         {
             wxString edName = GetPageFilename(i);
-            LOGIT( _T("BT Index[%d]Editor[%p]Name[%s]"), i, GetEditor(i), edName.wx_str()  );;
+            LOGIT( _T("Index[%d]Editor[%p]Name[%s]"), i, GetEditor(i), edName.c_str()  );;
         }
-        return; //FIXME: remove this line to get rest of diagnostics
         for (EbBrowse_MarksHash::iterator it = m_EbBrowse_MarksHash.begin(); it != m_EbBrowse_MarksHash.end(); ++it)
         {
-            LOGIT( _T("BT Hash Ed[%p] AryPtr[%p]"), it->first, it->second );
+            LOGIT( _T("Hash Ed[%p] AryPtr[%p]"), it->first, it->second );
         }
 
         // dump the array containing the current editors BrowseMarks
@@ -1352,7 +1252,7 @@ void BrowseTracker::OnMenuTrackerDump(wxCommandEvent& WXUNUSED(event))
             {
                 //cbStyledTextCtrl* control = cbed->GetControl();
                 BrowseMarks& EdBrowse_Marks = *m_EbBrowse_MarksHash[eb];
-                LOGIT( _T("BT --Browse--Marks--for--[%s]----"), eb->GetShortName().c_str() );
+                LOGIT( _T("--Browse--Marks--for--[%s]----"), eb->GetShortName().c_str() );
                 EdBrowse_Marks.Dump();
             }//if
         }while(0);//if do
@@ -1360,17 +1260,17 @@ void BrowseTracker::OnMenuTrackerDump(wxCommandEvent& WXUNUSED(event))
         ProjectData* pProjectData = GetProjectDataByEditorName( eb->GetFilename() );
         if (not pProjectData)
         {
-            LOGIT( _T("BT *CRASH* BrowseTracker::OnMenuTrackerDump No project pointer") );
+            LOGIT( _T("*CRASH* BrowseTracker::OnMenuTrackerDump No project pointer") );
             return;
         }
-        LOGIT( _T("BT ProjectData for[%s]"),pProjectData->GetProjectFilename().c_str() );
+        LOGIT( _T("ProjectData for[%s]"),pProjectData->GetProjectFilename().c_str() );
         pProjectData->DumpHash(wxT("BrowseMarks"));
         pProjectData->DumpHash(wxT("BookMarks"));
    #endif
 }
 
 // ----------------------------------------------------------------------------
-void BrowseTracker::OnMenuTrackerClear(wxCommandEvent& WXUNUSED(event))
+void BrowseTracker::OnMenuTrackerClear(wxCommandEvent& event)
 // ----------------------------------------------------------------------------
 {
     // Clear the editor array of pointers (History)
@@ -1422,8 +1322,11 @@ void BrowseTracker::OnEditorActivated(CodeBlocksEvent& event)
 {
     // Record this activation event and place activation in history
     // Create structures to hold new editor info if we never saw this editor before.
-    // Structures are: a hash to point to a class holding editor cursor positions used
+    // Structures are: a hash to point to a class holding editor cursor postiions used
     // as a history to place markers.
+
+    //NB: This event is entered twice when an editor is activated. The first has
+    // no cbEditor attached. The second does.
 
     event.Skip();
 
@@ -1437,33 +1340,21 @@ void BrowseTracker::OnEditorActivated(CodeBlocksEvent& event)
         if ( m_bProjectIsLoading )
         {
             #if defined(LOGGING)
-            LOGIT( _T("BT OnEditorActivated ignored: Project Loading[%s]"), editorFullPath.c_str());
-            #endif
-             return;
-        }
-        if ( m_bProjectClosing )
-        {
-            #if defined(LOGGING)
-            LOGIT( _T("BT OnEditorActivated ignored: Project Closing[%s]"), editorFullPath.c_str());
+            LOGIT( _T("[OnEditorActivated ignored: Project Loading[ %s]"), editorFullPath.c_str());
             #endif
              return;
         }
 
         if (not cbed)
         {
-            // Since wxAuiNotebook added, there's no cbEditor associated during
-            // an initial cbEVT_EDITOR_ACTIVATED event. So we ignore the inital
-            // call and get OnEditorOpened() to re-issue OnEditorActivated() when
-            // it does have a cbEditor, but no cbProject associated;
             #if defined(LOGGING)
-            LOGIT( _T("BT [OnEditorActivated ignored:no cbEditor[%s]"), editorFullPath.c_str());
+            //LOGIT( _T("[OnEditorActivated ignored:no cbEditor[%s]"), editorFullPath.c_str());
             #endif
-            return;
+            break;
         }
 
         #if defined(LOGGING)
-        cbProject* pcbProject = GetProject( eb );
-        LOGIT( _T("BT Editor Activated[%p]proj[%p][%s]"), eb, pcbProject, eb->GetShortName().c_str() );
+        LOGIT( _T("Editor Activated[%p][%s]"), eb, eb->GetShortName().c_str() );
         #endif
 
 
@@ -1484,32 +1375,31 @@ void BrowseTracker::OnEditorActivated(CodeBlocksEvent& event)
             }
         AddEditor(eb);
         #if defined(LOGGING)
-        LOGIT( _T("BT OnEditorActivated AddedEditor[%p]proj[%p][%s]"), eb, GetProject(eb),eb->GetShortName().c_str() );
+        LOGIT( _T("OnEditorActivated AddedEditor[%p][%s]"), eb, eb->GetShortName().c_str() );
         #endif
         m_CurrEditorIndex = m_LastEditorIndex;
 
         // ---------------------------------------------------------------------
         // For new cbEditors, add an entry to the editor cursor positions hash
-        // and allocate a cursor positions array to hold the cursor positions.
+        // and allocate a cursor positions array to hold the cursor positions
         // Set hooks to catch mouse activity
         // ---------------------------------------------------------------------
 
         if ( IsBrowseMarksEnabled()
-            && (0 == GetBrowse_MarksFromHash( eb )) ) //guard against duplicates
+            && (not GetBrowse_MarksFromHash( eb )) ) //guard against duplicates
         {   // new editor
             if (cbed)
             {
                 HashAddBrowse_Marks( eb->GetFilename() ); //create hashs and book/browse marks arrays
 
-                // Debugging statements
-                //DumpHash(wxT("BrowseMarks"));
-                //DumpHash(wxT("BookMarks"));
-                //m_pActiveProjectData->DumpHash(wxT("BrowseMarks"));
-                //m_pActiveProjectData->DumpHash(wxT("BookMarks"));
+                ////DumpHash(wxT("BrowseMarks"));
+                ////DumpHash(wxT("BookMarks"));
+                ////m_pActiveProjectData->DumpHash(wxT("BrowseMarks"));
+                ////m_pActiveProjectData->DumpHash(wxT("BookMarks"));
 
                 cbStyledTextCtrl* control = cbed->GetControl();
-                // Setting the initial browsemark(s)
-                //Connect to mouse to see user setting/clearing browse marks
+                // Setting the initial browsemark
+                //-int pos = control->GetCurrentPos();
                 control->Connect(wxEVT_LEFT_UP,
                                 (wxObjectEventFunction)(wxEventFunction)
                                 (wxMouseEventFunction)&BrowseTracker::OnMouseKeyEvent,
@@ -1531,52 +1421,67 @@ void BrowseTracker::OnEditorActivated(CodeBlocksEvent& event)
                                 (wxContextMenuEventFunction)&BrowseTracker::OnMarginContextMenu,
                                  NULL, this);
                 #if defined(LOGGING)
-                    LOGIT( _T("BT Added hash entry for [%p][%s]"), eb, eb->GetShortName().c_str() );
+                LOGIT( _T("Added hash entry for [%p][%s]"), eb, eb->GetShortName().c_str() );
                 #endif
+                // Define scintilla BrowseTracker margin marker
+                //ConfigManager* mgr = Manager::Get()->GetConfigManager(_T("app"));
+                //control->SetMarginWidth(1, 16);
+                //control->SetMarginType(1, wxSCI_MARGIN_SYMBOL);
+                //control->SetMarginSensitive(1, mgr->ReadBool(_T("/margin_1_sensitive"), true));
+                //control->SetMarginMask(1, (1 << BOOKMARK_MARKER) |
+                //                             (1 << BREAKPOINT_MARKER) |
+                //                             (1 << DEBUG_MARKER) |
+                //                             (1 << ERROR_MARKER));
+                //control->MarkerDefine(BOOKMARK_MARKER, BOOKMARK_STYLE);
+                //control->MarkerSetBackground(BOOKMARK_MARKER, wxColour(0xA0, 0xA0, 0xFF));
                 int marginMask = control->GetMarginMask(1);
                 control->SetMarginMask( 1, marginMask | (1<<GetBrowseMarkerId()) );
                 control->MarkerDefine( GetBrowseMarkerId(), GetBrowseMarkerStyle() );
                 // the following stmt seems to do nothing for wxSCI_MARK_DOTDOTDOT
                 control->MarkerSetBackground( GetBrowseMarkerId(), wxColour(0xA0, 0xA0, 0xFF));
                 #if defined(LOGGING)
-                    //LOGIT( _T("BT UserStyle[%d]MarkerId[%d]MarkerStyle[%d]"),m_UserMarksStyle,GetBrowseMarkerId(), GetBrowseMarkerStyle());
+                //LOGIT( _T("UserStyle[%d]MarkerId[%d]MarkerStyle[%d]"),m_UserMarksStyle,GetBrowseMarkerId(), GetBrowseMarkerStyle());
                 #endif
-                // Set archived Layout/history browse marks in the editor
+                // Set archived Layout browse marks in the editor
                 ProjectData* pProjectData = GetProjectDataByEditorName(eb->GetFilename() );
-                #if defined(LOGGING)
-                    // Since wxAuiNotebook added, there's no proj associated with cbeditor
-                    // during EVT_EDITOR_OPEN or EVT_EDITOR_ACTIVATED
+                    #if defined(LOGGING)
                     if (not pProjectData)
-                        LOGIT( _T("BT OnEditorActivated FAILED TO FIND PROJECT for [%s]"), eb->GetShortName().c_str() );
-                #endif
+                        LOGIT( _T("OnEditorActivated FAILED TO FIND PROJECT for [%s]"), eb->GetShortName().c_str() );
+                    #endif
                 if ( pProjectData )
                 {   // Set the Book/Browse marks from the Layout/History arrays
                     BrowseMarks* pBrowse_MarksArc = pProjectData->GetBrowse_MarksFromHash( eb->GetFilename());
                         //#if defined(LOGGING)
-                        //LOGIT( _T("BT \nDumping ARCHIVE data for[%s]"), eb->GetFilename().c_str());
-                        //LOGIT( _T("BT Project Data[%s]"),pProjectData->GetProjectFilename().c_str() );
+                        //LOGIT( _T("\nDumping ARCHIVE data for[%s]"), eb->GetFilename().c_str());
+                        //LOGIT( _T("Project Data[%s]"),pProjectData->GetProjectFilename().c_str() );
                         //pBrowse_MarksArc->Dump();
                         //#endif
                     if (pBrowse_MarksArc)
                         m_EbBrowse_MarksHash[eb]->RecordMarksFrom( *pBrowse_MarksArc);
-                            //LOGIT( _T("BT Dumping CURRENT data for[%s]"), eb->GetFilename().c_str());
+                            //LOGIT( _T("Dumping CURRENT data for[%s]"), eb->GetFilename().c_str());
                             //m_EbBrowse_MarksHash[eb]->Dump();
 
-                        //DumpHash(wxT("BrowseMarks"));
-                        //DumpHash(wxT("BookMarks"));
-                        //m_pActiveProjectData->DumpHash(wxT("BrowseMarks"));
-                        //m_pActiveProjectData->DumpBrowse_Marks(wxT("BrowseMarks"));
-                        //pBrowse_MarksArc->Dump();
-                        //m_pActiveProjectData->DumpHash(wxT("BookMarks"));
+                    // record the current cursor position
+                    //-if (not LineHasBrowseMarker(control, control->LineFromPosition(pos)))
+                    //-if ( not m_EbBrowse_MarksHash[eb]->GetMarkCount() )
+                    //-    RecordBrowseMark(eb);
 
+                        ////DumpHash(wxT("BrowseMarks"));
+                        ////DumpHash(wxT("BookMarks"));
+                        ////m_pActiveProjectData->DumpHash(wxT("BrowseMarks"));
+                        ////m_pActiveProjectData->DumpBrowse_Marks(wxT("BrowseMarks"));
+                        ////pBrowse_MarksArc->Dump();
+                        ////m_pActiveProjectData->DumpHash(wxT("BookMarks"));
+
+                    // copy/set the old book marks, if any
+                    BrowseMarks* pCurrBook_Marks = GetBook_MarksFromHash( eb->GetFilename());
+                    BrowseMarks* pArchBook_Marks = pProjectData->GetBook_MarksFromHash(eb->GetFilename());
+                    if (pArchBook_Marks && pCurrBook_Marks)
+                        pCurrBook_Marks->ToggleBook_MarksFrom(*pArchBook_Marks);
                 }//if project
 
             }//if cbed
         }//if new editor
-
-        // Cause editor to be focused and browse marks sorted in OnIdle()
-        m_UpdateUIFocusEditor = eb;
-
     }while(0);
 
 }//OnEditorActivated
@@ -1584,154 +1489,37 @@ void BrowseTracker::OnEditorActivated(CodeBlocksEvent& event)
 void BrowseTracker::OnUpdateUI(wxUpdateUIEvent& event)
 // ----------------------------------------------------------------------------
 {
-    if (Manager::Get()->IsAppShuttingDown())
-        return;
-
-    EditorBase* eb = Manager::Get()->GetEditorManager()->GetActiveEditor();
-    if (m_EbBrowse_MarksHash.find(eb) != m_EbBrowse_MarksHash.end())
-    {
-        int count = m_EbBrowse_MarksHash[eb]->GetMarkCount();
-
-        m_pToolBar->EnableTool(idToolMarkToggle, true);
-        m_pToolBar->EnableTool(idToolMarkNext, count > 0);
-        m_pToolBar->EnableTool(idToolMarkPrev, count > 0);
-        m_pToolBar->EnableTool(idToolMarksClear, count > 0);
-
-    }
-    else // This editor not recorded
-    {
-        m_pToolBar->EnableTool(idToolMarkToggle, true);
-        m_pToolBar->EnableTool(idToolMarkNext, false);
-        m_pToolBar->EnableTool(idToolMarkPrev, false);
-        m_pToolBar->EnableTool(idToolMarksClear, false);
-    }
-
+    // unused
     event.Skip();
 }
 // ----------------------------------------------------------------------------
 void BrowseTracker::OnIdle(wxIdleEvent& event)
 // ----------------------------------------------------------------------------
 {
-     event.Skip();
 
     // Focus the new selected editor. This doesn't work if a long compile
     // is active since there's no idle time. User will have to click into
     // the editor window to activate it.
     // This used to be done by the CB editor manager, but someone removed the UI hook.
-    if (m_bAppShutdown)
-        return;
-    if ((not Manager::Get()->IsAppShuttingDown()) && m_UpdateUIFocusEditor)
+    if (!Manager::Get()->IsAppShuttingDown() && m_UpdateUIFocusEditor)
     {
-        if (m_UpdateUIFocusEditor)
-        {
-            EditorBase* eb = m_UpdateUIFocusEditor;
-            m_UpdateUIFocusEditor = 0;
-            if (not eb) return;
-            if (not IsEditorBaseOpen(eb)) return;
-            if( Manager::Get()->GetEditorManager()->GetActiveEditor() not_eq eb )
-            {   Manager::Get()->GetEditorManager()->SetActiveEditor(eb);
-                eb->SetFocus();
-                #if defined(LOGGING)
-                LOGIT( _T("BT OnIdle Focused Editor[%p] Title[%s]"), eb, eb->GetTitle().c_str() );
-                #endif
-            }
-            // re-sort the browse marks
-            wxCommandEvent ev;
-            OnMenuSortBrowse_Marks(ev);
+        cbEditor* ed = Manager::Get()->GetEditorManager()->GetBuiltinActiveEditor();
+        if (ed)
+        {    ed->GetControl()->SetFocus();
+            #if defined(LOGGING)
+            ////LOGIT( _T("OnIdle Focused Editor[%p] Title[%s]"), ed, ed->GetTitle().c_str() );
+            #endif
         }
+        m_UpdateUIFocusEditor = false;
     }
-}//OnIdle
-// ----------------------------------------------------------------------------
-void BrowseTracker::OnAppStartupDone(CodeBlocksEvent& event)
-// ----------------------------------------------------------------------------
-{
-    wxUnusedVar(event);
-    ShowBrowseTrackerToolBar(m_ShowToolbar);
-    return;
+     event.Skip();
 }
 // ----------------------------------------------------------------------------
 void BrowseTracker::OnStartShutdown(CodeBlocksEvent& event)
 // ----------------------------------------------------------------------------
 {
-    wxUnusedVar(event);
-    m_bAppShutdown = true;
-}
-// ----------------------------------------------------------------------------
-void BrowseTracker::AppShuttingDown(CodeBlocksEvent& event)
-// ----------------------------------------------------------------------------
-{
-    #if defined(LOGGING)
-    //wxMessageBox(_T("BrowseTracker: CB initiated OnStartShutdown"));
-    //- dont log during shutdown
-    //-LOGIT( _T("BT BrowseTracker: CB initiated OnStartShutdown")); 2017/12/7
-    #endif
-    //Don't write to log when shutting down, causes crash 2017/11/23
-    //-Manager::Get()->GetLogManager()->Log(_T("BrowseTracker OnStartShutdown() initiated."));
     event.Skip();
-
-    m_bAppShutdown = true;
-
-    // Crashes occur when logging during shutdown
-    //-#if defined(LOGGING)
-    //-InfoWindow::Display(_T("Browstracker"),_T("Browstracker OnStartShutdown"), 7000);
-    //-#endif
-
-     m_bAppShutdown = true;
-
-    if ( m_InitDone )
-    {
-        // Don't log during shutdown, causes crashes //2017/12/7
-        //-Manager::Get()->GetLogManager()->Log(_T("BrowseTracker Released"));
-
-        //*SDK Gotcha* A cbEVT_PROJECT_CLOSE is issued, but only
-        // after the plugin OnRelease() is called. So we
-        // simulate closing all open projects in order to save
-        // current Browse/Book marks in layout
-        ProjectsArray* pPrjs = m_pPrjMgr->GetProjects();
-        for (size_t i=0; i<pPrjs->GetCount(); ++i )
-        {
-            CodeBlocksEvent evtpa(cbEVT_PROJECT_ACTIVATE);
-            evtpa.SetProject(pPrjs->Item(i));
-            OnProjectActivatedEvent(evtpa);
-
-            CodeBlocksEvent evtpc(cbEVT_PROJECT_CLOSE);
-            evtpc.SetProject(pPrjs->Item(i));
-            OnProjectClosing(evtpc);
-        }
-
-        Manager::Get()->RemoveAllEventSinksFor(this); //2017/11/23
-
-        // remove project load/save hook
-        ProjectLoaderHooks::UnregisterHook(m_ProjectHookId, true);
-
-        // remove editor/scintilla hook
-        EditorHooks::UnregisterHook(m_EditorHookId, true);
-
-        //  Remove menu item
-        int idx = m_pMenuBar->FindMenu(_("&View"));
-        if (idx != wxNOT_FOUND)
-        {
-            wxMenu* viewMenu = m_pMenuBar->GetMenu(idx);
-            viewMenu->Destroy(idMenuViewTracker);
-        }
-
-        // *BrowseMarks* release the editor hash table ptrs to BrowseMarks
-        for (EbBrowse_MarksHash::iterator it = m_EbBrowse_MarksHash.begin(); it != m_EbBrowse_MarksHash.end(); ++it)
-        {
-            delete it->second;
-        }
-        m_EbBrowse_MarksHash.clear();
-
-        // *ProjectData* release any ProjectData remaining in the ProjectDataHash
-        for (ProjectDataHash::iterator it = m_ProjectDataHash.begin(); it != m_ProjectDataHash.end(); ++it)
-        {
-            delete it->second;
-        }
-        m_ProjectDataHash.clear();
-
-    }
-	m_InitDone = false;
-
+    OnRelease(true);
 }
 // ----------------------------------------------------------------------------
 void BrowseTracker::OnEditorDeactivated(CodeBlocksEvent& event)
@@ -1744,14 +1532,11 @@ void BrowseTracker::OnEditorDeactivated(CodeBlocksEvent& event)
     //12:14:33: Editor DE-activated[03894E88][Version.cpp]
     //12:14:33: Editor Activated[03894E88][Version.cpp]
 
-    if (m_bAppShutdown) return;
     EditorBase* eb = event.GetEditor();
-    if (not eb) return;
     if (IsAttached() && m_InitDone)
     {
-        m_LastEbDeactivated = eb;
         #if defined(LOGGING)
-        LOGIT( _T("BT Editor DE-ACTIVATED[%p][%s]"), eb, eb->GetShortName().c_str() );
+        ///LOGIT( _T("Editor DE-ACTIVATED[%p][%s]"), eb, eb->GetShortName().c_str() );
         wxUnusedVar(eb);
         #endif
     }
@@ -1776,12 +1561,12 @@ void BrowseTracker::OnEditorOpened(CodeBlocksEvent& event)
         cbEditor* cbed = Manager::Get()->GetEditorManager()->GetBuiltinEditor(eb);
         if (not cbed) return;
 
+        cbStyledTextCtrl* control = 0;
+        if (cbed) control = cbed->GetControl();
         // validate cbProject has been set
         cbProject* pcbProject = GetProject( eb );
         #if defined(LOGGING)
-        cbStyledTextCtrl* control = 0;
-        if (cbed) control = cbed->GetControl();
-        LOGIT( _T("BT OnEditorOpen ebase[%p]cbed[%p]stc[%p]proj[%p][%s]"), eb, cbed, control, pcbProject, eb->GetShortName().c_str() );
+         LOGIT( _T("OnEditorOpen ebase[%p]cbed[%p]stc[%p][%s]"), eb, cbed, control, eb->GetShortName().c_str() );
         #endif
 
         // stow opened editor info in the ProjectData class
@@ -1790,29 +1575,23 @@ void BrowseTracker::OnEditorOpened(CodeBlocksEvent& event)
             if (pProjectData) pProjectData->AddEditor( eb->GetFilename() );
         }
 
-            //The following code shows that the cbProject*'s (ptr) are empty at this event
+            //This code shows that the cbProject*'s are empty at this event
             // That seems very odd ?
             //#if defined(LOGGING)
             ////NB: There is no cbEditor::ProjectFile* or ProjectFile::GetBaseName()
             ////    and there's no initialized Project* that I can find.
             //ProjectFile* pProjectFile = cbed->GetProjectFile();
             //wxString projectBaseName = pProjectFile?pProjectFile->GetBaseName() :*wxEmptyString;
-            // LOGIT( _T("BT OnEditorOpen project[%p]projectBaseName[%s]"), pProjectFile, projectBaseName.c_str() );
+            // LOGIT( _T("OnEditorOpen project[%p]projectBaseName[%s]"), pProjectFile, projectBaseName.c_str() );
             //// -- there is no intialized cbProject* yet for the opening project.
             ////Note here, that the returned project is the project about to be deactivated.
             //ProjectManager* prjMgr = Manager::Get()->GetProjectManager();
             //cbProject* pcbProject = prjMgr->GetActiveProject();
             //wxString filename  = pcbProject?pcbProject->GetFilename():*wxEmptyString;
-            // LOGIT( _T("BT OnEditorOpen cbProject[%p]filename[%s]"), pcbProject, filename.c_str() );
+            // LOGIT( _T("OnEditorOpen cbProject[%p]filename[%s]"), pcbProject, filename.c_str() );
             // #endif
 
-        // Editors opened by Alt-G and Swap header/source do not have
-        // cbEditors attached. So we have to re-call OnEditorActivated here.
-        CodeBlocksEvent evt;
-        evt.SetEditor(eb);
-        OnEditorActivated(evt);
-
-    }//if isAttached
+    }//if
 }
 // ----------------------------------------------------------------------------
 void BrowseTracker::OnEditorClosed(CodeBlocksEvent& event)
@@ -1820,7 +1599,7 @@ void BrowseTracker::OnEditorClosed(CodeBlocksEvent& event)
 {
     // clear this editor out of our arrays and pointers
 
-    //_NOTE: using Manager::Get->GetEditorManager()->GetEditor... etc will
+    //NOTE: using Manager::Get->GetEditorManager()->GetEditor... etc will
     //      fail in this codeblocks event.
     //      The cbEditors are nolonger available
     event.Skip();
@@ -1832,8 +1611,8 @@ void BrowseTracker::OnEditorClosed(CodeBlocksEvent& event)
         ProjectData* pProjectData = GetProjectDataByEditorName( filePath);
 
         #if defined(LOGGING)
-            LOGIT( _T("BT OnEditorClosed Eb[%p][%s]"), eb, eb->GetShortName().c_str() );
-            ///LOGIT( _T("BT Closing Eb[%p][%s]"), eb, eb->GetFilename().c_str() );
+            LOGIT( _T("Closing Eb[%p][%s]"), eb, eb->GetShortName().c_str() );
+            ///LOGIT( _T("Closing Eb[%p][%s]"), eb, eb->GetFilename().c_str() );
         #endif
 
         //-cbEditor* cbed = m_pEdMgr->GetBuiltinEditor(eb);
@@ -1847,6 +1626,12 @@ void BrowseTracker::OnEditorClosed(CodeBlocksEvent& event)
         // them if the user reopens this editor
         if ( pProjectData )
         {
+            BrowseMarks* pArchBook_Marks = pProjectData->GetBook_MarksFromHash( eb->GetFilename());
+            BrowseMarks* pCurrBook_Marks = GetBook_MarksFromHash( eb->GetFilename());
+            //*note* cannot get access to scintilla book marks here because the cbStyledTextCtrl
+            // is not accessible
+            if (pCurrBook_Marks && pArchBook_Marks)
+                pArchBook_Marks->CopyMarksFrom(*pCurrBook_Marks);
 
             // Copy current BrowseMarks to archive BrowseMarks so we have
             // them if the user reopens this editor
@@ -1860,39 +1645,12 @@ void BrowseTracker::OnEditorClosed(CodeBlocksEvent& event)
             if ( eb == GetEditor(i)  )
             {
                 #if defined(LOGGING)
-                LOGIT( _T("BT OnEditorClosed cleared[%p]"), GetEditor(i));
+                LOGIT( _T("OnEditorClosed cleared[%p]"), GetEditor(i));
                 #endif
                 RemoveEditor(GetEditor(i));
             }//if
-
-        // Activate the previously active editor. EditorManager::OnUpdateUI used to do this
-        // but wzAuiNotebook broke it. wxAuiNotebook always activates the last page(tab).
-        if ( m_LastEbDeactivated and IsEditorBaseOpen(m_LastEbDeactivated) )
-            m_UpdateUIFocusEditor = m_LastEbDeactivated;
-        else
-            m_UpdateUIFocusEditor = GetPreviousEditor();
-        #if defined(LOGGING)
-        if (m_UpdateUIFocusEditor)
-        LOGIT( _T("BT OnEditorClosed activating eb[%s]"), m_UpdateUIFocusEditor->GetShortName().c_str());
-        #endif
-
-    }//if(IsAttached() && m_InitDone)
-
-
+    }//if
 }//OnEditorClosed
-// ----------------------------------------------------------------------------
-#if defined(LOGGING)
-void BrowseTracker::OnWindowSetFocus(wxFocusEvent& event)
-#else
-void BrowseTracker::OnWindowSetFocus(wxFocusEvent& WXUNUSED(event))
-#endif
-// ----------------------------------------------------------------------------
-{
-    #if defined(LOGGING)
-    wxWindow* p = (wxWindow*)event.GetEventObject();
-    LOGIT( _T("BT SetFocusEvent for[%p]"), p);
-    #endif
-}
 // ----------------------------------------------------------------------------
 void BrowseTracker::AddEditor(EditorBase* eb)
 // ----------------------------------------------------------------------------
@@ -1904,7 +1662,7 @@ void BrowseTracker::AddEditor(EditorBase* eb)
     m_apEditors[m_LastEditorIndex] = eb;
     ++m_nBrowsedEditorCount;
     #if defined(LOGGING)
-    //LOGIT( _T("BT AddEditor[%p][%s]"), eb, eb->GetShortName().c_str() );
+    //LOGIT( _T("AddEditor[%p][%s]"), eb, eb->GetShortName().c_str() );
     #endif
 }
 // ----------------------------------------------------------------------------
@@ -1925,6 +1683,7 @@ BrowseMarks* BrowseTracker::HashAddBrowse_Marks( const wxString fullPath)
     }
 
     // Allocate book marks array also
+    HashAddBook_Marks( fullPath);
 
     // If this editor belongs to a project,
     // Ask ProjectData to alloc the archive Browse/Book marks arrays
@@ -1933,9 +1692,36 @@ BrowseMarks* BrowseTracker::HashAddBrowse_Marks( const wxString fullPath)
         pProjectData->HashAddBrowse_Marks( fullPath );
 
     #if defined(LOGGING)
-    ///LOGIT( _T("BT HashAddBrowse_Marks[%s]"), eb->GetFilename().c_str() );
+    ///LOGIT( _T("HashAddBrowse_Marks[%s]"), eb->GetFilename().c_str() );
     #endif
     return pBrowse_Marks;
+}
+// ----------------------------------------------------------------------------
+BrowseMarks* BrowseTracker::HashAddBook_Marks( const wxString fullPath)
+// ----------------------------------------------------------------------------
+{
+    // EditorManager calls fail during the OnEditorClose event
+    // eg,EditorBase* eb = Manager::Get()->GetEditorManager()->GetEditor(filename);
+
+    EditorBase* eb = m_pEdMgr->GetEditor(fullPath);
+    if (not eb) return 0;
+    EbBrowse_MarksHash& hash = m_EdBook_MarksHash;
+    BrowseMarks* pBook_Marks = GetBook_MarksFromHash( eb);
+    if (not pBook_Marks)
+    {   pBook_Marks = new BrowseMarks(fullPath);
+        hash[eb] = pBook_Marks;
+    }
+
+    // If this editor belongs to a project
+    // Ask ProjectData to alloc the archive Browse/Book marks arrays
+    ProjectData* pProjectData = GetProjectDataByEditorName( fullPath );
+    if(pProjectData)
+        pProjectData->HashAddBook_Marks( eb->GetFilename());
+
+    #if defined(LOGGING)
+    ///LOGIT( _T("HashAddBOOKMakrs[%s]"), eb->GetFilename().c_str() );
+    #endif
+    return pBook_Marks;
 }
 // ----------------------------------------------------------------------------
 void BrowseTracker::ClearEditor(int index)
@@ -1962,15 +1748,12 @@ void BrowseTracker::RemoveEditor(EditorBase* eb)
 
     ++m_nRemoveEditorSentry;
 
-    if (eb == m_UpdateUIFocusEditor)
-        m_UpdateUIFocusEditor = 0;
-
     if (IsAttached() && m_InitDone) do
     {
         #if defined(LOGGING)
         //Dont use eb to reference data. It may have already been destroyed.
-         //LOGIT( _T("BT Removing[%p][%s]"), eb, eb->GetShortName().c_str() );
-         ///LOGIT( _T("BT RemoveEditor[%p]"), eb );
+         //LOGIT( _T("Removing[%p][%s]"), eb, eb->GetShortName().c_str() );
+         ///LOGIT( _T("RemoveEditor[%p]"), eb );
         #endif
 
         for (int i=0; i<MaxEntries; ++i )
@@ -1982,6 +1765,8 @@ void BrowseTracker::RemoveEditor(EditorBase* eb)
         {
             delete m_EbBrowse_MarksHash[eb]; //Browse Marks
             m_EbBrowse_MarksHash.erase(eb);
+            delete m_EdBook_MarksHash[eb];   //Book Marks
+            m_EdBook_MarksHash.erase(eb);
 
             // using a stale eb will cause a crash
             if (-1 != m_pEdMgr->FindPageFromEditor(eb) )
@@ -2012,7 +1797,7 @@ void BrowseTracker::RemoveEditor(EditorBase* eb)
                 }//if win
             }//if find page from editor
             #if defined(LOGGING)
-            ///LOGIT( _T("BT RemoveEditor Erased hash entry[%p]"), eb );
+            ///LOGIT( _T("RemoveEditor Erased hash entry[%p]"), eb );
             #endif
         }
     }while(0);
@@ -2034,7 +1819,6 @@ void BrowseTracker::OnProjectOpened(CodeBlocksEvent& event)
 
     if ( not IsBrowseMarksEnabled() )
         return;
-    m_bProjectClosing = false;
 
     cbProject* pProject = event.GetProject();
 
@@ -2044,8 +1828,8 @@ void BrowseTracker::OnProjectOpened(CodeBlocksEvent& event)
         return;
     }
     #if defined(LOGGING)
-     LOGIT( _T("BT -----------------------------------"));
-     LOGIT( _T("BT Project OPENED[%s]"), event.GetProject()->GetFilename().c_str() );
+     LOGIT( _T("-----------------------------------"));
+     LOGIT( _T("Project OPENED[%s]"), event.GetProject()->GetFilename().c_str() );
     #endif
 
     wxString projectFilename = event.GetProject()->GetFilename();
@@ -2072,19 +1856,20 @@ void BrowseTracker::OnProjectOpened(CodeBlocksEvent& event)
     // didn't manually activate them.
     if (not m_bProjectIsLoading)
     {
-        for (FilesList::iterator it = pCBProject->GetFilesList().begin(); it != pCBProject->GetFilesList().end(); ++it)
+        int fileCount = pProject->GetFilesCount();
+        for (int i=0; i<fileCount; ++i)
         {
             for (int j=0; j<MaxEntries; ++j)
             {
                 if ( GetEditor(j) == 0 ) continue;
                 //#if defined(LOGGING)
-                //LOGIT( _T("BT eb[%s]projectFile[%s]"),
+                //LOGIT( _T("eb[%s]projectFile[%s]"),
                 //    GetEditor(j)->GetFilename().c_str(), pProject->GetFile(i)->file.GetFullPath().c_str() );
                 //#endif
-                if ( (*it)->file.GetFullPath() ==  GetEditor(j)->GetFilename())
+                if ( pProject->GetFile(i)->file.GetFullPath() ==  GetEditor(j)->GetFilename())
                 {
                     //#if defined(LOGGING)
-                    //LOGIT( _T("BT OnProjectOpened:Removing[%s]"),GetEditor(j)->GetFilename().c_str() );
+                    //LOGIT( _T("OnProjectOpened:Removing[%s]"),GetEditor(j)->GetFilename().c_str() );
                     //#endif
                     RemoveEditor(GetEditor(j));
                     break;
@@ -2104,7 +1889,7 @@ void BrowseTracker::OnProjectOpened(CodeBlocksEvent& event)
         evt.SetEditor(eb);
         OnEditorActivated(evt);
         #if defined(LOGGING)
-        LOGIT( _T("BT OnProjectOpened Activated Editor[%p][%s]"), eb, eb->GetShortName().c_str() );
+        LOGIT( _T("OnProjectOpened Activated Editor[%p][%s]"), eb, eb->GetShortName().c_str() );
         #endif
     }
     //*Testing*
@@ -2125,14 +1910,11 @@ void BrowseTracker::OnProjectClosing(CodeBlocksEvent& event)
     if (not IsBrowseMarksEnabled())
         return;
 
-    m_bProjectClosing = true;
-    m_nProjectClosingFileCount = 0;
-
     cbProject* pProject = event.GetProject();
     if (not pProject) return; //It happens!
 
     #if defined(LOGGING)
-     LOGIT( _T("BT Project CLOSING[%p][%s]"), pProject, pProject->GetFilename().c_str() );
+     LOGIT( _T("Project CLOSING[%p][%s]"), pProject, pProject->GetFilename().c_str() );
     #endif
 
     // Simulate closing the remaining editors here so that we can write
@@ -2142,11 +1924,10 @@ void BrowseTracker::OnProjectClosing(CodeBlocksEvent& event)
     ProjectData* pProjectData = GetProjectDataFromHash( pProject);
     #if defined(LOGGING)
         if ( not pProjectData )
-            LOGIT( _T("BT *CRASH* OnProjectClosing entered w/o project pointer") );
+            LOGIT( _T("*CRASH* OnProjectClosing entered w/o project pointer") );
     #endif
     if ( not pProjectData ) return;
-
-    // Sinulate closing editors that belong to the current project
+    // Close editors that belong to the current project
     for (int i=0; i < m_pEdMgr->GetEditorsCount(); ++i)
     {
     	EditorBase* eb = m_pEdMgr->GetEditor(i);
@@ -2157,11 +1938,10 @@ void BrowseTracker::OnProjectClosing(CodeBlocksEvent& event)
             evt.SetEditor(eb);
             evt.SetString(eb->GetFilename());
             OnEditorClosed( evt );
-            m_nProjectClosingFileCount += 1;
         }
         else{
             #if defined(LOGGING)
-            //LOGIT( _T("BT ProjectClosing failed to find[%s]"), eb->GetFilename().c_str() );
+            ////LOGIT( _T("ProjectClosing failed to find[%s]"), eb->GetFilename().c_str() );
             #endif
         }
     }
@@ -2173,7 +1953,7 @@ void BrowseTracker::OnProjectClosing(CodeBlocksEvent& event)
     if ( pProjectData )
     {
         #if defined(LOGGING)
-        LOGIT( _T("BT deleting ProjectData[%p][%s]"), pProjectData, pProjectData->GetProjectFilename().c_str()  );
+        LOGIT( _T("deleting ProjectData[%p][%s]"), pProjectData, pProjectData->GetProjectFilename().c_str()  );
         #endif
         delete pProjectData;
         m_ProjectDataHash.erase(pProject);
@@ -2192,7 +1972,7 @@ void BrowseTracker::OnProjectActivatedEvent(CodeBlocksEvent& event)
     // NB: EVT_PROJECT_ACTIVATE is occuring before EVT_PROJECT_OPEN
     // NB: EVT_EDITOR_ACTIVATE event occur before EVT_PROJECT_ACTIVATE or EVT_PROJECT_OPEN
 
-    // _*NOTE* when a secondary project closes and re-activates a previous one,
+    // *NOTE* when a secondary project closes and re-activates a previous one,
     // *NO* cbEVT_PROJECT_ACTIVATE occurs. We end up with the wrong active project
     // pointer. Only a cbEVT_EDITOR_ACTIVATE occurs.
 
@@ -2207,8 +1987,8 @@ void BrowseTracker::OnProjectActivatedEvent(CodeBlocksEvent& event)
     if (not pCBProject) return; //caused by importing a project
 
     #if defined(LOGGING)
-    LOGIT( _T("BT -----------------------------------"));
-    LOGIT( _T("BT Project ACTIVATED[%p][%s]"), pCBProject,  pCBProject->GetFilename().c_str() );
+    LOGIT( _T("-----------------------------------"));
+    LOGIT( _T("Project ACTIVATED[%p][%s]"), pCBProject,  pCBProject->GetFilename().c_str() );
     #endif
 
     ProjectData* pProjectData = GetProjectDataFromHash( pCBProject);
@@ -2220,7 +2000,7 @@ void BrowseTracker::OnProjectActivatedEvent(CodeBlocksEvent& event)
 
     // store the current editor in BrowseTracker array
     EditorBase* eb = Manager::Get()->GetEditorManager()->GetActiveEditor();
-        //LOGIT( _T("BT ProjectActivated eb[%p][%s]Current[%p][%s]"),
+        //LOGIT( _T("ProjectActivated eb[%p][%s]Current[%p][%s]"),
         //    eb, GetEditorFilename(eb).c_str(),
         //    m_pCurrentEditor, GetEditorFilename(m_pCurrentEditor).c_str());
 
@@ -2231,7 +2011,7 @@ void BrowseTracker::OnProjectActivatedEvent(CodeBlocksEvent& event)
         CodeBlocksEvent evt;
         evt.SetEditor(eb);
         OnEditorActivated(evt);
-        //LOGIT( _T("BT OnProjectActivated Editor[%p][%s]"), eb, GetEditorFilename(eb).c_str()  );
+        //LOGIT( _T("OnProjectActivated Editor[%p][%s]"), eb, GetEditorFilename(eb).c_str()  );
     }
 
     // Compress the editor pointer array to allow all "forward" available slots
@@ -2242,8 +2022,7 @@ void BrowseTracker::OnProjectActivatedEvent(CodeBlocksEvent& event)
         tmpArray.Alloc(MaxEntries);
         // copy current editors & clear for compression
         for (int i = 0; i<MaxEntries; ++i)
-        {
-            tmpArray.Add(m_apEditors[i]);   //patch 2886
+        {   tmpArray[i] = m_apEditors[i];
             m_apEditors[i] = 0;
         }//for
         m_CurrEditorIndex = 0;
@@ -2262,28 +2041,9 @@ void BrowseTracker::OnProjectActivatedEvent(CodeBlocksEvent& event)
         m_LastEditorIndex = MaxEntries-1;
     }
 
-    // Previous project was closing
-    if (m_bProjectClosing) do
-    {
-        m_bProjectClosing = false;
-        // wxAUI activates the last displayed tab of a previous project
-        // We want to activate the previously *active* tab
-        if (m_nProjectClosingFileCount)
-            m_UpdateUIFocusEditor =  GetPreviousEditor();
-        else
-            m_UpdateUIFocusEditor =  GetCurrentEditor();
-        #if defined(LOGGING)
-        if (m_UpdateUIFocusEditor)
-        {   LOGIT( _T("BT OnProjectActivated m_nProjectClosingFileCount[%d]"), m_nProjectClosingFileCount);
-            LOGIT( _T("BT OnProjectActivated setting Next Ed[%s]"), m_UpdateUIFocusEditor->GetShortName().wx_str());
-        }
-        #endif
-        m_nProjectClosingFileCount = 0;
-    }while(0);
-
 }//OnProjectActivatedEvent
 // ----------------------------------------------------------------------------
-void BrowseTracker::OnProjectLoadingHook(cbProject* project, TiXmlElement* /*elem*/, bool loading)
+void BrowseTracker::OnProjectLoadingHook(cbProject* project, TiXmlElement* elem, bool loading)
 // ----------------------------------------------------------------------------
 {
     // This turned out to be a problem. It isn't always called for old type projects
@@ -2294,12 +2054,12 @@ void BrowseTracker::OnProjectLoadingHook(cbProject* project, TiXmlElement* /*ele
     // the loading editors as if the user activated them manually.
     // So we use this hook to tell the recorder NOT to record the loading editors.
 
-    // *Logic Gotcha* When a work space loads, OnProjectActivated() is called for
+    // *Logic Gothcha* When a work space loads, OnProjectActivated() is called for
     // the active project, then loading proceeds for other projects. This can cause
     // the m_bProjectIsLoading flag to be set forever.
 
     #if defined(LOGGING)
-    //-LOGIT( _T("BT OnProjectLoadingHook [%s]"), loading? wxT("Loading"):wxT("Saving") );
+    //-LOGIT( _T("OnProjectLoadingHook [%s]"), loading? wxT("Loading"):wxT("Saving") );
     #endif
 
     if (not IsBrowseMarksEnabled() )
@@ -2315,14 +2075,14 @@ void BrowseTracker::OnProjectLoadingHook(cbProject* project, TiXmlElement* /*ele
         m_LoadingProjectFilename = project->GetFilename();
 
         #if defined(LOGGING)
-        LOGIT( _T("BT ----------------------------------------------") );
-        LOGIT( _T("BT ProjectLoadingHook::LOADING[%p][%s]"), project, m_LoadingProjectFilename.c_str() );
+        LOGIT( _T("----------------------------------------------") );
+        LOGIT( _T("ProjectLoadingHook::LOADING[%p][%s]"), project, m_LoadingProjectFilename.c_str() );
         #endif
     }
     else //saving project
     {
             //#if defined(LOGGING)
-            //LOGIT( _T("BT ProjectLoadingHook::SAVING[]TiXmlElement[%p]"), elem  );
+            //LOGIT( _T("ProjectLoadingHook::SAVING[]TiXmlElement[%p]"), elem  );
             //#endif
     }
 }//OnProjectLoadingHook
@@ -2366,7 +2126,7 @@ void BrowseTracker::OnEditorEventHook(cbEditor* pcbEditor, wxScintillaEvent& eve
         if ((isAdd || isDel) && linesAdded != 0)
         {
             #if defined(LOGGING)
-            //LOGIT( _T("BT EditorEventHook isAdd[%d]isDel[%d]lines[%d]"), isAdd, isDel, linesAdded );
+            //LOGIT( _T("EditorEventHook isAdd[%d]isDel[%d]lines[%d]"), isAdd, isDel, linesAdded );
             #endif
             // rebuild BrowseMarks from scintilla marks
             RebuildBrowse_Marks( pcbEditor, isAdd );
@@ -2388,7 +2148,7 @@ void BrowseTracker::OnEditorEventHook(cbEditor* pcbEditor, wxScintillaEvent& eve
             m_OnEditorEventHookIgnoreMarkerChanges = true;
             int line = event.GetLine();
             #if defined(LOGGING)
-            //LOGIT( _T("BT wxSCI_MOD_CHANGEMARKER line[%d]"), line );
+            //LOGIT( _T("wxSCI_MOD_CHANGEMARKER line[%d]"), line );
             #endif
             CloneBookMarkFromEditor( line );
         }
@@ -2407,11 +2167,11 @@ void BrowseTracker::CloneBookMarkFromEditor( int line )
     {
         cbStyledTextCtrl* control = cbed->GetControl();
         if ( LineHasBookMarker(control, line) )
-            AddBook_Mark( eb, line );
+            AddBook_Mark( eb );
         else
-            ClearLineBrowseMark(line, false);
+            ClearLineBookMark();
         #if defined(LOGGING)
-        //LOGIT( _T("BT CloneBookMarkFromEditor[%d][%s]"), line,
+        //LOGIT( _T("CloneBookMarkFromEditor[%d][%s]"), line,
         //    LineHasBookMarker( control, line)?wxT("Added"):wxT("Cleared") );
         #endif
     }
@@ -2440,12 +2200,12 @@ void BrowseTracker::OnBook_MarksToggle(wxCommandEvent& event)
     // a Book mark has been toggled
     event.Skip();
     #if defined(LOGGING)
-    LOGIT( _T("BT OnBook_MarksToggle") );
+    LOGIT( _T("OnBook_MarksToggle") );
     #endif
     ToggleBook_Mark(GetCurrentEditor() );
 }
 // ----------------------------------------------------------------------------
-void BrowseTracker::AddBook_Mark(EditorBase* eb, int line /*=-1*/)
+void BrowseTracker::AddBook_Mark(EditorBase* eb, int line/*=-1*/)
 // ----------------------------------------------------------------------------
 {
     // Stow a Book mark by EditorBase current line
@@ -2454,6 +2214,19 @@ void BrowseTracker::AddBook_Mark(EditorBase* eb, int line /*=-1*/)
     cbEditor* cbed = Manager::Get()->GetEditorManager()->GetBuiltinEditor(eb);
     if (cbed)
     {
+        if (m_EdBook_MarksHash.find(eb) != m_EdBook_MarksHash.end() )
+        do {
+            cbStyledTextCtrl* control = cbed->GetControl();
+            BrowseMarks& EdBook_Marks = *m_EdBook_MarksHash[eb];
+            GetCurrentScreenPositions();
+            int pos = control->GetCurrentPos();
+            EdBook_Marks.RecordMark(pos);
+            #if defined(LOGGING)
+            LOGIT( _T("AddBook_Mark: pos[%d]line[%d]eb[%p][%s]"),
+                pos, m_CurrScrLine, eb, eb->GetShortName().c_str() );
+            ///EdBook_Marks.Dump();
+            #endif
+        }while(false);//if do
 
         // When using BookMarks as BrowseMarks toggle the BrowseMark also.
         if ( GetBrowseMarkerId() == BOOKMARK_MARKER )
@@ -2463,17 +2236,15 @@ void BrowseTracker::AddBook_Mark(EditorBase* eb, int line /*=-1*/)
             BrowseMarks& EdBrowse_Marks = *m_EbBrowse_MarksHash[eb];
             GetCurrentScreenPositions();
             int pos = control->GetCurrentPos();
-            if (line > -1)
-                pos = control->PositionFromLine(line);
             EdBrowse_Marks.RecordMark(pos);
             #if defined(LOGGING)
-            LOGIT( _T("BT AddBrowseMarkByEb: pos[%d]line[%d]eb[%p][%s]"),
-                pos, (line > -1)?line:m_CurrScrLine, eb, eb->GetShortName().wx_str() );
+            LOGIT( _T("AddBrowseMarkByEb: pos[%d]line[%d]eb[%p][%s]"),
+                pos, m_CurrScrLine, eb, eb->GetShortName().c_str() );
             #endif
         }while(false);//if do
 
     }//if
-}//AddBook_Mark
+}//ToggleBook_Mark
 // ----------------------------------------------------------------------------
 void BrowseTracker::ToggleBook_Mark(EditorBase* eb)
 // ----------------------------------------------------------------------------
@@ -2484,6 +2255,26 @@ void BrowseTracker::ToggleBook_Mark(EditorBase* eb)
     cbEditor* cbed = Manager::Get()->GetEditorManager()->GetBuiltinEditor(eb);
     if (cbed)
     {
+        if (m_EdBook_MarksHash.find(eb) != m_EdBook_MarksHash.end() )
+        do {
+            cbStyledTextCtrl* control = cbed->GetControl();
+            BrowseMarks& EdBook_Marks = *m_EdBook_MarksHash[eb];
+            GetCurrentScreenPositions();
+            // Toggle BookMark
+            if ( LineHasBookMarker(control, m_CurrScrLine) )
+            {
+                ClearLineBookMark(); //clear previous marks
+                break;
+            }
+            int pos = control->GetCurrentPos();
+            EdBook_Marks.RecordMark(pos);
+            #if defined(LOGGING)
+            LOGIT( _T("RecordBook_Mark: pos[%d]line[%d]eb[%p][%s]"),
+                pos, m_CurrScrLine, eb, eb->GetShortName().c_str() );
+            ///EdBook_Marks.Dump();
+            #endif
+        }while(false);//if do
+
         // When using BookMarks as BrowseMarks toggle the BrowseMark also.
         if ( GetBrowseMarkerId() == BOOKMARK_MARKER )
         if (m_EbBrowse_MarksHash.find(eb) != m_EbBrowse_MarksHash.end() )
@@ -2500,21 +2291,45 @@ void BrowseTracker::ToggleBook_Mark(EditorBase* eb)
             int pos = control->GetCurrentPos();
             EdBrowse_Marks.RecordMark(pos);
             #if defined(LOGGING)
-            LOGIT( _T("BT RecordBrowseMarkByEb: pos[%d]line[%d]eb[%p][%s]"),
-                pos, m_CurrScrLine, eb, eb->GetShortName().wx_str() );
+            LOGIT( _T("RecordBrowseMarkByEb: pos[%d]line[%d]eb[%p][%s]"),
+                pos, m_CurrScrLine, eb, eb->GetShortName().c_str() );
             #endif
         }while(false);//if do
 
     }//if
 }//ToggleBook_Mark
 // ----------------------------------------------------------------------------
-void BrowseTracker::RebuildBrowse_Marks(cbEditor* /*pcbEditor*/, bool addedLines)
+void BrowseTracker::ClearLineBookMark()
+// ----------------------------------------------------------------------------
+{
+    // clear BookMark entry for a single line out of our history array
+
+    ///LOGIT( _T("ClearBookMark") );
+
+    EditorBase* eb = Manager::Get()->GetEditorManager()->GetActiveEditor();
+    cbEditor* cbed = Manager::Get()->GetEditorManager()->GetBuiltinEditor(eb);
+    if (cbed)
+    {
+        if (m_EdBook_MarksHash.find(eb) != m_EdBook_MarksHash.end() )
+        {
+            BrowseMarks& EdBook_Marks = *m_EdBook_MarksHash[eb];
+            GetCurrentScreenPositions();
+            EdBook_Marks.ClearMark( m_CurrScrLineStartPosn, m_CurrScrLineEndPosn);
+            #if defined(LOGGING)
+            LOGIT( _T("ClearLineBookMark") );
+            #endif
+        }
+
+    }
+}//ClearLineBookMark
+// ----------------------------------------------------------------------------
+void BrowseTracker::RebuildBrowse_Marks(cbEditor* pcbEditor, bool addedLines)
 // ----------------------------------------------------------------------------
 {
     // Adjust BrowseMarks from scintilla moved markers
 
     #if defined(LOGGING)
-    ///LOGIT( _T("BT RebuildBrowse_Marks") );
+    ///LOGIT( _T("RebuildBrowse_Marks") );
     #endif
     EditorBase* eb = GetCurrentEditor();
     if (not eb) return;
@@ -2533,7 +2348,6 @@ ProjectData* BrowseTracker::GetProjectDataByEditorName( wxString filePath)
 // ----------------------------------------------------------------------------
 {
     wxString reason = wxT("");
-
     do {
         EditorBase* eb = m_pEdMgr->GetEditor( filePath );
         reason = wxT("eb");
@@ -2551,7 +2365,7 @@ ProjectData* BrowseTracker::GetProjectDataByEditorName( wxString filePath)
     }while(0);
 
     #if defined(LOGGING)
-     //LOGIT( _T("BT GetProjectDataByEditorName FAILED to find [%s] for [%s]"), reason.c_str(), filePath.c_str() );
+    //LOGIT( _T("GetProjectDataByEditorName FAILED to find [%s] for [%s]"), reason.c_str(), filePath.c_str() );
     #endif
 
     // At this point CB has failed to find the project by its editor filename
@@ -2563,25 +2377,9 @@ ProjectData* BrowseTracker::GetProjectDataByEditorName( wxString filePath)
             return pProjectData;
     }
 
-    // Since wxAuiNotebook added, an initial cbEVT_EDITOR_ACTIVATED has no cbEditor
-    // or project associated with it. So we'll try to use the current active project.
-    ProjectData* pProjectData = 0;
-    cbProject* pcbProject = Manager::Get()->GetProjectManager()->GetActiveProject();
-    if (pcbProject)
-    {
-        pProjectData = GetProjectDataFromHash( pcbProject );
-        if (pProjectData)
-        {
-            #if defined(LOGGING)
-            LOGIT( _T("BT GetProjectDataByEditorName FAILED, using Active Project for[%s]"),filePath.c_str());
-            #endif
-            return pProjectData;
-        }
-    }
     #if defined(LOGGING)
-     LOGIT( _T("BT GetProjectDataByEditorName FAILED to find [%s] for [%s]"), wxT("Hash entry"), filePath.c_str() );
+    //LOGIT( _T("GetProjectDataByEditorName FAILED to find [%s] for [%s]"), wxT("Hash entry"), filePath.c_str() );
     #endif
-
     return 0;
 }//GetProjectDataByEditorName
 // ----------------------------------------------------------------------------
@@ -2610,8 +2408,7 @@ BrowseMarks* BrowseTracker::GetBrowse_MarksFromHash( EditorBase* eb)
     // Return the BrowseMarks array associated with the Editor
     //EbBrowse_MarksHash m_EdBrowse_MarksArchive;
     EbBrowse_MarksHash::iterator it = m_EbBrowse_MarksHash.find(eb);
-    if ( it == m_EbBrowse_MarksHash.end() )
-        return 0;
+    if ( it == m_EbBrowse_MarksHash.end() ) return 0;
     return it->second;
 }
 // ----------------------------------------------------------------------------
@@ -2629,25 +2426,52 @@ BrowseMarks* BrowseTracker::GetBrowse_MarksFromHash( wxString filePath)
     return 0;
 }
 // ----------------------------------------------------------------------------
-#if defined(LOGGING)
+BrowseMarks* BrowseTracker::GetBook_MarksFromHash( EditorBase* eb)
+// ----------------------------------------------------------------------------
+{
+    // return the Book marks history array associated with this editor
+    EbBrowse_MarksHash::iterator it = m_EdBook_MarksHash.find(eb);
+    if ( it == m_EdBook_MarksHash.end() ) return 0;
+    return it->second;
+}
+// ----------------------------------------------------------------------------
+BrowseMarks* BrowseTracker::GetBook_MarksFromHash( wxString filePath)
+// ----------------------------------------------------------------------------
+{
+    // return the Book marks history array associated with this file path
+    #if defined(LOGGING)
+    ///LOGIT( _T("GetBook_MarksFromHash looking for[%s]"),filePath.c_str() );
+    #endif
+
+    for (EbBrowse_MarksHash::iterator it = m_EdBook_MarksHash.begin(); it != m_EdBook_MarksHash.end(); it++)
+    {
+        BrowseMarks* p = it->second;
+        #if defined(LOGGING)
+        ///LOGIT( _T("GetBook_MarksFromHash finding[%s]"),p->GetFilePath().c_str() );
+        #endif
+        if ( p->GetFilePath() == filePath ) {return p;}
+    }
+
+    return 0;
+}
+// ----------------------------------------------------------------------------
 void BrowseTracker::DumpHash( const wxString hashType)
-#else
-void BrowseTracker::DumpHash( const wxString /*hashType*/)
-#endif
 // ----------------------------------------------------------------------------
 {
 
     #if defined(LOGGING)
-    LOGIT( _T("BT --- DumpHash ---[%s]"), hashType.c_str()  );
+    LOGIT( _T("--- DumpHash ---[%s]"), hashType.c_str()  );
 
     EbBrowse_MarksHash* phash = &m_EbBrowse_MarksHash;
+    if ( hashType == wxT("BookMarks") )
+        phash = &m_EdBook_MarksHash;
     EbBrowse_MarksHash& hash = *phash;
 
     for (EbBrowse_MarksHash::iterator it = hash.begin(); it != hash.end(); it++)
     {
         EditorBase* eb = it->first;
         BrowseMarks* p = it->second;
-        LOGIT( _T("BT eb*[%p]%s*[%p]name[%s]"), eb, hashType.c_str(), p, p->GetFilePath().c_str() );
+        LOGIT( _T("eb*[%p]%s*[%p]name[%s]"), eb, hashType.c_str(), p, p->GetFilePath().c_str() );
     }
 
     #endif
@@ -2691,7 +2515,7 @@ wxString BrowseTracker::FindAppPath(const wxString& argv0, const wxString& cwd, 
     if (wxIsAbsolutePath(argv0Str))
     {
         #if defined(LOGGING)
-        LOGIT( _T("BT FindAppPath: AbsolutePath[%s]"), wxPathOnly(argv0Str).GetData() );
+        LOGIT( _T("FindAppPath: AbsolutePath[%s]"), wxPathOnly(argv0Str).GetData() );
         #endif
         return wxPathOnly(argv0Str);
     }
@@ -2706,7 +2530,7 @@ wxString BrowseTracker::FindAppPath(const wxString& argv0, const wxString& cwd, 
         if (wxFileExists(str))
         {
             #if defined(LOGGING)
-            LOGIT( _T("BT FindAppPath: RelativePath[%s]"), wxPathOnly(str).GetData() );
+            LOGIT( _T("FindAppPath: RelativePath[%s]"), wxPathOnly(str).GetData() );
             #endif
             return wxPathOnly(str);
         }
@@ -2721,7 +2545,7 @@ wxString BrowseTracker::FindAppPath(const wxString& argv0, const wxString& cwd, 
     if (!str.IsEmpty())
     {
         #if defined(LOGGING)
-        LOGIT( _T("BT FindAppPath: SearchPath[%s]"), wxPathOnly(str).GetData() );
+        LOGIT( _T("FindAppPath: SearchPath[%s]"), wxPathOnly(str).GetData() );
         #endif
         return wxPathOnly(str);
     }
@@ -2733,77 +2557,95 @@ wxString BrowseTracker::FindAppPath(const wxString& argv0, const wxString& cwd, 
     return wxEmptyString;
     //return cwd;
 }//FindAppPath
-// ----------------------------------------------------------------------------
-bool BrowseTracker::IsEditorBaseOpen(EditorBase* eb)
-// ----------------------------------------------------------------------------
-{
-    cbAuiNotebook* m_pNotebook = Manager::Get()->GetEditorManager()->GetNotebook();
-    for (size_t i = 0; i < m_pNotebook->GetPageCount(); ++i)
-    {
-        //wxWindow* winPage = m_pNotebook->GetPage(i);
-        //#if defined(LOGGING)
-        //if ( winPage )
-        //    LOGIT( _T("IsEditorBaseOpen[%s]"), ((EditorBase*)winPage)->GetShortName().c_str());
-        //#endif
-        if (m_pNotebook->GetPage(i) == eb)
-            return true;
-    }
-    return false;
-}
-// ----------------------------------------------------------------------------
-void BrowseTracker::ShowBrowseTrackerToolBar(const bool onOrOff)
-// ----------------------------------------------------------------------------
-{
-    // Make the BrowseTracker toolbar disappear/appear
-    wxMenuBar* mbar = Manager::Get()->GetAppFrame()->GetMenuBar();
-    int idViewToolMain = XRCID("idViewToolMain");
-    wxMenu* viewToolbars = 0;
-    mbar->FindItem(idViewToolMain, &viewToolbars);
-    if (viewToolbars)
-    {
-        wxMenuItemList menuList = viewToolbars->GetMenuItems();
-        for (size_t i = 0; i < viewToolbars->GetMenuItemCount(); ++i)
-        {
-            wxMenuItem* item = menuList[i];
-            wxString itemName = item->GetItemLabel(); //2018/02/6 wx30
-            if (itemName == _("BrowseTracker"))
-            {
-                item->Check(onOrOff);
-                int itemID = item->GetId();
-                wxCommandEvent evt(wxEVT_COMMAND_MENU_SELECTED, itemID);
-                evt.SetInt(onOrOff); //say the Debugger item is checked or unchecked
-                //?Manager::Get()->GetAppFrame()->AddPendingEvent(evt);
-                //In wx30, AddPendingEvent is deprecated for wxWindows
-                Manager::Get()->GetAppFrame()->GetEventHandler()->ProcessEvent(evt);
-                m_ShowToolbar = onOrOff;
-            }
-        }
-    }
-}//ShowBrowseTrackerToolBar
-// ----------------------------------------------------------------------------
-bool BrowseTracker::IsViewToolbarEnabled()
-// ----------------------------------------------------------------------------
-{
-    // Return status of menu View/Toolbars/BrowseTracker
-    wxMenuBar* mbar = Manager::Get()->GetAppFrame()->GetMenuBar();
-    int idViewToolMain = XRCID("idViewToolMain");
-    wxMenu* viewToolbars = 0;
-    mbar->FindItem(idViewToolMain, &viewToolbars);
-    if (viewToolbars)
-    {
-        wxMenuItemList menuList = viewToolbars->GetMenuItems();
-        for (size_t i = 0; i < viewToolbars->GetMenuItemCount(); ++i)
-        {
-            wxMenuItem* item = menuList[i];
-            wxString itemName = item->GetItemLabel(); //2018/02/6 wx30
-            if (itemName == _("BrowseTracker"))
-            {
-                m_ShowToolbar = item->IsChecked();
-                return m_ShowToolbar;
-            }
-        }
-    }
-    m_ShowToolbar = false;
-    return m_ShowToolbar;
 
-}//ShowBrowseTrackerToolBar
+//// ----------------------------------------------------------------------------
+//void BrowseTracker::OnMenuTrackBackward(wxCommandEvent& event)
+//// ----------------------------------------------------------------------------
+//{
+//    // *** Deprecated *** unused *** routine
+//    // Browse Tracker menu Backward
+//
+//    EditorManager* EdMgr = Manager::Get()->GetEditorManager();
+//    EditorBase* eb = 0;
+//    EditorBase* ebCurrent = EdMgr->GetActiveEditor();
+//
+//    int index = m_nCurrentEditorIndex-1;
+//    // scan for previous editor, skipping nulls (null is a closed editors)
+//    for (int i=0; i<MaxEntries; ++i)
+//    {
+//        if ( index < 0 ) index = MaxEntries-1;
+//        eb = m_apEditors[index];
+//        LOGIT( _T("Backward:m_nCurrentEditorIndex[%d]index[%d]eb[%p][%s]"),m_nCurrentEditorIndex, index, eb, GetEditorFilename(eb).c_str() );
+//        if ( eb )
+//        {
+//            if ( eb == ebCurrent ) { --index; continue;}
+//            if (-1 == EdMgr->FindPageFromEditor(eb) )
+//            {   // this entry has been closed behind our backs
+//                m_apEditors[index] = 0; { --index; continue;}
+//            }
+//            m_bProjectIsLoading = true;
+//            eb->Activate();
+//            m_bProjectIsLoading = false;
+//            m_nCurrentEditorIndex = index;
+//            m_pCurrentEditor = eb;
+//            break;
+//        }
+//        else --index;
+//    }//for
+//}
+//// ----------------------------------------------------------------------------
+//void BrowseTracker::OnMenuTrackforward(wxCommandEvent& event)
+//// ----------------------------------------------------------------------------
+//{
+//    // *** Deprecated *** unused *** routine
+//    // Browse Tracker menu forward
+//
+//    EditorBase* eb = 0;
+//    EditorManager* EdMgr = Manager::Get()->GetEditorManager();
+//    EditorBase* ebCurrent = EdMgr->GetActiveEditor();
+//
+//    int index = m_nCurrentEditorIndex+1;
+//    // scan for previous editor, skipping nulls (null is a closed editors)
+//    for (int i=0; i<MaxEntries; ++i)
+//    {
+//        if ( index >= MaxEntries ) index = 0;
+//        eb = m_apEditors[index];
+//         //LOGIT( _T("Forward:m_nCurrentEditorIndex[%d]index[%d]eb[%p]"),m_nCurrentEditorIndex, index, eb );
+//        if ( eb )
+//        {
+//            if ( eb == ebCurrent ) { ++index; continue;}
+//            if (-1 == EdMgr->FindPageFromEditor(eb) )
+//            {   // this entry has been closed behind our backs
+//                m_apEditors[index] = 0; {++index; continue;}
+//            }
+//
+//            m_bProjectIsLoading = true;
+//            eb->Activate();
+//            m_bProjectIsLoading = false;
+//            m_nCurrentEditorIndex = index;
+//            m_pCurrentEditor = eb;
+//            break;
+//        }
+//        else ++index;
+//    }//for
+//}
+////// ----------------------------------------------------------------------------
+////void BrowseTracker::OnPageChanged(wxFlatNotebookEvent& event)
+////// ----------------------------------------------------------------------------
+////{
+////    event.Skip(); // allow others to process it too
+////
+////    //-EditorBase* eb = static_cast<EditorBase*>(m_pNotebook->GetPage(event.GetSelection()));
+////    wxFlatNotebook* pNotebook = (wxFlatNotebook*)event.GetEventObject();
+////    int page = event.GetSelection();
+////    EditorBase* eb = static_cast<EditorBase*>(pNotebook->GetPage(page));
+////    LOGIT( _T("OnPageChanged eb[%p] title[%s]"), eb, eb ? eb->GetTitle().c_str() : _T(""));
+////
+////    // focus editor
+////    // The following still doesn't set focus to the new editor/page
+////    if (eb) eb->Show();
+////    if (eb) eb->SetFocus();
+////    // Try to focus the editor in UpdateUI;
+////    m_UpdateUIFocusEditor = true;
+////}
+// ----------------------------------------------------------------------------

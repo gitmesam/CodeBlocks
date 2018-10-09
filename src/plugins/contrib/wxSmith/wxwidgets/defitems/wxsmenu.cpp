@@ -25,21 +25,19 @@
 #include "wxsmenueditor.h"
 #include "../wxsitemresdata.h"
 #include <globals.h>
-#include <prep.h>
-#include "scrollingdialog.h"
 
 namespace
 {
-    wxsRegisterItem<wxsMenu> Reg(_T("Menu"),wxsTTool,_T("Tools"),70,false);
+    wxsRegisterItem<wxsMenu> Reg(_T("Menu"),wxsTTool,_T("Tools"),90,false);
 
-    class MenuEditorDialog: public wxScrollingDialog
+    class MenuEditorDialog: public wxDialog
     {
         public:
 
             wxsMenuEditor* Editor;
 
             MenuEditorDialog(wxsMenu* Menu):
-                wxScrollingDialog(0,-1,_("Menu editor"),wxDefaultPosition,wxDefaultSize,wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER)
+                wxDialog(0,-1,_("Menu editor"),wxDefaultPosition,wxDefaultSize,wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER)
             {
                 wxBoxSizer* Sizer = new wxBoxSizer(wxVERTICAL);
                 Sizer->Add(Editor = new wxsMenuEditor(this,Menu),1,wxEXPAND,0);
@@ -49,7 +47,7 @@ namespace
                 PlaceWindow(this,pdlCentre,true);
             }
 
-            void OnOK(cb_unused wxCommandEvent& event)
+            void OnOK(wxCommandEvent& event)
             {
                 Editor->ApplyChanges();
                 EndModal(wxID_OK);
@@ -58,7 +56,7 @@ namespace
             DECLARE_EVENT_TABLE()
     };
 
-    BEGIN_EVENT_TABLE(MenuEditorDialog,wxScrollingDialog)
+    BEGIN_EVENT_TABLE(MenuEditorDialog,wxDialog)
         EVT_BUTTON(wxID_OK,MenuEditorDialog::OnOK)
     END_EVENT_TABLE()
 }
@@ -217,27 +215,26 @@ void wxsMenu::OnBuildCreatingCode()
             }
             if ( GetParent() && GetParent()->GetClassName()==_T("wxMenuBar") )
             {
-                Codef(_T("%MAppend(%O, %t);\n"),m_Label.wx_str());
+                Codef(_T("%MAppend(%O, %t);\n"),m_Label.c_str());
             }
             BuildSetupWindowCode();
             break;
 
-        case wxsUnknownLanguage: // fall-through
         default:
             wxsCodeMarks::Unknown(_T("wxsMenu::OnBuildCreatingCode"),GetLanguage());
     }
 }
 
-void wxsMenu::OnEnumToolProperties(cb_unused long Flags)
+void wxsMenu::OnEnumToolProperties(long Flags)
 {
     if ( GetParent() )
     {
-        // If there's parent we got label for this menu
+        // If there's parent we got labl for this menu
         WXS_SHORT_STRING(wxsMenu,m_Label,_("Title"),_T("label"),_T(""),true);
     }
 }
 
-bool wxsMenu::OnMouseDClick(cb_unused wxWindow* Preview,cb_unused int PosX,cb_unused int PosY)
+bool wxsMenu::OnMouseDClick(wxWindow* Preview,int PosX,int PosY)
 {
     MenuEditorDialog Dlg(this);
     Dlg.ShowModal();

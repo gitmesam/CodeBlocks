@@ -21,9 +21,6 @@
     #include "manager.h"
 #endif
 
-#include <limits>
-#include <wx/display.h>
-
 BEGIN_EVENT_TABLE(InfoWindow, wxInfoWindowBase)
 EVT_TIMER(-1, InfoWindow::OnTimer)
 EVT_MOTION(InfoWindow::OnMove)
@@ -33,7 +30,6 @@ END_EVENT_TABLE()
 
 const wxColour titleBackground(96,96,96); // dark grey
 const wxColour textBackground(255,255,160); // yellowish
-const wxColour textForeground(0, 0, 0); // black for the text color
 
 
 const char *iBitmap[] = {
@@ -98,40 +94,14 @@ const char *iBitmap[] = {
 "ttttyyyyiuuuuyyyyttt"
 };
 
-namespace {
 
-class Stacker
-{
-    std::list<int> widths;
+Stacker InfoWindow::stacker;
 
-    public:
-
-    int StackMe(int mySize)
-    {
-        mySize += 3;
-        int pos = 0;
-
-        if(!widths.empty())
-            pos = *(std::max_element(widths.begin(), widths.end()));
-
-        widths.push_back(pos + mySize);
-        return pos + mySize;
-    };
-
-    void ReleaseMe(int myPos)
-    {
-        std::list<int>::iterator it = std::find(widths.begin(), widths.end(), myPos);
-        if(it != widths.end())
-            widths.erase(it);
-    };
-};
-
-static Stacker stacker;
-
-static std::list<wxString> active_messages;
-static unsigned lastDisplay = std::numeric_limits<unsigned>::max();
-static wxRect displayGeometry;
-}
+// in wxGTK this initialization raises an assertion (makes sense too)
+// so initialize them to -1 and we 'll set them up correctly in InfoWindow's ctor the first time
+int InfoWindow::screenWidth = -1;//wxSystemSettings::GetMetric(wxSYS_SCREEN_X);
+int InfoWindow::screenHeight = -1;//wxSystemSettings::GetMetric(wxSYS_SCREEN_Y);
+std::list<wxString> InfoWindow::active_messages;
 
 namespace
 {
@@ -167,9 +137,9 @@ InfoWindow::InfoWindow(const wxString& title, const wxString& message, unsigned 
 
         wxBoxSizer *bs = new wxBoxSizer(wxVERTICAL);
 
-        wxWindow* o = nullptr;
+        wxWindow* o = 0;
 
-        ForwardingTextControl *titleC = nullptr;
+        ForwardingTextControl *titleC = 0;
 
         if(platform::gtk)
         {
@@ -177,7 +147,7 @@ InfoWindow::InfoWindow(const wxString& title, const wxString& message, unsigned 
             wxPanel* pnl = new wxPanel(this, -1, wxDefaultPosition, wxDefaultSize, wxALIGN_CENTRE);
             pnl->SetBackgroundColour(titleBackground);
             titleC = new ForwardingTextControl(pnl, -1, title, wxDefaultPosition, wxDefaultSize, wxALIGN_CENTRE);
-            pbs->Add(titleC, 0, wxALL|wxALIGN_CENTER_HORIZONTAL, 5);
+            pbs->Add(titleC, 0, wxALL|wxALIGN_CENTER, 5);
             pnl->SetSizer(pbs);
             pbs->SetSizeHints(pnl);
             o = pnl;
@@ -190,13 +160,12 @@ InfoWindow::InfoWindow(const wxString& title, const wxString& message, unsigned 
         }
 
         titleC->SetForegroundColour(*wxWHITE);
-        titleC->SetFont(wxFont(11, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD));
-        bs->Add(o, 0, wxGROW, 5);
+        titleC->SetFont(wxFont(11, wxSWISS, wxNORMAL, wxBOLD));
+        bs->Add(o, 0, wxGROW|wxALIGN_CENTER_VERTICAL, 5);
 
         ForwardingTextControl *text = new ForwardingTextControl(this, -1, message, wxDefaultPosition, wxDefaultSize, 0);
         text->SetBackgroundColour(textBackground);
-        text->SetForegroundColour(textForeground);
-        bs->Add(text, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 12);
+        bs->Add(text, 0, wxALIGN_CENTER|wxALL, 12);
         SetBackgroundColour(textBackground);
         SetSizer(bs);
         bs->SetSizeHints(this);
@@ -213,25 +182,20 @@ InfoWindow::InfoWindow(const wxString& title, const wxString& message, unsigned 
         pos = stacker.StackMe(w);
 
         // setup variables first time we enter here
-        unsigned displayNo = wxDisplay::GetFromWindow(Manager::Get()->GetAppWindow());
-        if (displayNo != lastDisplay)
-        {
-            wxDisplay display(displayNo);
-            wxRect area = display.GetClientArea();
-            displayGeometry = display.GetGeometry();
-            displayGeometry = displayGeometry.Intersect(area);
-            lastDisplay = displayNo;
-        }
+        if (screenWidth == -1)
+            screenWidth = wxSystemSettings::GetMetric(wxSYS_SCREEN_X);
+        if (screenHeight == -1)
+            screenHeight = wxSystemSettings::GetMetric(wxSYS_SCREEN_Y);
 
-        left = displayGeometry.x + displayGeometry.width - pos;
-        hMin = displayGeometry.GetBottom() - h;
-        top = displayGeometry.GetBottom();
+        left = screenWidth - pos;
+        hMin = screenHeight - h;
+        top = screenHeight;
 
         Move(left, top);
 
         Show();
         m_timer->Start(hysteresis, false);
-    }
+    };
 
 
 InfoWindow::~InfoWindow()
@@ -240,9 +204,9 @@ InfoWindow::~InfoWindow()
     stacker.ReleaseMe(pos);
 
     active_messages.erase(my_message_iterator);
-}
+};
 
-void InfoWindow::OnTimer(cb_unused wxTimerEvent& e)
+void InfoWindow::OnTimer(wxTimerEvent& e)
 {
     switch(status)
     {
@@ -266,24 +230,22 @@ void InfoWindow::OnTimer(cb_unused wxTimerEvent& e)
     case 3:
         top += ks;
         Move(left, top);
-        if(top > displayGeometry.GetBottom())
+        if(top > screenHeight)
         {
             Hide();
             Destroy();
         }
         break;
-    default:
-        break;
     };
-}
+};
 
-void InfoWindow::OnMove(cb_unused wxMouseEvent& e)
+void InfoWindow::OnMove(wxMouseEvent& e)
 {
     if(status == 2)
         m_timer->Start(m_delay, true);
 }
 
-void InfoWindow::OnClick(cb_unused wxMouseEvent& e)
+void InfoWindow::OnClick(wxMouseEvent& e)
 {
     ks = 6;
     status = 3;

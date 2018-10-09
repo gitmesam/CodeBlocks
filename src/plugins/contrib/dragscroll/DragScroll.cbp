@@ -7,17 +7,15 @@
 		<Option compiler="gcc" />
 		<Build>
 			<Target title="default">
-				<Option output="../../../devel/share/CodeBlocks/plugins/DragScroll.dll" prefix_auto="0" extension_auto="0" />
-				<Option object_output="../../../.objs/plugins/contrib/dragscroll" />
+				<Option output="..\..\..\devel\share\CodeBlocks\plugins\DragScroll.dll" prefix_auto="0" extension_auto="0" />
+				<Option object_output="..\..\..\.objs\plugins\contrib\cbDragScroll" />
 				<Option type="3" />
 				<Option compiler="gcc" />
-				<Option parameters="--debug-log --multiple-instance -na -ns -nd -p debug" />
-				<Option host_application="../../../devel/codeblocks.exe" />
-				<Option run_host_application_in_terminal="0" />
+				<Option host_application="..\..\..\devel\codeblocks.exe" />
 			</Target>
 			<Environment>
-				<Variable name="WX_CFG" value="" />
 				<Variable name="WX_SUFFIX" value="u" />
+				<Variable name="WX_CFG" value="" />
 			</Environment>
 		</Build>
 		<VirtualTargets>
@@ -25,13 +23,13 @@
 		</VirtualTargets>
 		<Compiler>
 			<Add option="-Wall" />
-			<Add option="$(#CB_RELEASE_TYPE)" />
+			<Add option="-g" />
 			<Add option="-Winvalid-pch" />
 			<Add option="-pipe" />
 			<Add option="-mthreads" />
 			<Add option="-fmessage-length=0" />
 			<Add option="-fexceptions" />
-			<Add option="-Wno-unused-local-typedefs" />
+			<Add option='-include &quot;sdk.h&quot;' />
 			<Add option="-DBUILDING_PLUGIN" />
 			<Add option="-DCB_PRECOMP" />
 			<Add option="-DWX_PRECOMP" />
@@ -40,20 +38,19 @@
 			<Add option="-DWXUSINGDLL" />
 			<Add option="-DcbDEBUG" />
 			<Add option="-DwxUSE_UNICODE" />
-			<Add option="-std=gnu++11" />
 			<Add directory="$(#WX.include)" />
-			<Add directory="$(#WX.lib)/gcc_dll$(WX_CFG)/msw$(WX_SUFFIX)" />
-			<Add directory="../../../include" />
-			<Add directory="../../../include/tinyxml" />
-			<Add directory="../../../src" />
-			<Add directory="../../../sdk/wxscintilla/include" />
+			<Add directory="$(#WX.lib)\gcc_dll$(WX_CFG)\msw$(WX_SUFFIX)" />
+			<Add directory="$(#WX)\contrib\include" />
+			<Add directory="$(#CB.include)" />
+			<Add directory="$(#CB.include)\wxscintilla\include" />
 		</Compiler>
 		<Linker>
-			<Add option="-mthreads" />
 			<Add library="wxmsw28$(WX_SUFFIX)" />
 			<Add library="codeblocks" />
-			<Add directory="../../../devel" />
-			<Add directory="$(#WX.lib)/gcc_dll$(WX_CFG)" />
+			<Add library="wxscintilla" />
+			<Add directory="$(#CB)\devel" />
+			<Add directory="$(#CB.lib)" />
+			<Add directory="$(#WX.lib)\gcc_dll$(WX_CFG)" />
 		</Linker>
 		<ExtraCommands>
 			<Add after="zip -j9 ..\..\..\devel\share\CodeBlocks\DragScroll.zip manifest.xml" />
@@ -63,8 +60,6 @@
 		<Unit filename="dragscroll.h" />
 		<Unit filename="dragscrollcfg.cpp" />
 		<Unit filename="dragscrollcfg.h" />
-		<Unit filename="dragscrollevent.cpp" />
-		<Unit filename="dragscrollevent.h" />
 		<Unit filename="manifest.xml" />
 		<Extensions>
 			<code_completion />

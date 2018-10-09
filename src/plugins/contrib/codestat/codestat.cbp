@@ -7,18 +7,16 @@
 		<Option compiler="gcc" />
 		<Build>
 			<Target title="default">
-				<Option output="../../../devel/share/CodeBlocks/plugins/codestat.dll" prefix_auto="0" extension_auto="0" />
-				<Option object_output="../../../.objs/plugins/contrib/codestat" />
+				<Option output="..\..\..\devel\share\CodeBlocks\plugins\codestat.dll" prefix_auto="0" extension_auto="0" />
+				<Option object_output="..\..\..\.objs\plugins\contrib\codestat" />
 				<Option type="3" />
 				<Option compiler="gcc" />
-				<Option parameters="--debug-log --multiple-instance -na -ns -nd -p debug" />
-				<Option host_application="../../../devel/codeblocks.exe" />
-				<Option run_host_application_in_terminal="0" />
+				<Option host_application="..\..\..\devel\codeblocks.exe" />
 				<Option projectCompilerOptionsRelation="0" />
 			</Target>
 			<Environment>
-				<Variable name="WX_CFG" value="" />
 				<Variable name="WX_SUFFIX" value="u" />
+				<Variable name="WX_CFG" value="" />
 			</Environment>
 		</Build>
 		<VirtualTargets>
@@ -26,10 +24,11 @@
 		</VirtualTargets>
 		<Compiler>
 			<Add option="-Wall" />
-			<Add option="$(#CB_RELEASE_TYPE)" />
+			<Add option="-g" />
 			<Add option="-Winvalid-pch" />
 			<Add option="-mthreads" />
 			<Add option="-fexceptions" />
+			<Add option='-include &quot;sdk.h&quot;' />
 			<Add option="-DBUILDING_PLUGIN" />
 			<Add option="-DCB_PRECOMP" />
 			<Add option="-DWX_PRECOMP" />
@@ -38,23 +37,21 @@
 			<Add option="-DWXUSINGDLL" />
 			<Add option="-DcbDEBUG" />
 			<Add option="-DwxUSE_UNICODE" />
-			<Add option="-std=gnu++11" />
-			<Add directory="../../../include" />
-			<Add directory="../../../include/tinyxml" />
-			<Add directory="../../../sdk/wxscintilla/include" />
+			<Add directory="$(#CB.INCLUDE)" />
+			<Add directory="$(#CB.INCLUDE)\wxscintilla\include" />
 			<Add directory="$(#WX.INCLUDE)" />
-			<Add directory="$(#WX.lib)/gcc_dll$(WX_CFG)/msw$(WX_SUFFIX)" />
+			<Add directory="$(#WX)\contrib\include" />
+			<Add directory="$(#WX.lib)\gcc_dll$(WX_CFG)\msw$(WX_SUFFIX)" />
 		</Compiler>
 		<ResourceCompiler>
 			<Add directory="$(#WX.include)" />
 		</ResourceCompiler>
 		<Linker>
-			<Add option="-Wl,--enable-auto-import" />
-			<Add option="-mthreads" />
 			<Add library="wxmsw28$(WX_SUFFIX)" />
 			<Add library="codeblocks" />
-			<Add directory="../../../devel" />
-			<Add directory="$(#WX.lib)/gcc_dll$(WX_CFG)" />
+			<Add directory="$(#CB)\devel" />
+			<Add directory="$(#CB.LIB)" />
+			<Add directory="$(#WX.lib)\gcc_dll$(WX_CFG)" />
 		</Linker>
 		<ExtraCommands>
 			<Add after="zip -j9 ..\..\..\devel\share\codeblocks\codestat.zip resources\manifest.xml resources\*.xrc" />
@@ -67,9 +64,9 @@
 		<Unit filename="codestatexec.cpp" />
 		<Unit filename="codestatexec.h" />
 		<Unit filename="language_def.h" />
-		<Unit filename="resources/config_dialog.xrc" />
-		<Unit filename="resources/main_dialog.xrc" />
-		<Unit filename="resources/manifest.xml" />
+		<Unit filename="resources\config_dialog.xrc" />
+		<Unit filename="resources\main_dialog.xrc" />
+		<Unit filename="resources\manifest.xml" />
 		<Extensions>
 			<code_completion />
 			<envvars />

@@ -23,16 +23,15 @@
 #include "wxsenumproperty.h"
 
 #include <globals.h>
-#include <prep.h>
 
 // Helper macro for fetching variable
 #define VALUE   wxsVARIABLE(Object,Offset,long)
 
-wxsEnumProperty::wxsEnumProperty(const wxString& PGName, const wxString& DataName,long _Offset,const long* _Values,const wxChar** _Names,bool _UpdateEntries,long _Default,bool _UseNamesInXml,int Priority):
+wxsEnumProperty::wxsEnumProperty(const wxString& PGName, const wxString& DataName,long _Offset,const long* _Values,const wxChar** _Names,bool _UpdateEnteries,long _Default,bool _UseNamesInXml,int Priority):
     wxsProperty(PGName,DataName,Priority),
     Offset(_Offset),
     Default(_Default),
-    UpdateEntries(_UpdateEntries),
+    UpdateEnteries(_UpdateEnteries),
     Values(_Values),
     Names(_Names),
     UseNamesInXml(_UseNamesInXml)
@@ -42,34 +41,26 @@ wxsEnumProperty::wxsEnumProperty(const wxString& PGName, const wxString& DataNam
 void wxsEnumProperty::PGCreate(wxsPropertyContainer* Object,wxPropertyGridManager* Grid,wxPGId Parent)
 {
     wxPGChoices PGC(Names,Values);
-    PGRegister(Object,Grid,Grid->AppendIn(Parent,NEW_IN_WXPG14X wxEnumProperty(GetPGName(),wxPG_LABEL,PGC,VALUE)));
+    PGRegister(Object,Grid,Grid->AppendIn(Parent,wxEnumProperty(GetPGName(),wxPG_LABEL,PGC,VALUE)));
 }
 
-bool wxsEnumProperty::PGRead(cb_unused wxsPropertyContainer* Object,
-                             wxPropertyGridManager* Grid,wxPGId Id,
-                             cb_unused long Index)
+bool wxsEnumProperty::PGRead(wxsPropertyContainer* Object,wxPropertyGridManager* Grid,wxPGId Id,long Index)
 {
     VALUE = Grid->GetPropertyValue(Id).GetLong();
     return true;
 }
 
-bool wxsEnumProperty::PGWrite(wxsPropertyContainer* Object, wxPropertyGridManager* Grid,
-                              wxPGId Id, cb_unused long Index)
+bool wxsEnumProperty::PGWrite(wxsPropertyContainer* Object,wxPropertyGridManager* Grid,wxPGId Id,long Index)
 {
-    if ( UpdateEntries )
+    if ( UpdateEnteries )
     {
-        #if wxCHECK_VERSION(3, 0, 0)
-        wxPGChoices(Id->GetChoices()).Set(Names,Values);
-        #else
         Grid->GetPropertyChoices(Id).Set(Names,Values);
-        #endif
     }
     Grid->SetPropertyValue(Id,VALUE);
     return true;
 }
 
-bool wxsEnumProperty::XmlRead(cb_unused wxsPropertyContainer* Object,
-                              TiXmlElement* Element)
+bool wxsEnumProperty::XmlRead(wxsPropertyContainer* Object,TiXmlElement* Element)
 {
     if ( !Element )
     {
@@ -105,8 +96,7 @@ bool wxsEnumProperty::XmlRead(cb_unused wxsPropertyContainer* Object,
     return true;
 }
 
-bool wxsEnumProperty::XmlWrite(cb_unused wxsPropertyContainer* Object,
-                               TiXmlElement* Element)
+bool wxsEnumProperty::XmlWrite(wxsPropertyContainer* Object,TiXmlElement* Element)
 {
     if ( VALUE != Default )
     {
@@ -126,20 +116,18 @@ bool wxsEnumProperty::XmlWrite(cb_unused wxsPropertyContainer* Object,
             // Did not found value, storing as integer
         }
 
-        Element->InsertEndChild(TiXmlText(cbU2C(wxString::Format(_T("%ld"),VALUE))));
+        Element->InsertEndChild(TiXmlText(cbU2C(wxString::Format(_T("%d"),VALUE))));
         return true;
     }
     return false;
 }
 
-bool wxsEnumProperty::PropStreamRead(cb_unused wxsPropertyContainer* Object,
-                                     wxsPropertyStream* Stream)
+bool wxsEnumProperty::PropStreamRead(wxsPropertyContainer* Object,wxsPropertyStream* Stream)
 {
     return Stream->GetLong(GetDataName(),VALUE,Default);
 }
 
-bool wxsEnumProperty::PropStreamWrite(cb_unused wxsPropertyContainer* Object,
-                                      wxsPropertyStream* Stream)
+bool wxsEnumProperty::PropStreamWrite(wxsPropertyContainer* Object,wxsPropertyStream* Stream)
 {
     return Stream->PutLong(GetDataName(),VALUE,Default);
 }

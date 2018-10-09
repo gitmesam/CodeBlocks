@@ -19,16 +19,14 @@
     #include "editormanager.h"
     #include "pluginmanager.h"
     #include "cbproject.h" // FileTreeData
-    #include "projectmanager.h" // ProjectsArray
     #include <wx/wfstream.h>
 #endif
-
-#include "cbauibook.h"
-
 #include "cbstyledtextctrl.h"
 
+#include "wx/wxFlatNotebook/wxFlatNotebook.h"
+
 // needed for initialization of variables
-inline int editorbase_RegisterId(int id)
+int editorbase_RegisterId(int id)
 {
     wxRegisterId(id);
     return id;
@@ -36,15 +34,15 @@ inline int editorbase_RegisterId(int id)
 
 struct EditorBaseInternalData
 {
-    EditorBaseInternalData(EditorBase* owner)
-        : m_pOwner(owner),
-        m_DisplayingPopupMenu(false),
-        m_CloseMe(false)
-    {}
+	EditorBaseInternalData(EditorBase* owner)
+		: m_pOwner(owner),
+		m_DisplayingPopupMenu(false),
+		m_CloseMe(false)
+	{}
 
-    EditorBase* m_pOwner;
-    bool m_DisplayingPopupMenu;
-    bool m_CloseMe;
+	EditorBase* m_pOwner;
+	bool m_DisplayingPopupMenu;
+	bool m_CloseMe;
 };
 
 // The following lines reserve 255 consecutive id's
@@ -58,39 +56,33 @@ const int idCloseAllOthers = wxNewId();
 const int idSaveMe = wxNewId();
 const int idSaveAll = wxNewId();
 const int idSwitchTo = wxNewId();
-
-// Search for... in the context menu, visible with CTRL + right click
-const long idGoogle        = wxNewId();
-const long idMsdn          = wxNewId();
-const long idStackOverflow = wxNewId();
-const long idCodeProject   = wxNewId();
-const long idCPlusPlusCom  = wxNewId();
+const int idGoogle = wxNewId();
+const int idGoogleCode = wxNewId();
+const int idMsdn = wxNewId();
 
 BEGIN_EVENT_TABLE(EditorBase, wxPanel)
-    EVT_MENU_RANGE(idSwitchFile1, idSwitchFileMax, EditorBase::OnContextMenuEntry)
-    EVT_MENU(idCloseMe,           EditorBase::OnContextMenuEntry)
-    EVT_MENU(idCloseAll,          EditorBase::OnContextMenuEntry)
-    EVT_MENU(idCloseAllOthers,    EditorBase::OnContextMenuEntry)
-    EVT_MENU(idSaveMe,            EditorBase::OnContextMenuEntry)
-    EVT_MENU(idSaveAll,           EditorBase::OnContextMenuEntry)
-
-    EVT_MENU(idGoogle,            EditorBase::OnContextMenuEntry)
-    EVT_MENU(idMsdn,              EditorBase::OnContextMenuEntry)
-    EVT_MENU(idStackOverflow,     EditorBase::OnContextMenuEntry)
-    EVT_MENU(idCodeProject,       EditorBase::OnContextMenuEntry)
-    EVT_MENU(idCPlusPlusCom,      EditorBase::OnContextMenuEntry)
+    EVT_MENU_RANGE(idSwitchFile1, idSwitchFileMax,EditorBase::OnContextMenuEntry)
+    EVT_MENU(idCloseMe, EditorBase::OnContextMenuEntry)
+    EVT_MENU(idCloseAll, EditorBase::OnContextMenuEntry)
+    EVT_MENU(idCloseAllOthers, EditorBase::OnContextMenuEntry)
+    EVT_MENU(idSaveMe, EditorBase::OnContextMenuEntry)
+    EVT_MENU(idSaveAll, EditorBase::OnContextMenuEntry)
+    EVT_MENU(idGoogle, EditorBase::OnContextMenuEntry)
+    EVT_MENU(idGoogleCode, EditorBase::OnContextMenuEntry)
+    EVT_MENU(idMsdn, EditorBase::OnContextMenuEntry)
 END_EVENT_TABLE()
 
 void EditorBase::InitFilename(const wxString& filename)
 {
     if (filename.IsEmpty())
-        m_Filename = realpath(CreateUniqueFilename());
+        m_Filename = CreateUniqueFilename();
     else
-        m_Filename = realpath(filename);
+        m_Filename = filename;
 
     wxFileName fname;
     fname.Assign(m_Filename);
     m_Shortname = fname.GetFullName();
+    //    Manager::Get()->GetLogManager()->DebugLog("ctor: Filename=%s\nShort=%s", m_Filename.c_str(), m_Shortname.c_str());
 }
 
 wxString EditorBase::CreateUniqueFilename()
@@ -119,7 +111,7 @@ EditorBase::EditorBase(wxWindow* parent, const wxString& filename)
         m_Filename(_T("")),
         m_WinTitle(filename)
 {
-    m_pData = new EditorBaseInternalData(this);
+	m_pData = new EditorBaseInternalData(this);
 
     Manager::Get()->GetEditorManager()->AddCustomEditor(this);
     InitFilename(filename);
@@ -128,16 +120,18 @@ EditorBase::EditorBase(wxWindow* parent, const wxString& filename)
 
 EditorBase::~EditorBase()
 {
-    if (!Manager::Get()->IsAppShuttingDown())
-    {
+    if (Manager::Get()->GetEditorManager()) // sanity check
         Manager::Get()->GetEditorManager()->RemoveCustomEditor(this);
 
+    if (Manager::Get()->GetPluginManager())
+    {
         CodeBlocksEvent event(cbEVT_EDITOR_CLOSE);
         event.SetEditor(this);
         event.SetString(m_Filename);
 
         Manager::Get()->GetPluginManager()->NotifyPlugins(event);
     }
+
     delete m_pData;
 }
 
@@ -152,52 +146,11 @@ void EditorBase::SetTitle(const wxString& newTitle)
     int mypage = Manager::Get()->GetEditorManager()->FindPageFromEditor(this);
     if (mypage != -1)
         Manager::Get()->GetEditorManager()->GetNotebook()->SetPageText(mypage, newTitle);
-
-    // set full filename (including path) as tooltip,
-    // if possible add the appropriate project also
-    wxString toolTip = GetFilename();
-    wxFileName fname(realpath(toolTip));
-    NormalizePath(fname, wxEmptyString);
-    toolTip = UnixFilename(fname.GetFullPath());
-
-    cbProject* prj = Manager::Get()->GetProjectManager()->FindProjectForFile(toolTip, nullptr, false, true);
-    if (prj)
-        toolTip += _("\nProject: ") + prj->GetTitle();
-    cbAuiNotebook* nb = Manager::Get()->GetEditorManager()->GetNotebook();
-    if (nb)
-    {
-        int idx = nb->GetPageIndex(this);
-        nb->SetPageToolTip(idx, toolTip);
-        Manager::Get()->GetEditorManager()->MarkReadOnly(idx, IsReadOnly() || (fname.FileExists() && !wxFile::Access(fname.GetFullPath(), wxFile::write)) );
-    }
 }
 
 void EditorBase::Activate()
 {
     Manager::Get()->GetEditorManager()->SetActiveEditor(this);
-}
-
-bool EditorBase::QueryClose()
-{
-    if ( GetModified() )
-    {
-        wxString msg;
-        msg.Printf(_("File %s is modified...\nDo you want to save the changes?"), GetFilename().c_str());
-        switch (cbMessageBox(msg, _("Save file"), wxICON_QUESTION | wxYES_NO | wxCANCEL))
-        {
-            case wxID_YES:
-                if (!Save())
-                    return false;
-                break;
-            case wxID_NO:
-                break;
-            case wxID_CANCEL:
-            default:
-                return false;
-        }
-        SetModified(false);
-    }
-    return true;
 }
 
 bool EditorBase::Close()
@@ -213,14 +166,24 @@ bool EditorBase::IsBuiltinEditor() const
 
 bool EditorBase::ThereAreOthers() const
 {
-    return (Manager::Get()->GetEditorManager()->GetEditorsCount() > 1);
+    bool hasOthers = false;
+    hasOthers = Manager::Get()->GetEditorManager()->GetEditorsCount() > 1;
+    //    for(int i = 0; i < Manager::Get()->GetEditorManager()->GetEditorsCount(); ++i)
+    //    {
+    //        EditorBase* other = Manager::Get()->GetEditorManager()->GetEditor(i);
+    //        if (!other || other == (EditorBase*)this)
+    //            continue;
+    //        hasOthers = true;
+    //        break;
+    //    }
+    return hasOthers;
 }
 
-wxMenu* EditorBase::CreateContextSubMenu(long id) // For context menus
+wxMenu* EditorBase::CreateContextSubMenu(int id) // For context menus
 {
-    wxMenu* menu = nullptr;
+    wxMenu* menu = 0;
 
-    if (id == idSwitchTo)
+    if(id == idSwitchTo)
     {
         menu = new wxMenu;
         m_SwitchTo.clear();
@@ -229,22 +192,23 @@ wxMenu* EditorBase::CreateContextSubMenu(long id) // For context menus
             EditorBase* other = Manager::Get()->GetEditorManager()->GetEditor(i);
             if (!other || other == this)
                 continue;
-            id = idSwitchFile1+i;
+            int id = idSwitchFile1+i;
             m_SwitchTo[id] = other;
-            menu->Append(id, (other->GetModified() ? wxT("*") : wxEmptyString) + other->GetShortName());
+            menu->Append(id, other->GetShortName());
         }
-        if (!menu->GetMenuItemCount())
+        if(!menu->GetMenuItemCount())
         {
             delete menu;
-            menu = nullptr;
+            menu = 0;
         }
     }
     return menu;
 }
 
-void EditorBase::BasicAddToContextMenu(wxMenu* popup, ModuleType type)
+void EditorBase::BasicAddToContextMenu(wxMenu* popup,ModuleType type)   //pecan 2006/03/22
 {
-    if (type == mtOpenFilesList)
+    bool noeditor = (type != mtEditorManager);                          //pecan 2006/03/22
+    if (type == mtOpenFilesList)                                        //pecan 2006/03/22
     {
       popup->Append(idCloseMe, _("Close"));
       popup->Append(idCloseAll, _("Close all"));
@@ -260,31 +224,28 @@ void EditorBase::BasicAddToContextMenu(wxMenu* popup, ModuleType type)
       popup->Enable(idCloseAll, hasOthers);
       popup->Enable(idCloseAllOthers, hasOthers);
     }
-    if (type != mtEditorManager) // no editor
+    if(!noeditor)
     {
         wxMenu* switchto = CreateContextSubMenu(idSwitchTo);
-        if (switchto)
+        if(switchto)
             popup->Append(idSwitchTo, _("Switch to"), switchto);
     }
 }
 
-void EditorBase::DisplayContextMenu(const wxPoint& position, ModuleType type)
+void EditorBase::DisplayContextMenu(const wxPoint& position, ModuleType type)   //pecan 2006/03/22
 {
-    bool noeditor = (type != mtEditorManager);
+    bool noeditor = (type != mtEditorManager);                                  //pecan 2006/03/22
     // noeditor:
     // True if context menu belongs to open files tree;
     // False if belongs to cbEditor
 
     // inform the editors we 're just about to create a context menu
-    if (!OnBeforeBuildContextMenu(position, type))
+    if (!OnBeforeBuildContextMenu(position, type))              //pecan 2006/03/22
         return;
 
     wxMenu* popup = new wxMenu;
 
-    PluginManager *pluginManager = Manager::Get()->GetPluginManager();
-    pluginManager->ResetModuleMenu();
-
-    if (!noeditor && wxGetKeyState(WXK_CONTROL))
+    if(!noeditor && wxGetKeyState(WXK_CONTROL))
     {
         cbStyledTextCtrl* control = Manager::Get()->GetEditorManager()->GetBuiltinActiveEditor()->GetControl();
         wxString text = control->GetSelectedText();
@@ -294,62 +255,44 @@ void EditorBase::DisplayContextMenu(const wxPoint& position, ModuleType type)
             text = control->GetTextRange(control->WordStartPosition(pos, true), control->WordEndPosition(pos, true));
         }
 
-        if (!text.IsEmpty())
+        if(wxMinimumVersion<2,6,1>::eval)
         {
-            popup->Append(idGoogle,        _("Search the Internet for \"")  + text + _T("\""));
-            popup->Append(idMsdn,          _("Search MSDN for \"")          + text + _T("\""));
-            popup->Append(idStackOverflow, _("Search StackOverflow for \"") + text + _T("\""));
-            popup->Append(idCodeProject,   _("Search CodeProject for \"")   + text + _T("\""));
-            popup->Append(idCPlusPlusCom,  _("Search CplusPlus.com for \"") + text + _T("\""));
+            popup->Append(idGoogle, _("Search the Internet for \"") + text + _("\""));
+            popup->Append(idMsdn, _("Search MSDN for \"") + text + _("\""));
+            popup->Append(idGoogleCode, _("Search Google Code for \"") + text + _("\""));
         }
         lastWord = text;
 
         wxMenu* switchto = CreateContextSubMenu(idSwitchTo);
-        if (switchto)
+        if(switchto)
         {
-            if (popup->GetMenuItemCount() > 0)
-                popup->AppendSeparator();
+            popup->AppendSeparator();
             popup->Append(idSwitchTo, _("Switch to"), switchto);
         }
     }
-    else if (!noeditor && wxGetKeyState(WXK_ALT))
+    else if(!noeditor && wxGetKeyState(WXK_ALT))
     { // run a script
     }
     else
     {
         // Basic functions
-        BasicAddToContextMenu(popup, type);
+        BasicAddToContextMenu(popup, type);         //pecan 2006/03/22
 
         // Extended functions, part 1 (virtual)
-        AddToContextMenu(popup, type, false);
+        AddToContextMenu(popup, type, false);       //pecan 2006/03/22
 
         // ask other editors / plugins if they need to add any entries in this menu...
-        FileTreeData* ftd = new FileTreeData(nullptr, FileTreeData::ftdkUndefined);
+        FileTreeData* ftd = new FileTreeData(0, FileTreeData::ftdkUndefined);
         ftd->SetFolder(m_Filename);
-        pluginManager->AskPluginsForModuleMenu(type, popup, ftd);
+        Manager::Get()->GetPluginManager()->AskPluginsForModuleMenu(type, popup, ftd);              //pecan 2006/03/22
         delete ftd;
 
         popup->AppendSeparator();
         // Extended functions, part 2 (virtual)
-        AddToContextMenu(popup, type, true);
+        AddToContextMenu(popup, type, true);            //pecan 2006/03/22
     }
-
-    // Check if the last item is a separator and remove it.
-    const wxMenuItemList &popupItems = popup->GetMenuItems();
-    if (popupItems.GetCount() > 0)
-    {
-        wxMenuItem *last = popupItems[popupItems.GetCount() - 1];
-        if (last && last->IsSeparator())
-            popup->Remove(last);
-    }
-
-    // Insert a separator at the end of the "Find XXX" menu group of items.
-    const int lastFind = pluginManager->GetFindMenuItemFirst() + pluginManager->GetFindMenuItemCount();
-    if (lastFind > 0)
-        popup->Insert(lastFind, wxID_SEPARATOR, wxEmptyString);
-
     // inform the editors we 're done creating a context menu (just about to show it)
-    OnAfterBuildContextMenu(type);
+    OnAfterBuildContextMenu(type);              //pecan 2006/03/22
 
     // display menu
     wxPoint clientpos;
@@ -365,7 +308,7 @@ void EditorBase::DisplayContextMenu(const wxPoint& position, ModuleType type)
         clientpos = ScreenToClient(position);
     }
 
-    m_pData->m_DisplayingPopupMenu = true;
+	m_pData->m_DisplayingPopupMenu = true;
     PopupMenu(popup, clientpos);
     delete popup;
     m_pData->m_DisplayingPopupMenu = false;
@@ -373,7 +316,7 @@ void EditorBase::DisplayContextMenu(const wxPoint& position, ModuleType type)
     // this code *must* be the last code executed by this function
     // because it *will* invalidate 'this'
     if (m_pData->m_CloseMe)
-        Manager::Get()->GetEditorManager()->Close(this);
+		Manager::Get()->GetEditorManager()->Close(this);
 }
 
 void EditorBase::OnContextMenuEntry(wxCommandEvent& event)
@@ -387,24 +330,24 @@ void EditorBase::OnContextMenuEntry(wxCommandEvent& event)
 
     if (id == idCloseMe)
     {
-        if (m_pData->m_DisplayingPopupMenu)
-            m_pData->m_CloseMe = true; // defer delete 'this' until after PopupMenu() call returns
-        else
-            Manager::Get()->GetEditorManager()->Close(this);
+    	if (m_pData->m_DisplayingPopupMenu)
+			m_pData->m_CloseMe = true; // defer delete 'this' until after PopupMenu() call returns
+		else
+			Manager::Get()->GetEditorManager()->Close(this);
     }
     else if (id == idCloseAll)
     {
-        if (m_pData->m_DisplayingPopupMenu)
-        {
-            Manager::Get()->GetEditorManager()->CloseAllInTabCtrlExcept(this);
-            m_pData->m_CloseMe = true; // defer delete 'this' until after PopupMenu() call returns
-        }
-        else
-            Manager::Get()->GetEditorManager()->CloseAllInTabCtrl();
+    	if (m_pData->m_DisplayingPopupMenu)
+    	{
+			Manager::Get()->GetEditorManager()->CloseAllExcept(this);
+			m_pData->m_CloseMe = true; // defer delete 'this' until after PopupMenu() call returns
+    	}
+		else
+			Manager::Get()->GetEditorManager()->CloseAll();
     }
     else if (id == idCloseAllOthers)
     {
-        Manager::Get()->GetEditorManager()->CloseAllInTabCtrlExcept(this);
+        Manager::Get()->GetEditorManager()->CloseAllExcept(this);
     }
     else if (id == idSaveMe)
     {
@@ -414,31 +357,34 @@ void EditorBase::OnContextMenuEntry(wxCommandEvent& event)
     {
         Manager::Get()->GetEditorManager()->SaveAll();
     }
-    else if (id >= idSwitchFile1 && id <= idSwitchFileMax)
+    else
+    if (id >= idSwitchFile1 && id <= idSwitchFileMax)
     {
         // "Switch to..." item
-        EditorBase* const ed = m_SwitchTo[id];
+        EditorBase *const ed = m_SwitchTo[id];
         if (ed)
+        {
             Manager::Get()->GetEditorManager()->SetActiveEditor(ed);
-
+        }
         m_SwitchTo.clear();
+    }
+    else if(wxMinimumVersion<2,6,1>::eval)
+    {
+        if (id == idGoogleCode)
+        {
+            wxLaunchDefaultBrowser(wxString(_T("http://www.google.com/codesearch?q=")) << URLEncode(lastWord));
+        }
+        else if (id == idGoogle)
+        {
+            wxLaunchDefaultBrowser(wxString(_T("http://www.google.com/search?q=")) << URLEncode(lastWord));
+        }
+        else if (id == idMsdn)
+        {
+            wxLaunchDefaultBrowser(wxString(_T("http://search.microsoft.com/search/results.aspx?qu=")) << URLEncode(lastWord) << _T("&View=msdn"));
+        }
     }
     else
     {
-        if      (id == idGoogle)
-            wxLaunchDefaultBrowser(wxString(_T("http://www.google.com/search?q="))                       << URLEncode(lastWord));
-        else if (id == idMsdn)
-            wxLaunchDefaultBrowser(wxString(_T("http://social.msdn.microsoft.com/Search/en-US/?query=")) << URLEncode(lastWord) << _T("&ac=8"));
-        else if (id == idStackOverflow)
-            wxLaunchDefaultBrowser(wxString(_T("http://stackoverflow.com/search?q="))                    << URLEncode(lastWord));
-        else if (id == idCodeProject)
-            wxLaunchDefaultBrowser(wxString(_T("http://www.codeproject.com/search.aspx?q="))             << URLEncode(lastWord));
-        else if (id == idCPlusPlusCom)
-            wxLaunchDefaultBrowser(wxString(_T("http://www.cplusplus.com/search.do?q="))                 << URLEncode(lastWord));
+        event.Skip();
     }
-}
-
-bool EditorBase::IsContextMenuOpened() const
-{
-    return m_pData->m_DisplayingPopupMenu;
 }

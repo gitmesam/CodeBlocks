@@ -1,16 +1,14 @@
-AM_CPPFLAGS = $(WX_CXXFLAGS) \
+INCLUDES = $(WX_CXXFLAGS) \
 		-I$(top_srcdir)/src/include \
-		-I$(top_srcdir)/src/sdk/wxscintilla/include
+		-I$(top_srcdir)/src/include/wxscintilla/include
 
-pluginlibdir = $(pkglibdir)/plugins
+libdir = $(pkgdatadir)/plugins
 
-pluginlib_LTLIBRARIES = libAutoVersioning.la
+lib_LTLIBRARIES = libAutoVersioning.la
 
-libAutoVersioning_la_LDFLAGS = @MODULE_SHARED_LDFLAGS@ -version-info 0:1:0 -no-undefined -avoid-version
+libAutoVersioning_la_LDFLAGS = -module -version-info 0:1:0 -shared -no-undefined -avoid-version
 
-libAutoVersioning_la_LIBADD = ../../../sdk/libcodeblocks.la \
-			$(WX_LIBS) \
-			$(CB_TINYXML_LIBS)
+libAutoVersioning_la_LIBADD = $(PLUGIN_WX_LIBS) ../../../sdk/libcodeblocks.la
 
 libAutoVersioning_la_SOURCES = AutoVersioning.cpp \
             avChangesDlg.cpp \
@@ -28,7 +26,8 @@ noinst_HEADERS = AutoVersioning.h \
 
 EXTRA_DIST = wxsmith/avChangesDlg.wxs \
             wxsmith/avVersionEditorDlg.wxs \
-            $(srcdir)/*.cbp \
+            AutoVersioning.cbp \
+            AutoVersioning-unix.cbp \
             manifest.xml
 
 pkgdata_DATA = AutoVersioning.zip

@@ -42,12 +42,11 @@ void wxsBaseProperties::OnEnumProperties(long Flags)
     bool PSFilter  = Root && Source;
 
     if ( Flags & flVariable && VISFilter            ) WXS_SHORT_STRING_P (wxsBaseProperties,m_VarName,        _("Var name"),                                                                      _T("var_name"),      _T(""),true,  Priority1);
-    if ( Flags & flVariable && VISFilter && Pointer ) WXS_BOOL_P         (wxsBaseProperties,m_IsMember,       _("Is member"),                                                                     _T("var_is_member"), true,         Priority1);
+    if ( Flags & flVariable && VISFilter && Pointer ) WXS_BOOL_P         (wxsBaseProperties,m_IsMember,       _(" Is member"),                                                                    _T("var_is_member"), true,         Priority1);
     if ( Flags & flId       && VISFilter            ) WXS_SHORT_STRING_P (wxsBaseProperties,m_IdName,         _("Identifier"),                                                                    _T("identifier"),    _T(""),true,  Priority1);
     if ( Flags & flSubclass && VISFilter            ) WXS_SHORT_STRING_P (wxsBaseProperties,m_Subclass,       _("Class name"),                                                                    _T("subclass"),      _T(""),false, Priority1);
     if ( Flags & flPosition                         ) WXS_POSITION_P     (wxsBaseProperties,m_Position,       _("Default pos"),_("X"),_("Y"),_("Pos in dialog units"),                            _T("pos"),                         Priority2);
     if ( Flags & flSize                             ) WXS_SIZE_P         (wxsBaseProperties,m_Size,           _("Default size"),_("Width"),_("Height"),_("Size in dialog units"),                 _T("size"),                        Priority2);
-    if ( Flags & flValidator  && Source             ) WXS_SHORT_STRING_P (wxsBaseProperties,m_Validator,      _("Validator"),                                                                     _T("validator"),     _T(""),false, Priority2);
     if ( Flags & flEnabled                          ) WXS_BOOL_P         (wxsBaseProperties,m_Enabled,        _("Enabled"),                                                                       _T("enabled"),       true,         Priority2);
     if ( Flags & flFocused                          ) WXS_BOOL_P         (wxsBaseProperties,m_Focused,        _("Focused"),                                                                       _T("focused"),       false,        Priority2);
     if ( Flags & flHidden                           ) WXS_BOOL_P         (wxsBaseProperties,m_Hidden,         _("Hidden"),                                                                        _T("hidden"),        false,        Priority2);
@@ -67,7 +66,7 @@ void wxsBaseProperties::OnEnumProperties(long Flags)
     if ( m_StyleSet                                 ) WXS_EXSTYLE_P      (wxsBaseProperties,m_ExStyleBits,    _("Extra style"),                                                                   _T("exstyle"),       m_StyleSet,   Priority2);
 }
 
-void wxsBaseProperties::AddQPPChild(cb_unused wxsAdvQPP* QPP,cb_unused long Flags)
+void wxsBaseProperties::AddQPPChild(wxsAdvQPP* QPP,long Flags)
 {
     // TODO: Add it
 }

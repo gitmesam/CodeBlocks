@@ -16,9 +16,9 @@
 * along with wxSmith; if not, write to the Free Software
 * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
 *
-* $Revision$
-* $Id$
-* $HeadURL$
+* $Revision: 4504 $
+* $Id: wxsmithpluginregistrants.cpp 4504 2007-10-02 21:52:30Z byo $
+* $HeadURL: svn+ssh://byo@svn.berlios.de/svnroot/repos/codeblocks/trunk/src/plugins/contrib/wxSmith/plugin/wxsmithpluginregistrants.cpp $
 */
 
 #include "projectconfiguration.h"
@@ -48,7 +48,7 @@ void ProjectConfiguration::XmlLoad(TiXmlElement* Node,cbProject* Project)
     if ( !LibFinder ) return;
 
     int noauto = 0;
-    if ( (LibFinder->QueryIntAttribute("disable_auto",&noauto) == TIXML_SUCCESS) && noauto )
+    if ( LibFinder->QueryIntAttribute("disable_auto",&noauto) == TIXML_SUCCESS && noauto )
     {
         m_DisableAuto = true;
     }
@@ -99,25 +99,25 @@ void ProjectConfiguration::XmlWrite(TiXmlElement* Node,cbProject* Project)
         LibFinder->SetAttribute("disable_auto","1");
     }
 
-    for ( size_t i = 0; i < m_GlobalUsedLibs.Count(); ++i )
+    for ( size_t i=0; i<m_GlobalUsedLibs.Count(); i++ )
     {
         LibFinder->InsertEndChild(TiXmlElement("lib"))->ToElement()->SetAttribute("name",cbU2C(m_GlobalUsedLibs[i]));
     }
 
-    for ( wxMultiStringMap::iterator iter = m_TargetsUsedLibs.begin();
-          iter != m_TargetsUsedLibs.end();
-          ++iter )
+    for ( wxMultiStringMap::iterator i=m_TargetsUsedLibs.begin();
+          i!=m_TargetsUsedLibs.end();
+          ++i )
     {
-        if ( !Project->GetBuildTarget(iter->first) ) continue;
+        if ( !Project->GetBuildTarget(i->first) ) continue;
 
-        const wxArrayString& Libs = iter->second;
+        wxArrayString& Libs = i->second;
         if ( Libs.Count() )
         {
             TiXmlElement* TargetElem = LibFinder->InsertEndChild(TiXmlElement("target"))->ToElement();
-            TargetElem->SetAttribute("name", cbU2C(iter->first));
-            for ( size_t Lib = 0; Lib < Libs.Count(); ++Lib )
+            TargetElem->SetAttribute("name",cbU2C(i->first));
+            for ( size_t i=0; i<Libs.Count(); i++ )
             {
-                TargetElem->InsertEndChild(TiXmlElement("lib"))->ToElement()->SetAttribute("name", cbU2C(Libs[Lib]));
+                TargetElem->InsertEndChild(TiXmlElement("lib"))->ToElement()->SetAttribute("name",cbU2C(Libs[i]));
             }
         }
     }

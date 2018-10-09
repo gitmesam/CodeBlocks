@@ -6,17 +6,42 @@
 #ifndef TOKEN_H
 #define TOKEN_H
 
-#include <wx/arrstr.h>
 #include <wx/string.h>
+#include <wx/dynarray.h>
+#include <wx/file.h>
+#include <wx/thread.h>
+#include <wx/stream.h>
+#include <settings.h>
 
-#include <set>
-#include <map>
+#include "blockallocated.h"
+#include <globals.h>
+#include "searchtree.h"
+#include <deque>
+using namespace std;
 
 class Token;
-class TokenTree;
+class TokensTree;
 
-typedef std::set< int,    std::less<int>    > TokenIdxSet;
-typedef std::set< size_t, std::less<size_t> > TokenFileSet;
+static wxCriticalSection s_MutexProtection;
+enum FileParsingStatus
+{
+    fpsNotParsed = 0,
+    fpsAssigned,
+    fpsBeingParsed,
+    fpsDone
+};
+
+WX_DEFINE_ARRAY(Token*, TokensArray);
+
+typedef vector<Token*> TokenList;
+
+typedef deque<int> TokenIdxList;
+typedef set<int, less<int> > TokenIdxSet;
+typedef SearchTree<TokenIdxSet> TokenSearchTree;
+typedef BasicSearchTree TokenFilenamesMap;
+typedef map<size_t,TokenIdxSet,less<size_t> > TokenFilesMap;
+typedef map<size_t,FileParsingStatus,less<size_t> > TokenFilesStatus;
+typedef set<size_t,less<size_t> > TokenFilesSet;
 
 enum TokenScope
 {
@@ -28,287 +53,214 @@ enum TokenScope
 
 enum TokenKind
 {
-    // changed in order to reflect the priority
-
-    /** namespace*/
-    tkNamespace        = 0x0001,
-
-    /** class or struct */
-    tkClass            = 0x0002,
-
-    /** enum */
-    tkEnum             = 0x0004,
-
-    /** typedef, note typedefs are stored as classes inheriting from the typedef'd type, this takes
-     *  advantage of existing inheritance code
-     */
-    tkTypedef          = 0x0008,
-
-    /** constructor class member function */
-    tkConstructor      = 0x0010,
-
-    /** destructor class member function */
-    tkDestructor       = 0x0020,
-
-    /** general function, not constructor nor destructor */
-    tkFunction         = 0x0040,
-
-    /** variable */
-    tkVariable         = 0x0080,
-
-    /** enumerator */
-    tkEnumerator       = 0x0100,
-
-    /** macro definition, such as: #define AAA(x,y) f(x,y), where AAA is a token of tkMacroDef */
-    tkMacroDef         = 0x0200,
-
-    /** the usage of the macro, for example: AAA(1,2) */
-    tkMacroUse         = 0x0400,
+    tkClass         = 0x0001,
+    tkNamespace     = 0x0002,
+    tkTypedef       = 0x0004, // typedefs are stored as classes inheriting from the typedef'd type (taking advantage of existing inheritance code)
+    tkConstructor   = 0x0008,
+    tkDestructor    = 0x0010,
+    tkFunction      = 0x0020,
+    tkVariable      = 0x0040,
+    tkEnum          = 0x0080,
+    tkEnumerator    = 0x0100,
+    tkPreprocessor  = 0x0200,
 
     // convenient masks
-    /** container like tokens, those tokens can have children tokens */
-    tkAnyContainer     = tkClass    | tkNamespace   | tkTypedef,
+    tkAnyContainer  = tkClass | tkNamespace | tkTypedef,
+    tkAnyFunction   = tkFunction | tkConstructor | tkDestructor,
 
-    /** any kind of functions */
-    tkAnyFunction      = tkFunction | tkConstructor | tkDestructor,
-
-    /** undefined or just "all" */
-    tkUndefined        = 0xFFFF
+    tkUndefined     = 0xFFFF,
 };
-/** a symbol found in the parsed files, it can be many kinds, such as a variable, a class and so on.
- *  Once constructed, the Token should be always put in the TokenTree, and we can access the Token
- *  by TokenIndex.
- */
-class Token
+
+
+class Token  : public BlockAllocated<Token, 10000>
 {
-friend class TokenTree;
-public:
+    friend class TokensTree;
+    public:
+        Token();
+        Token(const wxString& name, unsigned int file, unsigned int line);
+        ~Token();
 
-    /** constructor
-     *  @param name token's name, this can be a search key in the tokentree
-     *  @param file the index of the source file where the token locates
-     *  @param ticket an integer number, once a new Token is allocated, this value will increase by
-     *  one, it is mainly used for duplicated Token checking when class browser tree get refreshed.
-     */
-    Token(const wxString& name, unsigned int file, unsigned int line, size_t ticket);
+        void AddChild(int child);
+        void RemoveChild(int child);
+        wxString GetNamespace() const;
+        bool InheritsFrom(int idx) const;
+        wxString DisplayName() const;
+        wxString GetTokenKindString() const;
+        wxString GetTokenScopeString() const;
+        wxString GetFilename() const;
+        wxString GetImplFilename() const;
+        inline unsigned long GetTicket() const { return m_Ticket; }
+        bool MatchesFiles(const TokenFilesSet& files);
 
-    /** destructor */
-    ~Token();
+        bool SerializeIn(wxInputStream* f);
+        bool SerializeOut(wxOutputStream* f);
+        int GetSelf() { return m_Self; } // current index in the tree
+        wxString GetParentName();
+        Token* GetParentToken();
+        TokensTree* GetTree() { return m_pTree; }
 
-    /** add a child token
-     * @param childIdx int
-     * @return return true if success, in the case the childIdx < 0, this function will return false
-     */
-    bool AddChild(int childIdx);
+        wxString m_Type; // this is the return value (if any): e.g. const wxString&
+        wxString m_ActualType; // this is what the parser believes is the actual return value: e.g. wxString
+        wxString m_Name;
+        wxString m_Args;
+        wxString m_AncestorsString; // all ancestors comma-separated list
+        unsigned int m_File;
+        unsigned int m_Line;
+        unsigned int m_ImplFile;
+        unsigned int m_ImplLine; // where the token was met
+        unsigned int m_ImplLineStart; // if token is impl, opening brace line
+        unsigned int m_ImplLineEnd; // if token is impl, closing brace line
+        TokenScope m_Scope;
+        TokenKind m_TokenKind;
+        bool m_IsOperator;
+        bool m_IsLocal; // found in a local file?
+        bool m_IsTemp; // if true, the tree deletes it in FreeTemporaries()
+        bool m_IsConst;    // the member method is const (yes/no)
 
-    /** delete all the child tokens of the current token, not only remove the relation, but also
-     *  delete the Token instance.
-     * @return false if the TokenTree is invalid
-     */
-    bool DeleteAllChildren();
+        int m_ParentIndex;
+        TokenIdxSet m_Children;
+        TokenIdxSet m_Ancestors;
+        TokenIdxSet m_DirectAncestors;
+        TokenIdxSet m_Descendants;
 
-    /** check if the token has any child tokens.
-     * @return true if it does have some child.
-     */
-    bool HasChildren() const { return !m_Children.empty(); }
+        wxArrayString m_Aliases; // used for namespace aliases
 
-    /** @brief get a literal string presentation of the namespace.
-     *
-     * @return wxString
-     * if the token has the parent token, like a member variable class AAA {int m_BBB;}, then
-     * the string is "AAA::"
-     */
-    wxString GetNamespace() const;
+        void* m_pUserData; // custom user-data (the classbrowser expects it to be a pointer to a cbProject)
+    protected:
+        TokensTree* m_pTree;
+        int m_Self; // current index in the tree
+        unsigned long m_Ticket;
+        static unsigned long GetTokenTicket();
 
-    /** @brief check to see the current token is inherited from a specified token
-     *
-     * @param idx the specified token
-     * @return true if success
-     * loop the m_DirectAncestors to see it did contains the specified token, also we may check
-     * the specified token is an ancestor of the current ancestor, so recursive call is involved
-     */
-    bool InheritsFrom(int idx) const;
-
-    /** a short simple string to show the token information, this usually generate for show
-     * the tip message when the user hover a mouse over the text in C::B editor.
-     */
-    wxString DisplayName() const;
-
-    /** the token kind string, e.g. for a tkClass kind Token, we get a "class" string */
-    wxString GetTokenKindString() const;
-
-    /** the access kind string, e.g. for a tsPrivate type Token, we get a "private" string */
-    wxString GetTokenScopeString() const;
-
-    /** get a full path of the file which contains the current Token */
-    wxString GetFilename() const;
-
-    /** get a full path of the file which contains the function implementation. Note usually only
-     *  function like token has this feature.
-     */
-    wxString GetImplFilename() const;
-
-    /** remove all '\n' in the original function argument string */
-    wxString GetFormattedArgs() const;
-
-    /** remove all default value of the function argument string, e.g. if we have such argument
-     *  "(int a = 10, float b = 3.14)"
-     *  then we get "(int a, float b)"
-     */
-    wxString GetStrippedArgs() const;
-
-    /** get the ticket value of the current token */
-    size_t GetTicket() const { return m_Ticket; }
-
-    /** see whether the current token belong to any files in the file set, both m_FileIdx and
-     * m_ImplFileIdx is considered
-     * @param files a file(index) set
-     * @return true if success
-     */
-    bool MatchesFiles(const TokenFileSet& files);
-
-    /** get the TokenTree associated with the current Token
-     * @return TokenTree pointer
-     */
-    TokenTree* GetTree() const { return m_TokenTree; }
-
-    /** build in types are not valid ancestors for a type define token
-     * @param ancestor testing type string
-     * @return false if the testing type string is a build in type
-     */
-    bool IsValidAncestor(const wxString& ancestor);
-
-    /** this is the full return value (if any): e.g. const wxString& */
-    wxString                     m_FullType;
-
-    /** this is what the parser believes is the actual return value: e.g. wxString */
-    wxString                     m_BaseType;
-
-    /** Token's name, it can be searched in the TokenTree */
-    wxString                     m_Name;
-
-    /** If it is a function Token, then this value is function arguments,
-     *  e.g.   (int arg1 = 10, float arg2 = 9.0)
-     *  If it is an enumerator, then this is the assigned (inferred) value
-     */
-    wxString                     m_Args;
-
-    /** stripped arguments e.g. (int arg1, float arg2) */
-    wxString                     m_BaseArgs;
-
-    /** all ancestors comma-separated list, e.g. if a class declaration like below
-     *  class AAA :public BBB, public CCC
-     *  then the m_AncestorsString is "BBB,CCC", note that once m_Ancestors is constructed, this
-     *  variable will be cleared.
-     */
-    wxString                     m_AncestorsString;
-
-    /** File index in TokenTree */
-    unsigned int                 m_FileIdx;
-
-    /** Line index where the token was met, which is 1 based */
-    unsigned int                 m_Line;
-
-    /** doxygen style comments */
-    wxString                     m_Doc;
-
-    /** function implementation file index */
-    unsigned int                 m_ImplFileIdx;
-
-    /** function implementation line index */
-    unsigned int                 m_ImplLine;
-
-    /** if token is impl, opening brace line */
-    unsigned int                 m_ImplLineStart;
-
-    /** if token is impl, closing brace line */
-    unsigned int                 m_ImplLineEnd;
-
-    /** doxygen style comments in the Impl file */
-    wxString                     m_ImplDoc;
-
-    /** public? private? protected? */
-    TokenScope                   m_Scope;
-
-    /** See TokenKind class */
-    TokenKind                    m_TokenKind;
-
-    /** is operator overload function? */
-    bool                         m_IsOperator;
-
-    /** if true, means the token belong to a C::B project, it exists in the project's source/header
-     *  files, not from the system's headers or other include header files
-     */
-    bool                         m_IsLocal;
-
-    /** local (automatic) variable */
-    bool                         m_IsTemp;
-
-    /** the member method is const (yes/no) */
-    bool                         m_IsConst;
-
-    /** the member method is noexcept (yes/no) */
-    bool                         m_IsNoExcept;
-
-    /** Is anonymous token? (e.g. unnamed struct or union) */
-    bool                         m_IsAnonymous;
-
-    /** current Token index in the tree, it is index of the std::vector<Token*>, so use the index,
-     *  we can first get a address of the Token, and after a dereference, we can get the Token
-     *  instance. Note that the tree is a dynamic object, which means Tokens can be added or removed
-     *  from the tree, so the slot of std::vector<Token*> is reused. So, same index does not point
-     *  to the same Token if TokenTree are updated or changed.
-     */
-    int                          m_Index;
-
-    /** Parent Token index */
-    int                          m_ParentIndex;
-
-    /** if it is a class kind token, then it contains all the member tokens */
-    TokenIdxSet                  m_Children;
-
-    /** all the ancestors in the inheritance hierarchy */
-    TokenIdxSet                  m_Ancestors;
-
-    /** the nearest ancestors */
-    TokenIdxSet                  m_DirectAncestors;
-
-    /** all the descendants in the inheritance hierarchy */
-    TokenIdxSet                  m_Descendants;
-
-    /** used for namespace aliases */
-    wxArrayString                m_Aliases;
-
-    /** template argument list, comma separated list string */
-    wxString                     m_TemplateArgument;
-
-    /** for a class template, this is the formal template argument list, but for a variable Token,
-     *  this is the actual template arguments.
-     */
-    wxArrayString                m_TemplateType;
-
-    /** a string to string map from formal template argument to actual template argument */
-    std::map<wxString, wxString> m_TemplateMap;
-
-    /** alias for templates, e.g. template T1 T2; */
-    wxString                     m_TemplateAlias;
-
-    /** custom user-data (the classbrowser expects it to be a pointer to a cbProject), this field
-     *  is used when user can only show the tokens belong to the current C::B project in the
-     *  browser tree. m_UserData is updated in the worker threaded task: MarkFileAsLocalThreadedTask
-     */
-    void*                        m_UserData;
-
-protected:
-
-    /** a pointer to TokenTree */
-    TokenTree*                   m_TokenTree;
-
-    /** This is used in class browser to avoid duplication nodes in the class browser tree. Once a
-     *  Token is allocated from the heap, a new ticket number is assigned to the Token, so a new
-     *  node is only added to the class browser tree if a Token with new ticket is detected.
-     */
-    size_t                       m_Ticket;
+    private:
 };
+
+class TokensTree
+{
+    public:
+        static const wxString s_version;
+        TokensTree();
+        inline void Clear() { clear(); }
+
+        // STL compatibility functions
+        void clear();
+        inline Token* operator[](int idx) { return GetTokenAt(idx); }
+        inline Token* at(int idx) { return GetTokenAt(idx); }
+        size_t size();
+        size_t realsize();
+        inline bool empty() { return size()==0; }
+        int insert(Token* newToken);
+        int insert(int loc, Token* newToken);
+        int erase(int loc);
+        void erase(Token* oldToken);
+
+        // Token specific functions
+        void RecalcFreeList();
+        void RecalcData();
+        int TokenExists(const wxString& name, int parent, short int kindMask);
+        size_t FindMatches(const wxString& s,TokenIdxSet& result,bool caseSensitive,bool is_prefix, int kindMask = 0xffff);
+        size_t FindTokensInFile(const wxString& file, TokenIdxSet& result, short int kindMask);
+        void RemoveFile(const wxString& filename);
+        void RemoveFile(int index);
+        void FreeTemporaries();
+        virtual ~TokensTree();
+
+        // Parsing related functions
+
+        size_t GetFileIndex(const wxString& filename);
+        const wxString GetFilename(size_t idx) const;
+        size_t ReserveFileForParsing(const wxString& filename,bool preliminary = false);
+        void FlagFileForReparsing(const wxString& filename);
+        void FlagFileAsParsed(const wxString& filename);
+        bool IsFileParsed(const wxString& filename);
+
+        void MarkFileTokensAsLocal(const wxString& filename, bool local = true, void* userData = 0);
+        void MarkFileTokensAsLocal(size_t file, bool local = true, void* userData = 0);
+
+        TokenList m_Tokens; /// Contains the pointers to all the tokens
+        TokenSearchTree m_Tree; /** Tree containing the indexes to the tokens
+          (the indexes will be used on m_Tokens) */
+
+        TokenFilenamesMap m_FilenamesMap; /** Map: filenames -> file indexes */
+        TokenFilesMap m_FilesMap; /** Map: file indexes -> Sets of TokenIndexes */
+        TokenFilesSet m_FilesToBeReparsed; /** Set: file indexes */
+        TokenIdxList m_FreeTokens; /** List of all the deleted (and available) tokens */
+
+        /** List of tokens belonging to the global namespace */
+        TokenIdxSet m_TopNameSpaces,
+        m_GlobalNameSpace;
+
+        TokenFilesStatus m_FilesStatus; /** Parse Status for each file */
+        bool m_modified;
+    protected:
+        Token* GetTokenAt(int idx);
+        int AddToken(Token* newToken,int forceidx = -1);
+
+        void RemoveToken(int idx);
+        void RemoveToken(Token* oldToken);
+
+        int AddTokenToList(Token* newToken,int forceidx = -1);
+        void RemoveTokenFromList(int idx);
+
+        void RecalcFullInheritance(int parentIdx, TokenIdxSet& result); // called by RecalcData
+};
+
+
+inline void SaveIntToFile(wxOutputStream* f, int i)
+{
+    /* This used to be done as
+        f->Write(&i, sizeof(int));
+    which is incorrect because it assumes a consistant byte order
+    and a constant int size */
+
+    unsigned int const j = i; // rshifts aren't well-defined for negatives
+    wxChar c[4] = { j>>0&0xFF, j>>8&0xFF, j>>16&0xFF, j>>24&0xFF };
+    f->Write( c, 4 );
+}
+
+inline bool LoadIntFromFile(wxInputStream* f, int* i)
+{
+//    See SaveIntToFile
+//    return f->Read(i, sizeof(int)) == sizeof(int);
+
+    wxChar c[4];
+    if ( f->Read( c, 4 ).LastRead() != 4 ) return false;
+    *i = ( c[0]<<0 | c[1]<<8 | c[2]<<16 | c[3]<<24 );
+    return true;
+}
+
+inline void SaveStringToFile(wxOutputStream* f, const wxString& str)
+{
+    const wxWX2MBbuf psz = str.mb_str(wxConvUTF8);
+    // TODO (MortenMacFly#5#): Can we safely use strlen here?
+    int size = psz ? strlen(psz) : 0;
+    if (size >= 32767)
+        size = 32767;
+    SaveIntToFile(f, size);
+    if(size)
+        f->Write(psz, size);
+}
+
+inline bool LoadStringFromFile(wxInputStream* f, wxString& str)
+{
+    int size;
+    if (!LoadIntFromFile(f, &size))
+        return false;
+    bool ok = true;
+    if (size > 0 && size <= 32767)
+    {
+        wxChar buf[32768];
+        ok = f->Read(buf, size).LastRead() == (size_t)size;
+        buf[size] = '\0';
+        str = wxString(buf, wxConvUTF8);
+    }
+    else // doesn't fit in our buffer, but still we have to skip it
+    {
+        str.Empty();
+        size = size & 0xFFFFFF; // Can't get any longer than that
+        f->SeekI(size, wxFromCurrent);
+    }
+    return ok;
+}
 
 #endif // TOKEN_H

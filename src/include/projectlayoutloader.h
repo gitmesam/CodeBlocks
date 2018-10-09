@@ -6,37 +6,24 @@
 #ifndef PROJECTLAYOUTLOADER_H
 #define PROJECTLAYOUTLOADER_H
 
-#ifndef CB_PRECOMP
-    #include <wx/string.h>
-    #include "cbauibook.h"
-#endif
-
-#define PROJECT_LAYOUT_FILE_VERSION_MAJOR 1
-#define PROJECT_LAYOUT_FILE_VERSION_MINOR 0
+#include <wx/string.h>
 
 class cbProject;
 
 class DLLIMPORT ProjectLayoutLoader
 {
-    public:
-        ProjectLayoutLoader(cbProject* project);
-        virtual ~ProjectLayoutLoader();
+	public:
+		ProjectLayoutLoader(cbProject* project);
+		virtual ~ProjectLayoutLoader();
 
         bool Open(const wxString& filename);
         bool Save(const wxString& filename);
-
-        bool LoadNotebookLayout()
-        {
-            return Manager::Get()->GetEditorManager()->GetNotebook()->LoadPerspective( m_NotebookLayout,
-                                                                                      !Manager::Get()->GetProjectManager()->IsLoadingWorkspace());
-        }
-
-        ProjectFile* GetTopProjectFile() { return m_TopProjectFile; }
-    protected:
-    private:
+        
+        ProjectFile* GetTopProjectFile(){ return m_TopProjectFile; }
+	protected:
+	private:
         cbProject* m_pProject;
         ProjectFile* m_TopProjectFile;
-        wxString m_NotebookLayout;
 };
 
 #endif // PROJECTLAYOUTLOADER_H

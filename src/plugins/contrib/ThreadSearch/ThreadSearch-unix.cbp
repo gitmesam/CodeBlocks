@@ -2,52 +2,42 @@
 <CodeBlocks_project_file>
 	<FileVersion major="1" minor="6" />
 	<Project>
-		<Option title="ThreadSearch (Unix)" />
+		<Option title="ThreadSearch-unix" />
 		<Option pch_mode="0" />
 		<Option compiler="gcc" />
 		<Build>
 			<Target title="default">
-				<Option output="../../../devel/share/codeblocks/plugins/libThreadSearch" prefix_auto="0" extension_auto="1" />
-				<Option object_output="../../../.objs/plugins/contrib/ThreadSearch" />
-				<Option external_deps="../../../devel/libwxcustombutton.so;" />
+				<Option output="../../../devel/share/codeblocks/plugins/ThreadSearch.so" prefix_auto="0" extension_auto="0" />
+				<Option working_dir="../../../devel" />
+				<Option object_output=".objs/" />
 				<Option type="3" />
 				<Option compiler="gcc" />
-				<Option parameters="--debug-log --multiple-instance -ns -ni -p debug" />
-				<Option host_application="../../../devel/codeblocks" />
-				<Option run_host_application_in_terminal="0" />
+				<Option host_application="$(#cb)/devel/codeblocks" />
 			</Target>
 		</Build>
 		<VirtualTargets>
 			<Add alias="All" targets="default;" />
 		</VirtualTargets>
 		<Compiler>
-			<Add option="-Wextra" />
 			<Add option="-Wall" />
-			<Add option="$(#CB_RELEASE_TYPE)" />
-			<Add option="`wx-config --version=2.8 --cflags`" />
+			<Add option="-g" />
+			<Add option="-Ulinux" />
+			<Add option="-Uunix" />
+			<Add option="`wx-config --cflags`" />
 			<Add option="-Winvalid-pch" />
 			<Add option="-fmessage-length=0" />
 			<Add option="-fexceptions" />
 			<Add option="-fPIC" />
 			<Add option="-DCB_PRECOMP" />
 			<Add option="-DcbDEBUG" />
-			<Add option="-std=c++11" />
 			<Add directory="../../../include" />
-			<Add directory="../../../include/tinyxml" />
-			<Add directory="../../../sdk/wxscintilla/include" />
-			<Add directory="../../../include/mozilla_chardet" />
-			<Add directory="../../../include/mozilla_chardet/mfbt" />
-			<Add directory="../../../include/mozilla_chardet/nsprpub/pr/include" />
-			<Add directory="../../../include/mozilla_chardet/xpcom" />
-			<Add directory="../../../include/mozilla_chardet/xpcom/base" />
-			<Add directory="../../../include/mozilla_chardet/xpcom/glue" />
-			<Add directory="../wxContribItems/wxthings/include" />
+			<Add directory="../../../include/wxscintilla/include" />
+			<Add directory="../../../include/wxFlatNotebook/include" />
 		</Compiler>
 		<Linker>
-			<Add option="`wx-config --version=2.8 --libs`" />
-			<Add option="-Wl,--no-undefined" />
-			<Add library="libcodeblocks.a" />
-			<Add library="wxcustombutton" />
+			<Add option="`wx-config --libs`" />
+			<Add library="codeblocks" />
+			<Add library="wxscintilla" />
 			<Add directory="../../../devel" />
 		</Linker>
 		<ExtraCommands>
@@ -71,7 +61,6 @@
 		<Unit filename="ThreadSearch.h" />
 		<Unit filename="ThreadSearchConfPanel.cpp" />
 		<Unit filename="ThreadSearchConfPanel.h" />
-		<Unit filename="ThreadSearchControlIds.cpp" />
 		<Unit filename="ThreadSearchControlIds.h" />
 		<Unit filename="ThreadSearchEvent.cpp" />
 		<Unit filename="ThreadSearchEvent.h" />

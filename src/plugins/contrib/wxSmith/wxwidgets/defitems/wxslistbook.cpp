@@ -40,7 +40,7 @@
 // TODO: Add images
 namespace
 {
-    wxsRegisterItem<wxsListbook> Reg(_T("Listbook"),wxsTContainer,_T("Standard"),250);
+    wxsRegisterItem<wxsListbook> Reg(_T("Listbook"),wxsTContainer,_T("Standard"),61);
 
     /** \brief Extra parameters for notebook's children */
     class wxsListbookExtra: public wxsPropertyContainer
@@ -57,7 +57,7 @@ namespace
 
         protected:
 
-            virtual void OnEnumProperties(cb_unused long Flags)
+            virtual void OnEnumProperties(long Flags)
             {
                 WXS_SHORT_STRING(wxsListbookExtra,m_Label,_("Page name"),_T("label"),_T(""),false);
                 WXS_BOOL(wxsListbookExtra,m_Selected,_("Page selected"),_T("selected"),false);
@@ -74,27 +74,23 @@ namespace
                 m_Extra(Extra)
             {
                 //(*Initialize(wxsListbookParentQP)
-                wxStaticBoxSizer* StaticBoxSizer2;
-                wxStaticBoxSizer* StaticBoxSizer1;
-                wxFlexGridSizer* FlexGridSizer1;
-
                 Create(parent, id, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL, _T("id"));
                 FlexGridSizer1 = new wxFlexGridSizer(0, 1, 0, 0);
                 StaticBoxSizer1 = new wxStaticBoxSizer(wxVERTICAL, this, _("Label"));
                 Label = new wxTextCtrl(this, ID_TEXTCTRL1, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, _T("ID_TEXTCTRL1"));
-                StaticBoxSizer1->Add(Label, 0, wxEXPAND, 5);
-                FlexGridSizer1->Add(StaticBoxSizer1, 1, wxEXPAND, 5);
+                StaticBoxSizer1->Add(Label, 0, wxBOTTOM|wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
+                FlexGridSizer1->Add(StaticBoxSizer1, 1, wxLEFT|wxRIGHT|wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
                 StaticBoxSizer2 = new wxStaticBoxSizer(wxHORIZONTAL, this, _("Selection"));
                 Selected = new wxCheckBox(this, ID_CHECKBOX1, _("Selected"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, _T("ID_CHECKBOX1"));
                 Selected->SetValue(false);
-                StaticBoxSizer2->Add(Selected, 1, wxEXPAND, 5);
-                FlexGridSizer1->Add(StaticBoxSizer2, 1, wxEXPAND, 5);
+                StaticBoxSizer2->Add(Selected, 1, wxBOTTOM|wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
+                FlexGridSizer1->Add(StaticBoxSizer2, 1, wxLEFT|wxRIGHT|wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
                 SetSizer(FlexGridSizer1);
                 FlexGridSizer1->Fit(this);
                 FlexGridSizer1->SetSizeHints(this);
 
-                Connect(ID_TEXTCTRL1,wxEVT_COMMAND_TEXT_ENTER,wxCommandEventHandler(wxsListbookParentQP::OnLabelText));
-                Connect(ID_CHECKBOX1,wxEVT_COMMAND_CHECKBOX_CLICKED,wxCommandEventHandler(wxsListbookParentQP::OnSelectionChange));
+                Connect(ID_TEXTCTRL1,wxEVT_COMMAND_TEXT_ENTER,(wxObjectEventFunction)&wxsListbookParentQP::OnLabelText);
+                Connect(ID_CHECKBOX1,wxEVT_COMMAND_CHECKBOX_CLICKED,(wxObjectEventFunction)&wxsListbookParentQP::OnSelectionChange);
                 //*)
                 ReadData();
 
@@ -141,8 +137,11 @@ namespace
             //*)
 
             //(*Declarations(wxsListbookParentQP)
+            wxStaticBoxSizer* StaticBoxSizer2;
             wxCheckBox* Selected;
             wxTextCtrl* Label;
+            wxStaticBoxSizer* StaticBoxSizer1;
+            wxFlexGridSizer* FlexGridSizer1;
             //*)
 
             wxsListbookExtra* m_Extra;
@@ -160,9 +159,9 @@ namespace
         //*)
     END_EVENT_TABLE()
 
-    void wxsListbookParentQP::OnLabelText(cb_unused wxCommandEvent& event)       { SaveData(); }
-    void wxsListbookParentQP::OnLabelKillFocus(wxFocusEvent& event)              { SaveData(); event.Skip(); }
-    void wxsListbookParentQP::OnSelectionChange(cb_unused wxCommandEvent& event) { SaveData(); }
+    void wxsListbookParentQP::OnLabelText(wxCommandEvent& event)       { SaveData(); }
+    void wxsListbookParentQP::OnLabelKillFocus(wxFocusEvent& event)    { SaveData(); event.Skip(); }
+    void wxsListbookParentQP::OnSelectionChange(wxCommandEvent& event) { SaveData(); }
 
     WXS_ST_BEGIN(wxsListbookStyles,_T(""))
         WXS_ST_CATEGORY("wxListbook")
@@ -175,8 +174,8 @@ namespace
     WXS_ST_END()
 
     WXS_EV_BEGIN(wxsListbookEvents)
-        WXS_EVI(EVT_LISTBOOK_PAGE_CHANGED,wxEVT_COMMAND_LISTBOOK_PAGE_CHANGED,wxListbookEvent,PageChanged)
-        WXS_EVI(EVT_LISTBOOK_PAGE_CHANGING,wxEVT_COMMAND_LISTBOOK_PAGE_CHANGING,wxListbookEvent,PageChanging)
+        WXS_EVI(EVT_NOTEBOOK_PAGE_CHANGED,wxEVT_COMMAND_NOTEBOOK_PAGE_CHANGED,wxNotebookEvent,PageChanged)
+        WXS_EVI(EVT_NOTEBOOK_PAGE_CHANGING,wxEVT_COMMAND_NOTEBOOK_PAGE_CHANGING,wxNotebookEvent,PageChanging)
     WXS_EV_END()
 
 }
@@ -192,7 +191,7 @@ wxsListbook::wxsListbook(wxsItemResData* Data):
 {
 }
 
-void wxsListbook::OnEnumContainerProperties(cb_unused long Flags)
+void wxsListbook::OnEnumContainerProperties(long Flags)
 {
 }
 
@@ -207,7 +206,7 @@ bool wxsListbook::OnCanAddChild(wxsItem* Item,bool ShowMessage)
         return false;
     }
 
-    return wxsContainer::OnCanAddChild(Item,ShowMessage);
+	return wxsContainer::OnCanAddChild(Item,ShowMessage);
 }
 
 wxsPropertyContainer* wxsListbook::OnBuildExtra()
@@ -222,43 +221,43 @@ wxString wxsListbook::OnXmlGetExtraObjectClass()
 
 void wxsListbook::OnAddChildQPP(wxsItem* Child,wxsAdvQPP* QPP)
 {
-    wxsListbookExtra* LBExtra = (wxsListbookExtra*)GetChildExtra(GetChildIndex(Child));
-    if ( LBExtra )
+    wxsListbookExtra* Extra = (wxsListbookExtra*)GetChildExtra(GetChildIndex(Child));
+    if ( Extra )
     {
-        QPP->Register(new wxsListbookParentQP(QPP,LBExtra),_("Listbook"));
+        QPP->Register(new wxsListbookParentQP(QPP,Extra),_("Listbook"));
     }
 }
 
 wxObject* wxsListbook::OnBuildPreview(wxWindow* Parent,long PreviewFlags)
 {
     UpdateCurrentSelection();
-    wxListbook* Listbook = new wxListbook(Parent,-1,Pos(Parent),Size(Parent),Style());
+	wxListbook* Listbook = new wxListbook(Parent,-1,Pos(Parent),Size(Parent),Style());
 
-    if ( !GetChildCount() && !(PreviewFlags&pfExact) )
-    {
-        // Adding additional empty notebook to prevent from having zero-sized notebook
-        Listbook->AddPage(
+	if ( !GetChildCount() && !(PreviewFlags&pfExact) )
+	{
+	    // Adding additional empty notebook to prevent from having zero-sized notebook
+	    Listbook->AddPage(
             new wxPanel(Listbook,-1,wxDefaultPosition,wxSize(50,50)),
             _("No pages"));
-    }
+	}
 
-    AddChildrenPreview(Listbook,PreviewFlags);
+	AddChildrenPreview(Listbook,PreviewFlags);
 
-    for ( int i=0; i<GetChildCount(); i++ )
-    {
-        wxsItem* Child = GetChild(i);
-        wxsListbookExtra* LBExtra = (wxsListbookExtra*)GetChildExtra(i);
+	for ( int i=0; i<GetChildCount(); i++ )
+	{
+	    wxsItem* Child = GetChild(i);
+	    wxsListbookExtra* Extra = (wxsListbookExtra*)GetChildExtra(i);
 
-        wxWindow* ChildPreview = wxDynamicCast(GetChild(i)->GetLastPreview(),wxWindow);
-        if ( !ChildPreview ) continue;
+	    wxWindow* ChildPreview = wxDynamicCast(GetChild(i)->GetLastPreview(),wxWindow);
+	    if ( !ChildPreview ) continue;
 
-        bool Selected = (Child == m_CurrentSelection);
-        if ( PreviewFlags & pfExact ) Selected = LBExtra->m_Selected;
+	    bool Selected = (Child == m_CurrentSelection);
+	    if ( PreviewFlags & pfExact ) Selected = Extra->m_Selected;
 
-        Listbook->AddPage(ChildPreview,LBExtra->m_Label,Selected);
-    }
+	    Listbook->AddPage(ChildPreview,Extra->m_Label,Selected);
+	}
 
-    return Listbook;
+	return Listbook;
 }
 
 void wxsListbook::OnBuildCreatingCode()
@@ -275,14 +274,13 @@ void wxsListbook::OnBuildCreatingCode()
 
             for ( int i=0; i<GetChildCount(); i++ )
             {
-                wxsListbookExtra* LBExtra = (wxsListbookExtra*)GetChildExtra(i);
-                Codef(_T("%AAddPage(%o, %t, %b);\n"),i,LBExtra->m_Label.wx_str(),LBExtra->m_Selected);
+                wxsListbookExtra* Extra = (wxsListbookExtra*)GetChildExtra(i);
+                Codef(_T("%AAddPage(%o, %t, %b);\n"),i,Extra->m_Label.c_str(),Extra->m_Selected);
             }
 
             break;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsListbook::OnBuildCreatingCode"),GetLanguage());
@@ -326,8 +324,8 @@ void wxsListbook::UpdateCurrentSelection()
     for ( int i=0; i<GetChildCount(); i++ )
     {
         if ( m_CurrentSelection == GetChild(i) ) return;
-        wxsListbookExtra* LBExtra = (wxsListbookExtra*)GetChildExtra(i);
-        if ( (i==0) || LBExtra->m_Selected )
+        wxsListbookExtra* Extra = (wxsListbookExtra*)GetChildExtra(i);
+        if ( (i==0) || Extra->m_Selected )
         {
             NewCurrentSelection = GetChild(i);
         }

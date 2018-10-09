@@ -6,7 +6,7 @@
 #ifndef CONFIRMREPLACEDLG_H
 #define CONFIRMREPLACEDLG_H
 
-#include "scrollingdialog.h"
+#include <wx/dialog.h>
 #include <wx/intl.h>
 #include "settings.h"
 
@@ -22,12 +22,12 @@ enum ConfirmResponse
 	crCancel
 };
 
-class DLLIMPORT ConfirmReplaceDlg : public wxScrollingDialog
+class ConfirmReplaceDlg : public wxDialog
 {
 	public:
 		ConfirmReplaceDlg(wxWindow* parent, bool replaceInFiles = false,
             const wxString& label = _("Replace this occurrence?"));
-		~ConfirmReplaceDlg() override;
+		~ConfirmReplaceDlg();
 		void OnYes(wxCommandEvent& event);
 		void OnNo(wxCommandEvent& event);
 		void OnAllInFile(wxCommandEvent& event);

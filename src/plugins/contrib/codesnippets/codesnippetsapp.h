@@ -24,7 +24,7 @@
 	along with this program; if not, write to the Free Software
 	Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
-// RCS-ID: $Id$
+// RCS-ID: $Id: codesnippetsapp.h 83 2007-05-19 20:30:36Z Pecan $
 
 #ifndef CODESNIPPETSAPP_H
 #define CODESNIPPETSAPP_H
@@ -47,16 +47,14 @@ class CodeSnippetsApp : public wxApp
 {
 	public:
 		virtual bool OnInit();
-		virtual int OnExit();
 		//-void OnActivateApp(wxActivateEvent& event);
-    private:
 
 		DECLARE_EVENT_TABLE()
 };
 
 #endif // CODESNIPPETSAPP_H
 /***************************************************************
- * Name:      CodeSnippetsAppFrame.h
+ * Name:      CodeSnippetsAppMain.h
  * Purpose:   Defines Application Frame
  * Author:    pecan ()
  * Created:   2007-03-18
@@ -68,14 +66,12 @@ class CodeSnippetsApp : public wxApp
 #define CODESNIPPETSAPPMAIN_H
 
 #include <wx/snglinst.h>    //single instance checker
-#include <wx/string.h>    //single instance checker
 
 #include "codesnippetsapp.h"
 #include "snippetsconfig.h"
 #include "codesnippetswindow.h"
 
-class CodeSnippetsEvent;
-class cbDragScroll;
+class wxMemoryMappedFile;
 
 // ----------------------------------------------------------------------------
 class CodeSnippetsAppFrame: public wxFrame
@@ -89,14 +85,10 @@ class CodeSnippetsAppFrame: public wxFrame
         wxString FindAppPath(const wxString& argv0, const wxString& cwd, const wxString& appVariableName);
         void OnRecentFileReopen(wxCommandEvent& event);
         void OnRecentFileClearHistory(wxCommandEvent& event);
-        void InitializeDragScroll();
-        bool GetInitXRCResult() {return m_bInitXRC_Result;}
 
 	private:
 
-        void InitCodeSnippetsAppFrame(wxFrame *frame, const wxString& title);
 		CodeSnippetsWindow* GetSnippetsWindow(){return GetConfig()->GetSnippetsWindow();}
-		CodeSnippetsTreeCtrl* GetSnippetsTreeCtrl(){return GetConfig()->GetSnippetsWindow()->GetSnippetsTreeCtrl();}
 
         void OnFileLoad(wxCommandEvent& event);
         void OnFileSave(wxCommandEvent& event);
@@ -109,42 +101,25 @@ class CodeSnippetsAppFrame: public wxFrame
 		void OnFileBackup(wxCommandEvent& event);
 		void OnTimerAlarm(wxTimerEvent& event);
         void OnIdle(wxIdleEvent& event);
-        void OnEventTest(wxCommandEvent &event);
 
         void StartKeepAliveTimer(int secs){ m_Timer.Start( secs*1000, wxTIMER_ONE_SHOT); }
         void StopKeepAliveTimer(){ m_Timer.Stop();}
-        bool RemoveKeepAliveFile();
+        bool ReleaseMemoryMappedFile();
 
         void InitializeRecentFilesHistory();
         void TerminateRecentFilesHistory();
         void AddToRecentFilesHistory(const wxString& FileName);
-        void AskToRemoveFileFromHistory(wxFileHistory* hist, int id);
-
-        bool InitializeSDK();
-        bool LoadConfig();
-        wxString GetAppPath();
-        bool InitXRCStuff();
-        void ComplainBadInstall();
-        int ParseCmdLine(wxFrame* handlerFrame);
-        void ImportCBResources();
-        wxString GetCBExeFolder();
-        bool FileImport(const wxString& source, const wxString& dest);
-        wxString Normalize(const wxString& filenamein);
 
 		wxString            buildInfo;
         wxString            versionStr;
 
         wxSingleInstanceChecker*  m_checker ;
         int                 m_bOnActivateBusy;
-        wxString            m_KeepAliveFileName;
+        long                m_lKeepAlivePid;
+        wxMemoryMappedFile* m_pMappedFile;
         wxFileHistory*      m_pFilesHistory;
-        bool                m_bInitXRC_Result;
-        EditorManager*      m_pEdMan;
-        LogManager*         m_pMsgMan;
 
         wxTimer             m_Timer;
-        wxString            m_Prefix;           // --prefix="data resources base folder"
-        wxString            m_ConfigFolder;   // dir name of .conf file
 
 		DECLARE_EVENT_TABLE()
 };

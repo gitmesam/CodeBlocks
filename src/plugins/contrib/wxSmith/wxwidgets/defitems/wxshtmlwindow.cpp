@@ -1,5 +1,4 @@
-/**  \file wxshtmlwindow.cpp
-*
+/*
 * This file is part of wxSmith plugin for Code::Blocks Studio
 * Copyright (C) 2006-2007  Bartlomiej Swiecki
 *
@@ -26,7 +25,7 @@
 
 namespace
 {
-    wxsRegisterItem<wxsHtmlWindow> Reg(_T("HtmlWindow"),wxsTWidget,_T("Advanced"),60);
+    wxsRegisterItem<wxsHtmlWindow> Reg(_T("HtmlWindow"),wxsTWidget,_T("Standard"),50);
 
     WXS_ST_BEGIN(wxsHtmlWindowStyles,_T("wxHW_SCROLLBAR_AUTO"))
         WXS_ST_CATEGORY("wxHtmlWindow")
@@ -57,19 +56,13 @@ void wxsHtmlWindow::OnBuildCreatingCode()
         {
             AddHeader(_T("<wx/html/htmlwin.h>"),GetInfo().ClassName,0);
             Codef(_T("%C(%W, %I, %P, %S, %T, %N);\n"));
-            if ( Borders.Value )
-                Codef(_T("%ASetBorders(%s);\n"),Borders.GetPixelsCode(GetCoderContext()).wx_str());
-
-            if ( !Url.empty() )
-                Codef(_T("%ALoadPage(%t);\n"),Url.wx_str());
-            else if ( !HtmlCode.empty() )
-                Codef(_T("%ASetPage(%t);\n"),HtmlCode.wx_str());
-
+            if ( Borders.Value ) Codef(_T("%ASetBorders(%s);\n"),Borders.GetPixelsCode(GetCoderContext()).c_str());
+            if ( !Url.empty() ) Codef(_T("%ALoadPage(%t);\n"),Url.c_str());
+            else if ( !HtmlCode.empty() ) Codef(_T("%ASetPage(%t);\n"),HtmlCode.c_str());
             BuildSetupWindowCode();
             break;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsHtmlWindow::OnBuildCreatingCode"),GetLanguage());
@@ -106,7 +99,7 @@ wxObject* wxsHtmlWindow::OnBuildPreview(wxWindow* Parent,long Flags)
     return SetupWindow(Preview,Flags);
 }
 
-void wxsHtmlWindow::OnEnumWidgetProperties(cb_unused long Flags)
+void wxsHtmlWindow::OnEnumWidgetProperties(long Flags)
 {
     WXS_SHORT_STRING(wxsHtmlWindow,Url,_("Url"),_T("url"),_T(""),false)
     WXS_STRING(wxsHtmlWindow,HtmlCode,_("Html Code"),_T("htmlcode"),_T(""),false)

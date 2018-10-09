@@ -6,10 +6,10 @@
 #ifndef PRINTDLG_H
 #define PRINTDLG_H
 
-#include "scrollingdialog.h"
+#include <wx/dialog.h>
 #include "printing_types.h"
 
-class PrintDialog : public wxScrollingDialog
+class PrintDialog : public wxDialog
 {
 	public:
 		PrintDialog(wxWindow* parent);

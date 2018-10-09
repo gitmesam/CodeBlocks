@@ -3,7 +3,7 @@
 <CodeBlocks_lexer_properties>
         <Lexer name="Diff/Patch"
                 index="16"
-                filemasks="*.diff,*.patch,*.svnpatch.rej">
+                filemasks="*.diff,*.patch">
                 <Style name="Default"
                         index="0"
                         fg="0,0,0"
@@ -30,17 +30,5 @@
                         index="6"
                         fg="0,0,128"/>
                 <SampleCode value="lexer_diff.sample"/>
-                <LanguageAttributes
-                    LineComment=""
-                    StreamCommentStart=""
-                    StreamCommentEnd=""
-                    BoxCommentStart=""
-                    BoxCommentMid=""
-                    BoxCommentEnd=""
-                    CaseSensitive="1"
-                    LexerCommentStyles="1"
-                    LexerCharacterStyles=""
-                    LexerStringStyles=""
-                    LexerPreprocessorStyles=""/>
         </Lexer>
 </CodeBlocks_lexer_properties>

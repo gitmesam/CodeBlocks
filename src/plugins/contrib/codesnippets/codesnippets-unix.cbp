@@ -2,49 +2,59 @@
 <CodeBlocks_project_file>
 	<FileVersion major="1" minor="6" />
 	<Project>
-		<Option title="CodeSnippets (Unix)" />
+		<Option title="CodeSnippets-unix" />
 		<Option pch_mode="2" />
-		<Option default_target="Plugin-unix" />
+		<Option default_target="Debug-App" />
 		<Option compiler="gcc" />
 		<Build>
 			<Target title="Plugin-unix">
-				<Option output="../../../devel/share/codeblocks/plugins/libcodesnippets" prefix_auto="0" extension_auto="1" />
-				<Option object_output="../../../.objs/plugins/contrib/codesnippets/plugin" />
+				<Option output="../../../devel/share/codeblocks/plugins/libcodesnippets.so" prefix_auto="0" extension_auto="0" />
+				<Option object_output=".obj/plugin/" />
 				<Option type="3" />
 				<Option compiler="gcc" />
-				<Option parameters="--debug-log --multiple-instance -ns -ni -p debug" />
-				<Option host_application="../../../devel/codeblocks" />
-				<Option run_host_application_in_terminal="0" />
+				<Compiler>
+					<Add option="-g" />
+					<Add option="-DNO_LOGGING" />
+					<Add option="-DBUILDING_PLUGIN" />
+				</Compiler>
+				<Linker>
+					<Add library="codeblocks" />
+				</Linker>
+			</Target>
+			<Target title="App-unix">
+				<Option output="../../../devel/codesnippets" prefix_auto="0" extension_auto="0" />
+				<Option object_output=".obj/app" />
+				<Option type="0" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+					<Add option="-DNO_LOGGING" />
+					<Add option="-DWXUSINGDLL" />
+					<Add option="-DCB_PRECOMP" />
+				</Compiler>
 			</Target>
 		</Build>
 		<VirtualTargets>
-			<Add alias="All" targets="Plugin-unix;" />
+			<Add alias="All" targets="Plugin-unix;App-unix;" />
 		</VirtualTargets>
 		<Compiler>
 			<Add option="-Wall" />
-			<Add option="$(#CB_RELEASE_TYPE)" />
-			<Add option="`wx-config --version=2.8 --cflags`" />
+			<Add option="-Ulinux" />
+			<Add option="-Uunix" />
+			<Add option="`wx-config --cflags`" />
 			<Add option="-fexceptions" />
 			<Add option="-Winvalid-pch" />
 			<Add option="-fPIC" />
+			<Add option="`pkg-config --cflags gtk+-2.0`" />
 			<Add option="-DcbDEBUG" />
-			<Add option="-DCB_PRECOMP" />
-			<Add option="-std=c++11" />
-			<Add directory="../../../include" />
-			<Add directory="../../../include/tinyxml" />
-			<Add directory="../../../sdk/wxscintilla/include" />
-			<Add directory="." />
-			<Add directory="../../../include/mozilla_chardet" />
-			<Add directory="../../../include/mozilla_chardet/mfbt" />
-			<Add directory="../../../include/mozilla_chardet/nsprpub/pr/include" />
-			<Add directory="../../../include/mozilla_chardet/xpcom" />
-			<Add directory="../../../include/mozilla_chardet/xpcom/base" />
-			<Add directory="../../../include/mozilla_chardet/xpcom/glue" />
+			<Add directory="$(#cb)/include" />
+			<Add directory="$(#cb)/include/wxscintilla/include" />
+			<Add directory="$(#cb)/include/wxFlatNotebook/include" />
 		</Compiler>
 		<Linker>
-			<Add option="`wx-config --version=2.8 --libs`" />
-			<Add option="-Wl,--no-undefined" />
-			<Add library="codeblocks" />
+			<Add option="`wx-config --libs`" />
+			<Add library="txml" />
+			<Add library="wxscintilla" />
 			<Add directory="../../../devel" />
 			<Add directory="../../../base/tinyxml" />
 		</Linker>
@@ -52,13 +62,36 @@
 			<Add after="./update" />
 		</ExtraCommands>
 		<Unit filename="Makefile.am" />
-		<Unit filename="codesnippets.cpp" />
+		<Unit filename="codesnippets.cpp">
+			<Option target="Plugin-unix" />
+		</Unit>
 		<Unit filename="codesnippets.h" />
+		<Unit filename="codesnippetsapp.cpp">
+			<Option target="App-unix" />
+		</Unit>
+		<Unit filename="codesnippetsapp.h">
+			<Option target="App-unix" />
+		</Unit>
 		<Unit filename="codesnippetstreectrl.cpp" />
 		<Unit filename="codesnippetstreectrl.h" />
 		<Unit filename="codesnippetswindow.cpp" />
 		<Unit filename="codesnippetswindow.h" />
+		<Unit filename="defsext.h" />
+		<Unit filename="edit.cpp" />
+		<Unit filename="edit.h" />
+		<Unit filename="editsnippetframe.cpp" />
+		<Unit filename="editsnippetframe.h" />
+		<Unit filename="finddialogs.cpp" />
+		<Unit filename="finddialogs.h" />
+		<Unit filename="memorymappedfile.cpp" />
+		<Unit filename="memorymappedfile.h" />
 		<Unit filename="menuidentifiers.h" />
+		<Unit filename="messageBoxForm.cpp" />
+		<Unit filename="messageBoxForm.h" />
+		<Unit filename="messagebox.cpp" />
+		<Unit filename="messagebox.h" />
+		<Unit filename="prefs.cpp" />
+		<Unit filename="prefs.h" />
 		<Unit filename="settingsdlg.cpp" />
 		<Unit filename="settingsdlg.h" />
 		<Unit filename="settingsdlgform.cpp" />
@@ -79,8 +112,6 @@
 		<Unit filename="version.h" />
 		<Extensions>
 			<code_completion />
-			<debugger />
-			<envvars />
 		</Extensions>
 	</Project>
 </CodeBlocks_project_file>

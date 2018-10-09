@@ -44,13 +44,11 @@ wxsProject::wxsProject(cbProject* Project):
     m_UnknownResources("unknown_resource"),
     m_WasModifiedDuringLoad(false)
 {
-    assert(Project);
-
     // Creating resource tree entery for this project
     m_TreeItem = wxsTree()->NewProjectItem(GetCBProject()->GetTitle(),this);
 
     // Building paths
-    wxFileName PathBuilder( (Project->GetFilename()) );
+    wxFileName PathBuilder(Project->GetFilename());
     m_ProjectPath = PathBuilder.GetPath(wxPATH_GET_VOLUME|wxPATH_GET_SEPARATOR);
 }
 
@@ -193,9 +191,9 @@ void wxsProject::WriteConfiguration(TiXmlElement* element)
 
     if ( !SmithElement )
     {
-        SmithElement = element->InsertEndChild(TiXmlElement("wxsmith"))->ToElement();
+		SmithElement = element->InsertEndChild(TiXmlElement("wxsmith"))->ToElement();
     }
-    SmithElement->Clear();
+	SmithElement->Clear();
     SmithElement->SetAttribute("version",CurrentVersionStr);
 
     // saving GUI item
@@ -376,45 +374,4 @@ wxsResourceItemId wxsProject::GetResourceTypeTreeId(const wxString& Name)
 void wxsProject::UpdateName()
 {
     wxsResourceTree::Get()->SetItemText(m_TreeItem,GetCBProject()->GetTitle());
-}
-
-bool wxsProject::RecoverWxsFile( const wxString& ResourceDescription )
-{
-    TiXmlDocument doc;
-    doc.Parse( ( _T("<") + ResourceDescription + _T(" />") ).mb_str( wxConvUTF8 ) );
-    if ( doc.Error() )
-    {
-        wxMessageBox( cbC2U( doc.ErrorDesc() ) + wxString::Format(_T(" in %d x %d"), doc.ErrorRow(), doc.ErrorCol() ) );
-        return false;
-    }
-    TiXmlElement* elem = doc.RootElement();
-    if ( !elem )
-    {
-        return false;
-    }
-
-    // Try to build resource of given type
-    wxString Type = cbC2U(elem->Value());
-    wxsResource* Res = wxsResourceFactory::Build(Type,this);
-    if ( !Res ) return false;
-
-    // Read settings
-    if ( !Res->ReadConfig( elem ) )
-    {
-        delete Res;
-        return false;
-    }
-
-    // Prevent duplicating resource names
-    if ( FindResource( Res->GetResourceName() ) )
-    {
-        delete Res;
-        return false;
-    }
-
-    // Finally add the resource
-    m_Resources.Add(Res);
-    Res->BuildTreeEntry(GetResourceTypeTreeId(Type));
-
-    return true;
 }

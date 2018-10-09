@@ -3,7 +3,7 @@
 <CodeBlocks_lexer_properties>
         <Lexer name="Make"
                 index="11"
-                filemasks="*Makefile,*.mak,Makefile.*">
+                filemasks="*Makefile,*.mak">
                 <Style name="Default"
                         index="0"
                         fg="0,0,0"
@@ -29,24 +29,6 @@
                 <Style name="Error"
                         index="4"
                         fg="255,0,0"/>
-                <Style name="Selection"
-                        index="-99"
-                        bg="192,192,192"/>
-                <Style name="Active line"
-                        index="-98"
-                        bg="255,255,160"/>
                 <SampleCode value="lexer_make.sample"/>
-                <LanguageAttributes
-                    LineComment="#"
-                    StreamCommentStart=""
-                    StreamCommentEnd=""
-                    BoxCommentStart=""
-                    BoxCommentMid=""
-                    BoxCommentEnd=""
-                    CaseSensitive="1"
-                    LexerCommentStyles="1"
-                    LexerCharacterStyles=""
-                    LexerStringStyles=""
-                    LexerPreprocessorStyles="2"/>
         </Lexer>
 </CodeBlocks_lexer_properties>

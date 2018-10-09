@@ -30,7 +30,7 @@ namespace
         wxsTWidget,
         _T(""),_T(""),_T(""),_T(""),
         _T("Standard"),
-        380,
+        10,
         _T("Custom"),
         wxsCPP,
         0,0,
@@ -76,7 +76,7 @@ void wxsCustomWidget::OnBuildCreatingCode()
     AddBuildingCode(Result+_T("\n"));
 }
 
-wxObject* wxsCustomWidget::OnBuildPreview(wxWindow* Parent,cb_unused long Flags)
+wxObject* wxsCustomWidget::OnBuildPreview(wxWindow* Parent,long Flags)
 {
     wxPanel* Background = new wxPanel(Parent,-1,Pos(Parent),wxDefaultSize);
     wxStaticText* Wnd = new wxStaticText(Background,-1,_T("???"),
@@ -211,7 +211,7 @@ bool wxsCustomWidget::RebuildXmlDataDoc()
             wxString::Format(
             _("Invalid Xml structure.\nError at line %d, column %d:\n\t\"%s\""),
                 m_XmlDataDoc.ErrorRow(),m_XmlDataDoc.ErrorCol(),
-                wxGetTranslation(cbC2U(m_XmlDataDoc.ErrorDesc()).wx_str())));
+                wxGetTranslation(cbC2U(m_XmlDataDoc.ErrorDesc()).c_str())));
         return false;
     }
 

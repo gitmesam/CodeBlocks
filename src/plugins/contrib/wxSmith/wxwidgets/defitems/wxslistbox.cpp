@@ -22,11 +22,9 @@
 
 #include "wxslistbox.h"
 
-#include <prep.h>
-
 namespace
 {
-    wxsRegisterItem<wxsListBox> Reg(_T("ListBox"),wxsTWidget,_T("Standard"),240);
+    wxsRegisterItem<wxsListBox> Reg(_T("ListBox"),wxsTWidget,_T("Standard"),70);
 
     WXS_ST_BEGIN(wxsListBoxStyles,_T(""))
         WXS_ST_CATEGORY("wxListBox")
@@ -69,7 +67,7 @@ void wxsListBox::OnBuildCreatingCode()
                 {
                     Codef(_T("%ASetSelection( "));
                 }
-                Codef( _T("%AAppend(%t)"), ArrayChoices[i].wx_str());
+                Codef( _T("%AAppend(%t)"), ArrayChoices[i].c_str());
                 if ( DefaultSelection == (int)i )
                 {
                     Codef(_T(" )"));
@@ -81,7 +79,6 @@ void wxsListBox::OnBuildCreatingCode()
             return;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsListBox::OnBuildCreatingCode"),GetLanguage());
@@ -105,7 +102,7 @@ wxObject* wxsListBox::OnBuildPreview(wxWindow* Parent,long Flags)
     return SetupWindow(Preview,Flags);
 }
 
-void wxsListBox::OnEnumWidgetProperties(cb_unused long Flags)
+void wxsListBox::OnEnumWidgetProperties(long Flags)
 {
       WXS_ARRAYSTRING(wxsListBox,ArrayChoices,_("Choices"),_T("content"),_T("item"))
       WXS_LONG(wxsListBox,DefaultSelection,_("Default"),_T("default"),0)

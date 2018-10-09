@@ -2,7 +2,7 @@
 
 
 
-BOOL_T CreateStaticNamespace(HSQUIRRELVM v,ScriptNamespaceDecl *sn)
+BOOL CreateStaticNamespace(HSQUIRRELVM v,ScriptNamespaceDecl *sn)
 {
 	SQInteger n = 0;
 	sq_pushroottable(v);
@@ -36,9 +36,8 @@ BOOL_T CreateStaticNamespace(HSQUIRRELVM v,ScriptNamespaceDecl *sn)
 		n++;
 	}
 	if(sn->delegate) {
-        // C::B patch: Fix shadowed variable warning
-		members = sn->delegate;
-		m = NULL;
+		const ScriptClassMemberDecl *members = sn->delegate;
+		const ScriptClassMemberDecl *m = NULL;
 		sq_newtable(v);
 		while(members[n].name) {
 			m = &members[n];
@@ -53,11 +52,11 @@ BOOL_T CreateStaticNamespace(HSQUIRRELVM v,ScriptNamespaceDecl *sn)
 	}
 	sq_createslot(v,-3);
 	sq_pop(v,1);
-
+	
 	return TRUE;
 }
 
-BOOL_T CreateClass(HSQUIRRELVM v,SquirrelClassDecl *cd)
+BOOL CreateClass(HSQUIRRELVM v,SquirrelClassDecl *cd)
 {
 	SQInteger n = 0;
 	SQInteger oldtop = sq_gettop(v);
@@ -98,7 +97,7 @@ BOOL_T CreateClass(HSQUIRRELVM v,SquirrelClassDecl *cd)
 	return TRUE;
 }
 
-BOOL_T CreateNativeClassInstance(HSQUIRRELVM v,const SQChar *classname,SQUserPointer ud,SQRELEASEHOOK hook)
+BOOL CreateNativeClassInstance(HSQUIRRELVM v,const SQChar *classname,SQUserPointer ud,SQRELEASEHOOK hook)
 {
 	SQInteger oldtop = sq_gettop(v);
 	sq_pushroottable(v);

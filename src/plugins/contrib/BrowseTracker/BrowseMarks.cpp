@@ -14,12 +14,13 @@
 
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
-	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+	Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
-// RCS-ID: $Id$
+// RCS-ID: $Id: BrowseMarks.cpp 25 2008-01-02 20:13:48Z Pecan $
 #if defined(CB_PRECOMP)
 #include "sdk.h"
 #else
+    #include "sdk_common.h"
 	#include "sdk_events.h"
 	#include "manager.h"
 	#include "editormanager.h"
@@ -61,10 +62,12 @@ BrowseMarks::BrowseMarks(wxString fullPath )
     m_fileShortName = fname.GetFullName();
 
     //#if defined(LOGGING)
-    //LOGIT( _T("BT BrowseMarks[%s][%s]"),m_filePath.c_str() ,m_fileShortName.c_str() );
+    //LOGIT( _T("BrowseMarks[%s][%s]"),m_filePath.c_str() ,m_fileShortName.c_str() );
     //#endif
 
-    m_EdPosnArray.SetCount(MaxEntries, -1);     //patch 2886
+    m_EdPosnArray.Alloc(MaxEntries);
+    for (int i=0; i < MaxEntries; ++i )
+    	m_EdPosnArray[i] = -1;
     m_currIndex = 0;    //index of current entry
     m_lastIndex = MaxEntries-1;    //index for insertion of new browse marks
     m_pEdMgr = Manager::Get()->GetEditorManager();
@@ -74,7 +77,7 @@ void BrowseMarks::SetBrowseMarksStyle( int userStyle )
 // ----------------------------------------------------------------------------
 {
     #if defined(LOGGING)
-    LOGIT( _T("BT BrowseMarks::SetBrowseMarksStyle[%d]"), userStyle );
+    LOGIT( _T("BrowseMarks::SetBrowseMarksStyle[%d]"), userStyle );
     #endif
     EditorBase* eb = m_pEdMgr->GetEditor(m_filePath);
     #if defined(LOGGING)
@@ -90,12 +93,12 @@ void BrowseMarks::SetBrowseMarksStyle( int userStyle )
 
     switch( userStyle )
     {
-//        case BrowseMarksStyle:
-//        {
-//            gBrowse_MarkerId = BROWSETRACKER_MARKER ;
-//            gBrowse_MarkerStyle  = BROWSETRACKER_MARKER_STYLE;
-//            break;
-//        }
+        case BrowseMarksStyle:
+        {
+            gBrowse_MarkerId = BROWSETRACKER_MARKER ;
+            gBrowse_MarkerStyle  = BROWSETRACKER_MARKER_STYLE;
+            break;
+        }
         case BookMarksStyle:
         {
             gBrowse_MarkerId = BOOKMARK_MARKER;
@@ -108,8 +111,6 @@ void BrowseMarks::SetBrowseMarksStyle( int userStyle )
             gBrowse_MarkerStyle  = BROWSETRACKER_HIDDEN_STYLE;
             break;
         }
-        default:
-            break;
     }//switch
 
     // Define scintilla BrowseTracker margin marker
@@ -119,13 +120,13 @@ void BrowseMarks::SetBrowseMarksStyle( int userStyle )
     // the following stmt seems to do nothing for wxSCI_MARK_DOTDOTDOT
     pControl->MarkerSetBackground( GetBrowseMarkerId(), wxColour(0xA0, 0xA0, 0xFF));
     #if defined(LOGGING)
-    LOGIT( _T("BT BrowseMarks::UserStyle[%d]MarkerId[%d]MarkerStyle[%d]"),userStyle,GetBrowseMarkerId(), GetBrowseMarkerStyle() );
+    LOGIT( _T("BrowseMarks::UserStyle[%d]MarkerId[%d]MarkerStyle[%d]"),userStyle,GetBrowseMarkerId(), GetBrowseMarkerStyle() );
     #endif
 
     // When the Marker types only change style, our work is done.
     // Scintilla did the work for us.
     #if defined(LOGGING)
-    LOGIT( _T("BT OldBrowseMarkerId[%d] NewBrowseMarkerId[%d]"), OldBrowseMarkerId, GetBrowseMarkerId() );
+    LOGIT( _T("OldBrowseMarkerId[%d] NewBrowseMarkerId[%d]"), OldBrowseMarkerId, GetBrowseMarkerId() );
     #endif
     if ( OldBrowseMarkerId == GetBrowseMarkerId() )
         return;
@@ -212,21 +213,21 @@ void BrowseMarks::CopyMarksFrom(const BrowseMarks& otherBrowse_Marks)
 // ----------------------------------------------------------------------------
 {
     #if defined(LOGGING)
-    ///LOGIT( _T("BT CopyMarksFrom BrowseMarks[%p]To[%p]"), &otherBrowse_Marks, this );
+    ///LOGIT( _T("CopyMarksFrom BrowseMarks[%p]To[%p]"), &otherBrowse_Marks, this );
     #endif
     for (int i=0; i<MaxEntries; ++i)
     {
         m_EdPosnArray[i] = otherBrowse_Marks.m_EdPosnArray[i];
         //#if defined(LOGGING)
-        //LOGIT( _T("BT CopyMarksFrom lhs[%d]rhs[%d]"),m_EdPosnArray[i],otherBrowse_Marks.m_EdPosnArray[i]  );
+        //LOGIT( _T("CopyMarksFrom lhs[%d]rhs[%d]"),m_EdPosnArray[i],otherBrowse_Marks.m_EdPosnArray[i]  );
         //#endif
     }
-    //#if defined(LOGGING)
-    //LOGIT( _T("BT CopyMarksFrom[%s]To[%s]"),
-    //            ((BrowseMarks&)otherBrowse_Marks).GetFilePath().c_str(),
-    //            GetFilePath().c_str() );
-    //#endif
-    //Dump();
+    ////#if defined(LOGGING)
+    ////LOGIT( _T("CopyMarksFrom[%s]To[%s]"),
+    ////            ((BrowseMarks&)otherBrowse_Marks).GetFilePath().c_str(),
+    ////            GetFilePath().c_str() );
+    ////#endif
+    ////Dump();
 }
 // ----------------------------------------------------------------------------
 void BrowseMarks::ImportBrowse_Marks()
@@ -235,15 +236,14 @@ void BrowseMarks::ImportBrowse_Marks()
     // rebuild BrowseMarks from scintilla browse marks
 
     #if defined(LOGGING)
-    ///LOGIT( _T("BT ImportBrowse_Marks") );
+    ///LOGIT( _T("ImportBrowse_Marks") );
     #endif
 
     //-EditorBase* eb = m_pEditorBase ;
     EditorBase* eb = m_pEdMgr->GetEditor(m_filePath);
     #if defined(LOGGING)
-    LOGIT(_T("BT ImportBrowse_Marks entered with no active editor base."));
+    if (not eb) asm("int3"); /*trap*/
     #endif
-    // This can happens when editing script for example .
     if (not eb) return;
     cbEditor* pcbEditor = Manager::Get()->GetEditorManager()->GetBuiltinEditor( eb ) ;
     if (not pcbEditor) return;
@@ -259,6 +259,35 @@ void BrowseMarks::ImportBrowse_Marks()
         line = pControl->MarkerNext( ++line,  1<<GetBrowseMarkerId());
     }
 }//ImportBrowse_Marks
+// ----------------------------------------------------------------------------
+void BrowseMarks::ImportBook_Marks()
+// ----------------------------------------------------------------------------
+{
+    // rebuild Book_Marks from scintilla browse marks
+
+    #if defined(LOGGING)
+    ///LOGIT( _T("ImportBook_Marks") );
+    #endif
+
+    //-EditorBase* eb = m_pEditorBase ;
+    EditorBase* eb = m_pEdMgr->GetEditor(m_filePath);
+    #if defined(LOGGING)
+    if (not eb) asm("int3"); /*trap*/
+    #endif
+    if (not eb) return;
+    cbEditor* pcbEditor = Manager::Get()->GetEditorManager()->GetBuiltinEditor( eb ) ;
+    if (not pcbEditor) return;
+    cbStyledTextCtrl* pControl = pcbEditor->GetControl();
+    if (not pControl) return;
+    ClearAllBrowse_Marks();
+    int line = pControl->MarkerNext( 0, 1<<BOOKMARK_MARKER);
+    while( line != -1)
+    {
+        int posn = pControl->PositionFromLine( line );
+        RecordMark(  posn );
+        line = pControl->MarkerNext( ++line,  1<<BOOKMARK_MARKER);
+    }
+}//ImportBook_Marks
 // ----------------------------------------------------------------------------
 void BrowseMarks::RecordMarksFrom(BrowseMarks& otherBrowse_Marks)
 // ----------------------------------------------------------------------------
@@ -289,6 +318,41 @@ void BrowseMarks::RecordMarksFrom(BrowseMarks& otherBrowse_Marks)
     }
 }
 // ----------------------------------------------------------------------------
+void BrowseMarks::GetBook_MarksFromEditor(wxString filename)
+// ----------------------------------------------------------------------------
+{
+    ImportBook_Marks();
+}
+// ----------------------------------------------------------------------------
+void BrowseMarks::ToggleBook_MarksFrom(BrowseMarks& otherBook_Marks)
+// ----------------------------------------------------------------------------
+{
+    // **Book_Marks**
+    // get editor by filename in case the editor was close/opened again
+    //-EditorBase* eb = m_pEditorBase;
+    EditorBase* eb = m_pEdMgr->GetEditor(m_filePath);
+    #if defined(LOGGING)
+    if (not eb) asm("int3"); /*trap*/
+    #endif
+    if (not eb) return;
+    cbEditor* cbed = Manager::Get()->GetEditorManager()->GetBuiltinEditor(eb);
+    if (not cbed) return;
+    cbStyledTextCtrl* control = cbed->GetControl();
+    for (int i=0; i<MaxEntries; ++i)
+    {
+        int posn = otherBook_Marks.GetMark(i);
+        if ( posn != -1 )
+        {
+            #if defined(LOGGING)
+            ///LOGIT( _T("ToggleBook_MarksFrom for[%d][%d]"),i,posn );
+            #endif
+            RecordMark( posn );
+            int line = control->LineFromPosition( posn);
+            control->MarkerAdd(line, BOOKMARK_MARKER);
+        }
+    }
+}
+// ----------------------------------------------------------------------------
 void BrowseMarks::RecordMark(int pos)
 // ----------------------------------------------------------------------------
 {
@@ -306,51 +370,51 @@ void BrowseMarks::RecordMark(int pos)
       {     cbStyledTextCtrl* control = cbed->GetControl();
             int line = control->LineFromPosition(pos);
             wxUnusedVar(line);
-            //LOGIT( _T("RecordMark index[%d]Line[%d]pos[%d]"), m_currIndex, line, pos );
+            ///LOGIT( _T("RecordMark index[%d]Line[%d]pos[%d]"), m_currIndex, line, pos );
       }
       else{
-          //LOGIT( _T("RecordMark index[%d]pos[%d]"), m_currIndex, pos );
+          ///LOGIT( _T("RecordMark index[%d]pos[%d]"), m_currIndex, pos );
       }
     #endif
 
-    //    // Trial three, confusing when recording after a browse backward
-    //    // record the new position
-    //    int index = m_currIndex;
-    //    int oldPosn = m_EdPosnArray[index];
-    //    ++index;
-    //    if (index >= MaxEntries) index = 0;
-    //    m_EdPosnArray[index] = pos;
-    //    m_currIndex = index;
-    //    // record the old position forward; allows user
-    //    // to get back to previous position after a mouse "copy"
-    //    // in order to "paste" at the old position(using down key).
-    //    LOGIT( _T("RecordMark[%d]index[%d]"),pos, m_currIndex );
-    //    LOGIT( _T("FindMark oldPosn[%d]found[%d]"), oldPosn, FindMark(oldPosn));
-    //    if ( (oldPosn != -1) && (FindMark(oldPosn) == -1) )
-    //    {
-    //        LOGIT( _T("FindMark oldPosn[%d]found[%d]"), oldPosn, FindMark(oldPosn));
-    //        ++index;
-    //        if (index >= MaxEntries) index = 0;
-    //        m_EdPosnArray[index] = oldPosn;
-    //    }
+    ////    // Trial three, confusing when recording after a browse backward
+    ////    // record the new position
+    ////    int index = m_currIndex;
+    ////    int oldPosn = m_EdPosnArray[index];
+    ////    ++index;
+    ////    if (index >= MaxEntries) index = 0;
+    ////    m_EdPosnArray[index] = pos;
+    ////    m_currIndex = index;
+    ////    // record the old position forward; allows user
+    ////    // to get back to previous position after a mouse "copy"
+    ////    // in order to "paste" at the old position(using down key).
+    ////    LOGIT( _T("RecordMark[%d]index[%d]"),pos, m_currIndex );
+    ////    LOGIT( _T("FindMark oldPosn[%d]found[%d]"), oldPosn, FindMark(oldPosn));
+    ////    if ( (oldPosn != -1) && (FindMark(oldPosn) == -1) )
+    ////    {
+    ////        LOGIT( _T("FindMark oldPosn[%d]found[%d]"), oldPosn, FindMark(oldPosn));
+    ////        ++index;
+    ////        if (index >= MaxEntries) index = 0;
+    ////        m_EdPosnArray[index] = oldPosn;
+    ////    }
 
-    //    // Trial two; looses forward position needed after copy/paste
-    //    int index = m_currIndex;
-    //    //int index = m_lastIndex;
-    //    ++index;
-    //    if (index >= MaxEntries) index = 0;
-    //    m_EdPosnArray[index] = pos;
-    //    //m_lastIndex = index;
-    //    m_currIndex = index;
+    ////    // Trial two; looses forward position needed after copy/paste
+    ////    int index = m_currIndex;
+    ////    //int index = m_lastIndex;
+    ////    ++index;
+    ////    if (index >= MaxEntries) index = 0;
+    ////    m_EdPosnArray[index] = pos;
+    ////    //m_lastIndex = index;
+    ////    m_currIndex = index;
 
-    //     Trial one; confusing to use
-    //    //int index = m_currIndex;
-    //    int index = m_lastIndex;
-    //    ++index;
-    //    if (index >= MaxEntries) index = 0;
-    //    m_EdPosnArray[index] = pos;
-    //    m_lastIndex = index;
-    //    //m_currIndex = index;
+        // Trial one; confusing to use
+    ////    //int index = m_currIndex;
+    ////    int index = m_lastIndex;
+    ////    ++index;
+    ////    if (index >= MaxEntries) index = 0;
+    ////    m_EdPosnArray[index] = pos;
+    ////    m_lastIndex = index;
+    ////    //m_currIndex = index;
 
 }
 // ----------------------------------------------------------------------------
@@ -429,13 +493,13 @@ void BrowseMarks::RebuildBrowse_Marks(cbEditor* cbed, bool addedLines)
     }
 }
 // ----------------------------------------------------------------------------
-wxString BrowseMarks::GetStringOfBrowse_Marks() const
+wxString BrowseMarks::GetStringOfBrowse_Marks()
 // ----------------------------------------------------------------------------
 {
     // return a comma delimited string of browse marks
 
     wxString browseMarks = wxT("");
-    for (int i = 0; i < MaxEntries; ++i)
+    for (int i=0; i<MaxEntries; ++i)
     {
         if ( m_EdPosnArray[i] == -1 ) continue;
         if (not browseMarks.IsEmpty())  browseMarks << wxT(",") ;
@@ -458,9 +522,9 @@ void BrowseMarks::RemoveMarkerTypes( int markerId )
     //cbEditor* cbed = Manager::Get()->GetEditorManager()->GetBuiltinActiveEditor();
     if (eb) cbed = Manager::Get()->GetEditorManager()->GetBuiltinEditor(eb);
     if (cbed) control = cbed->GetControl();
-    for (int i = 0; i < MaxEntries; ++i )
+    for (int i=0; i<MaxEntries; ++i )
     {
-            const int pos = m_EdPosnArray[i];
+            int pos = m_EdPosnArray[i];
             int line = -1;
             if (control && (pos != -1))
                 line = control->LineFromPosition(pos);
@@ -481,9 +545,9 @@ void BrowseMarks::PlaceMarkerTypes( int markerId )
     //cbEditor* cbed = Manager::Get()->GetEditorManager()->GetBuiltinActiveEditor();
     if (eb) cbed = Manager::Get()->GetEditorManager()->GetBuiltinEditor(eb);
     if (cbed) control = cbed->GetControl();
-    for (int i = 0; i < MaxEntries; ++i )
+    for (int i=0; i<MaxEntries; ++i )
     {
-            const int pos = m_EdPosnArray[i];
+            int pos = m_EdPosnArray[i];
             int line = -1;
             if (control && (pos != -1))
                 line = control->LineFromPosition(pos);
@@ -499,18 +563,18 @@ void BrowseMarks::Dump()
 
     #if defined(LOGGING)
     EditorBase* eb = m_pEdMgr->GetEditor(m_filePath);
-    LOGIT( _T("BT --BrowseMarks for[%p][%s]--"), eb, m_fileShortName.c_str() );
+    LOGIT( _T("--BrowseMarks for[%p][%s]--"), eb, m_fileShortName.c_str() );
     cbEditor* cbed = 0;
     cbStyledTextCtrl* control = 0;
     //cbEditor* cbed = Manager::Get()->GetEditorManager()->GetBuiltinActiveEditor();
     if (eb) cbed = Manager::Get()->GetEditorManager()->GetBuiltinEditor(eb);
     if (cbed) control = cbed->GetControl();
-    LOGIT( _T("BT Array[%p] Current[%d]Last[%d]"), this, m_currIndex, m_lastIndex);
-    for (int i = 0; i < MaxEntries; ++i )
+    LOGIT( _T("Array[%p] Current[%d]Last[%d]"), this, m_currIndex, m_lastIndex);
+    for (int i=0; i<MaxEntries; ++i )
     {
-            const int pos = m_EdPosnArray[i];
+            int pos = m_EdPosnArray[i];
             if (control && (pos != -1))
-            LOGIT(_T("BT Array[%p] index[%d]Line[%d]Pos[%d]"), this, i, control->LineFromPosition(pos) ,pos );
+            LOGIT( _T("Array[%p] index[%d]Line[%d]Pos[%d]"), this, i, control->LineFromPosition(pos) ,pos );
             else
             LOGIT( _T("Array[%p] index[%d]Pos[%d]"), this, i, pos );
     }

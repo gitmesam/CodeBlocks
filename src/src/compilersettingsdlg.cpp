@@ -8,24 +8,19 @@
  */
 
 #include <sdk.h>
-
-#ifndef CB_PRECOMP
-    #include <manager.h>
-    #include <configmanager.h>
-    #include <pluginmanager.h>
-    #include <cbplugin.h>
-    #include <wx/button.h>
-    #include <wx/checklst.h>
-    #include <wx/filename.h>
-    #include <wx/imaglist.h>
-    #include <wx/intl.h>
-    #include <wx/listctrl.h>
-    #include <wx/sizer.h>	// SetSizeHints
-    #include <wx/stattext.h>	// wxStaticText
-    #include <wx/xrc/xmlres.h>
-#endif // CB_PRECOMP
-
+#include <wx/xrc/xmlres.h>
+#include <manager.h>
+#include <configmanager.h>
+#include <pluginmanager.h>
+#include <cbplugin.h>
+#include <wx/intl.h>
 #include <wx/listbook.h>
+#include <wx/listctrl.h>
+#include <wx/checklst.h>
+#include <wx/filename.h>
+#include <wx/imaglist.h>
+#include <wx/sizer.h>	// SetSizeHints
+#include <wx/stattext.h>	// wxStaticText
 
 #include "configurationpanel.h"
 #include "compilersettingsdlg.h"
@@ -41,7 +36,9 @@ const wxString base_imgs[] =
 };
 const int IMAGES_COUNT = sizeof(base_imgs) / sizeof(wxString);
 
-BEGIN_EVENT_TABLE(CompilerSettingsDlg, wxScrollingDialog)
+BEGIN_EVENT_TABLE(CompilerSettingsDlg, wxDialog)
+    EVT_LISTBOOK_PAGE_CHANGING(XRCID("nbMain"), CompilerSettingsDlg::OnPageChanging)
+    EVT_LISTBOOK_PAGE_CHANGED(XRCID("nbMain"), CompilerSettingsDlg::OnPageChanged)
 END_EVENT_TABLE()
 
 // This dialog initially contains only the batch-build settings.
@@ -50,22 +47,30 @@ END_EVENT_TABLE()
 
 CompilerSettingsDlg::CompilerSettingsDlg(wxWindow* parent)
 {
-    wxXmlResource::Get()->LoadObject(this, parent, _T("dlgCompilerSettings"),_T("wxScrollingDialog"));
-    XRCCTRL(*this, "wxID_OK", wxButton)->SetDefault();
-
-    m_pImageList = new wxImageList(80, 80);
-
-    Connect(XRCID("nbMain"),wxEVT_COMMAND_LISTBOOK_PAGE_CHANGING,wxListbookEventHandler(CompilerSettingsDlg::OnPageChanging));
-    Connect(XRCID("nbMain"),wxEVT_COMMAND_LISTBOOK_PAGE_CHANGED, wxListbookEventHandler(CompilerSettingsDlg::OnPageChanged ));
+    wxXmlResource::Get()->LoadDialog(this, parent, _T("dlgCompilerSettings"));
+    wxListbook* lb = XRCCTRL(*this, "nbMain", wxListbook);
+    wxImageList* images = new wxImageList(80, 80);
+    lb->AssignImageList(images);
+    int sel = Manager::Get()->GetConfigManager(_T("app"))->ReadInt(_T("/environment/settings_size"), 0);
+    SetSettingsIconsStyle(lb->GetListView(), (SettingsIconsStyle)sel);
 
     // tab "Batch builds"
-    if (platform::windows)
+    if(platform::windows)
         XRCCTRL(*this, "txtBatchBuildsCmdLine", wxTextCtrl)->SetValue(Manager::Get()->GetConfigManager(_T("app"))->Read(_T("/batch_build_args"), appglobals::DefaultBatchBuildArgs));
     else
         XRCCTRL(*this, "txtBatchBuildsCmdLine", wxTextCtrl)->Enable(false);
 
     // fill plugins list
-    const wxArrayString &bbplugins = cbReadBatchBuildPlugins();
+    ConfigManager *bbcfg = Manager::Get()->GetConfigManager(_T("plugins"));
+    wxArrayString bbplugins = bbcfg->ReadArrayString(_T("/batch_build_plugins"));
+    if (!bbplugins.GetCount())
+    {
+        // defaults
+        if(platform::windows)
+            bbplugins.Add(_T("compiler.dll"));
+        else
+            bbplugins.Add(_T("libcompiler.so"));
+    }
     wxCheckListBox* clb = XRCCTRL(*this, "chkBBPlugins", wxCheckListBox);
     clb->Clear();
     clb->SetMinSize(wxSize(-1, 150));
@@ -97,19 +102,16 @@ CompilerSettingsDlg::CompilerSettingsDlg(wxWindow* parent)
     // make sure everything is laid out properly
     GetSizer()->SetSizeHints(this);
     CentreOnParent();
-    Layout();
 }
 
 CompilerSettingsDlg::~CompilerSettingsDlg()
 {
     //dtor
-    delete m_pImageList;
 }
 
 void CompilerSettingsDlg::AddPluginPanels()
 {
     const wxString base = _T("images/settings/");
-    // for plugins who do not supply icons, use common generic icons
     const wxString noimg = _T("images/settings/generic-plugin");
     wxListbook* lb = XRCCTRL(*this, "nbMain", wxListbook);
 
@@ -129,7 +131,6 @@ void CompilerSettingsDlg::AddPluginPanels()
     for (size_t i = 0; i < local.GetCount(); ++i)
     {
         cbConfigurationPanel* panel = local[i];
-        panel->SetParentDialog(this);
         lb->AddPage(panel, panel->GetTitle());
 
         wxString onFile = ConfigManager::LocateDataFile(base + panel->GetBitmapBaseName() + _T(".png"), sdDataGlobal | sdDataUser);
@@ -139,9 +140,9 @@ void CompilerSettingsDlg::AddPluginPanels()
         if (offFile.IsEmpty())
 			offFile = ConfigManager::LocateDataFile(noimg + _T("-off.png"), sdDataGlobal | sdDataUser);
 
-        m_pImageList->Add(cbLoadBitmap(onFile));
-        m_pImageList->Add(cbLoadBitmap(offFile));
-        lb->SetPageImage(lb->GetPageCount() - 1, m_pImageList->GetImageCount() - 2);
+        lb->GetImageList()->Add(cbLoadBitmap(onFile));
+        lb->GetImageList()->Add(cbLoadBitmap(offFile));
+        lb->SetPageImage(lb->GetPageCount() - 1, lb->GetImageList()->GetImageCount() - 2);
 
         // add it in our central container too
         m_PluginPanels.Add(panel);
@@ -156,9 +157,31 @@ void CompilerSettingsDlg::AddPluginPanels()
 	if (offFile.IsEmpty())
 		offFile = ConfigManager::LocateDataFile(noimg + _T("-off.png"), sdDataGlobal | sdDataUser);
 
-    m_pImageList->Add(cbLoadBitmap(onFile));
-    m_pImageList->Add(cbLoadBitmap(offFile));
-    lb->SetPageImage(lb->GetPageCount() -1, m_pImageList->GetImageCount() - 2);
+	lb->GetImageList()->Add(cbLoadBitmap(onFile));
+	lb->GetImageList()->Add(cbLoadBitmap(offFile));
+    lb->SetPageImage(lb->GetPageCount() -1, lb->GetImageList()->GetImageCount() - 2);
+
+    // step 2
+    Manager::Get()->GetPluginManager()->GetConfigurationPanels(cgDebugger, lb, local);
+    for (size_t i = 0; i < local.GetCount(); ++i)
+    {
+        cbConfigurationPanel* panel = local[i];
+        lb->AddPage(panel, panel->GetTitle());
+
+        wxString onFile = ConfigManager::LocateDataFile(base + panel->GetBitmapBaseName() + _T(".png"), sdDataGlobal | sdDataUser);
+        if (onFile.IsEmpty())
+			onFile = ConfigManager::LocateDataFile(noimg + _T(".png"), sdDataGlobal | sdDataUser);
+        wxString offFile = ConfigManager::LocateDataFile(base + panel->GetBitmapBaseName() + _T("-off.png"), sdDataGlobal | sdDataUser);
+        if (offFile.IsEmpty())
+			offFile = ConfigManager::LocateDataFile(noimg + _T("-off.png"), sdDataGlobal | sdDataUser);
+
+        lb->GetImageList()->Add(cbLoadBitmap(onFile));
+        lb->GetImageList()->Add(cbLoadBitmap(offFile));
+        lb->SetPageImage(lb->GetPageCount() - 1, lb->GetImageList()->GetImageCount() - 2);
+
+        // add it in our central container too
+        m_PluginPanels.Add(panel);
+    }
 
     UpdateListbookImages();
 }
@@ -167,20 +190,17 @@ void CompilerSettingsDlg::UpdateListbookImages()
 {
     wxListbook* lb = XRCCTRL(*this, "nbMain", wxListbook);
     int sel = lb->GetSelection();
+    // set page images according to their on/off status
+    for (size_t i = 0; i < IMAGES_COUNT + m_PluginPanels.GetCount(); ++i)
+    {
+        lb->SetPageImage(i, (i * 2) + (sel == (int)i ? 0 : 1));
+    }
 
-    if (SettingsIconsStyle(Manager::Get()->GetConfigManager(_T("app"))->ReadInt(_T("/environment/settings_size"), 0)))
-    {
-        SetSettingsIconsStyle(lb->GetListView(), sisNoIcons);
-        lb->SetImageList(nullptr);
-    }
-    else
-    {
-        lb->SetImageList(m_pImageList);
-        // set page images according to their on/off status
-        for (size_t i = 0; i < IMAGES_COUNT + m_PluginPanels.GetCount(); ++i)
-            lb->SetPageImage(i, (i * 2) + (sel == (int)i ? 0 : 1));
-        SetSettingsIconsStyle(lb->GetListView(), sisLargeIcons);
-    }
+    // the selection colour is ruining the on/off effect,
+    // so make sure no item is selected ;)
+    // (only if we have icons showing)
+    if (GetSettingsIconsStyle(lb->GetListView()) != sisNoIcons)
+        lb->GetListView()->Select(sel, false);
 
     // update the page title
     wxString label = lb->GetPageText(sel);
@@ -188,18 +208,15 @@ void CompilerSettingsDlg::UpdateListbookImages()
     while (label.Replace(_T(" & "), _T(" && ")))
         ;
     XRCCTRL(*this, "lblBigTitle", wxStaticText)->SetLabel(label);
-    XRCCTRL(*this, "pnlTitleInfo", wxPanel)->Layout();
 }
 
-void CompilerSettingsDlg::OnPageChanging(cb_unused wxListbookEvent& event)
+void CompilerSettingsDlg::OnPageChanging(wxListbookEvent& event)
 {
 }
 
 void CompilerSettingsDlg::OnPageChanged(wxListbookEvent& event)
 {
-    // update only on real change, not on dialog creation
-    if (event.GetOldSelection() != -1 && event.GetSelection() != -1)
-        UpdateListbookImages();
+    UpdateListbookImages();
 }
 
 void CompilerSettingsDlg::EndModal(int retCode)
@@ -215,12 +232,12 @@ void CompilerSettingsDlg::EndModal(int retCode)
             cfg->Write(_T("/batch_build_args"), bbargs);
             Associations::SetBatchBuildOnly();
         }
-#endif //#ifdef __WXMSW__
 
         // batch build plugins
+        ConfigManager *bbcfg = Manager::Get()->GetConfigManager(_T("plugins"));
         wxArrayString bbplugins;
         wxCheckListBox* clb = XRCCTRL(*this, "chkBBPlugins", wxCheckListBox);
-        for (size_t i = 0; i < clb->GetCount(); ++i)
+        for (int i = 0; i < (int)clb->GetCount(); ++i)
         {
             if (clb->IsChecked(i))
             {
@@ -239,7 +256,17 @@ void CompilerSettingsDlg::EndModal(int retCode)
             }
         }
 
-        cbWriteBatchBuildPlugins(bbplugins, this);
+        const wxString compiler(platform::windows ? _T("compiler.dll") : _T("libcompiler.so"));
+
+        if (bbplugins.Index(compiler) == wxNOT_FOUND)
+        {
+            bbplugins.Add(compiler);
+            cbMessageBox(_("The compiler plugin must always be loaded for batch builds!\n"
+                        "Automatically re-enabled."),
+                        _("Warning"), wxICON_WARNING);
+        }
+        bbcfg->Write(_T("/batch_build_plugins"), bbplugins);
+#endif
 
         // finally, apply settings in all plugins' panels
         for (size_t i = 0; i < m_PluginPanels.GetCount(); ++i)
@@ -258,5 +285,5 @@ void CompilerSettingsDlg::EndModal(int retCode)
         }
     }
 
-    wxScrollingDialog::EndModal(retCode);
+    wxDialog::EndModal(retCode);
 }

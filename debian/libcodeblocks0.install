@@ -1,1 +1,2 @@
-usr/lib/libcodeblocks.so.*
+usr/lib/libcodeblocks.so.0
+usr/lib/libcodeblocks.so.0.0.1

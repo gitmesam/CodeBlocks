@@ -12,7 +12,8 @@
 #include "settings.h"
 #include "globals.h"
 
-#include <tinyxml.h>
+#include "tinyxml/tinystr.h"
+#include "tinyxml/tinyxml.h"
 #include "manager.h"
 #include "base64.h"
 
@@ -53,10 +54,10 @@ namespace ConfigManagerContainer
 {
     typedef std::map<wxString, wxString> StringToStringMap;
     typedef std::map<int, wxString> IntToStringMap;
-    typedef std::set<wxString> StringSet;
+    typedef std::set<wxString> StringSet;;
 
     typedef std::map<wxString, ISerializable*> SerializableObjectMap;
-}
+};
 
 
 /* ------------------------------------------------------------------------------------------------------------------*/
@@ -82,11 +83,10 @@ enum SearchDirs
 
     sdAllGlobal       = 0xf000, ///< Convenience value meaning "all sd*Global values"
 
-    sdAllKnown        = 0xffff  ///< All known dirs (i.e. all of the above)
+    sdAllKnown        = 0xffff, ///< All known dirs (i.e. all of the above)
 };
 
 
-class CodeBlocksApp;
 
 /* ------------------------------------------------------------------------------------------------------------------
 *  ConfigManager class
@@ -94,7 +94,6 @@ class CodeBlocksApp;
 class DLLIMPORT ConfigManager
 {
     friend class CfgMgrBldr;
-    friend class CodeBlocksApp;
 
     TiXmlDocument *doc;
     TiXmlElement* root;
@@ -107,28 +106,14 @@ class DLLIMPORT ConfigManager
     inline void Collapse(wxString& str) const;
     wxString InvalidNameMessage(const wxString& what, const wxString& sub, TiXmlElement *localPath) const;
     static void InitPaths();
-    static void MigrateFolders();
 
     static wxString config_folder;
     static wxString home_folder;
     static wxString data_path_user;
     static wxString data_path_global;
-
-#ifdef CB_AUTOCONF
-    static wxString plugin_path_global;
-#endif
     static wxString app_path;
     static wxString temp_folder;
-    static wxString alternate_user_data_path;
-    static bool has_alternate_user_data_path;
-
-protected:
-    //For use by the CodeBlocksApp when the --user-data-dir switch is set
-    //all of the user config and user plugin data will be set relative to this path
-    static bool SetUserDataFolder(const wxString &user_data_path);
-
-    //Used by CfgMgrBldr internally by ConfigManager
-    static wxString GetUserDataFolder();
+    static bool relo;
 
 public:
 
@@ -166,14 +151,14 @@ public:
     /* Backwards compatible functions. For new code, please use GetFolder() instead.
     *
     * Query "standard" paths that work across platforms.
-    * NEVER hard-code a path like "C:\CodeBlocks\share\data". Always use one of the following functions to compose a path.
+    * NEVER harcode a path like "C:\CodeBlocks\share\data". Always use one of the following functions to compose a path.
     */
-    static wxString GetHomeFolder() { return GetFolder(sdHome); }
-    static wxString GetConfigFolder(){ return GetFolder(sdConfig); }
+    static wxString GetHomeFolder() { return home_folder; }
+    static wxString GetConfigFolder(){ return config_folder; }
     static wxString GetPluginsFolder(bool global = true){ return GetFolder(global ? sdPluginsGlobal : sdPluginsUser); }
     static wxString GetScriptsFolder(bool global = true){ return GetFolder(global ? sdScriptsGlobal : sdScriptsUser); }
-    static wxString GetDataFolder(bool global = true){ return GetFolder(global ? sdDataGlobal : sdDataUser); }
-    static wxString GetExecutableFolder(){ return GetFolder(sdBase); }
+    static wxString GetDataFolder(bool global = true){ return global ? data_path_global : data_path_user; }
+    static wxString GetExecutableFolder(){ return app_path; }
     static wxString GetTempFolder(){ return GetFolder(sdTemp); }
 
     /*
@@ -213,7 +198,6 @@ public:
     void Clear();
     void Delete();
     void DeleteAll();
-    void Flush();
 
     /* -----------------------------------------------------------------------------------------------------
     *  Standard primitives
@@ -237,7 +221,7 @@ public:
 
     /* -----------------------------------------------------------------------------------------------------
     *  Set and unset keys, or test for existence. Note that these functions cannot be used to remove paths
-    *  or test existence of paths (it may be used to implicitly create paths, though).
+    *  or test existence of paths (it may be used to implicitely create paths, though).
     */
     bool Exists(const wxString& name);
     void Set(const wxString& name);
@@ -285,6 +269,7 @@ public:
     /* -----------------------------------------------------------------------------------------------------
     *  Maps of serialized objects. You are responsible for deleting the objects in the map/set.
     *
+    *
     *  Usage:
     *  ------
     *  typedef std::map<wxString, MySerializableClass *> MyMap;
@@ -306,55 +291,15 @@ public:
                 obj->SerializeIn(wxBase64::Decode(cbC2U(e->FirstChild()->ToText()->Value())));
                 (*map)[cbC2U(e->Value())] = obj;
             }
-    }
+    };
 };
 
-/** Wrapper class for reading or writing config values, without the need for the full path.
-  * It provides a way to sandbox a part of the code from the namespace details
-  * or the full path used to access the config values.
-  */
-class DLLIMPORT ConfigManagerWrapper
-{
-public:
-    ConfigManagerWrapper() {}
-    ConfigManagerWrapper(wxString namespace_, wxString basepath) : m_namespace(namespace_), m_basepath(basepath)
-    {
-        if (!m_basepath.EndsWith(wxT("/")))
-            m_basepath += wxT("/");
-    }
-    bool IsValid() const { return !m_namespace.empty(); }
-    const wxString& GetBasepath() const { return m_basepath; }
 
-    void Write(const wxString& name, const wxString& value, bool ignoreEmpty = false);
-    wxString Read(const wxString& key, const wxString& defaultVal = wxEmptyString);
 
-    bool Read(const wxString& key, wxString* str);
-    void Write(const wxString& key, const char* str);
 
-    void Write(const wxString& name,  int value);
-    bool Read(const wxString& name,  int* value);
-    int  ReadInt(const wxString& name,  int defaultVal = 0);
 
-    void Write(const wxString& name,  bool value);
-    bool Read(const wxString& name,  bool* value);
-    bool ReadBool(const wxString& name,  bool defaultVal = false);
 
-    void Write(const wxString& name, double value);
-    bool Read(const wxString& name, double* value);
-    double ReadDouble(const wxString& name, double defaultVal = 0.0f);
 
-private:
-    wxString m_namespace;
-    wxString m_basepath;
-};
-
-/// Read the list of batch build plugins and return them. The list won't be empty; at least the compiler plugin will be
-/// added to the to it. The list contain the library names of the plugins and differs on every OS.
-DLLIMPORT wxArrayString cbReadBatchBuildPlugins();
-/// Write the list of batch build plugins in the config.
-/// @param bbpluigns List of library plugin names.
-/// @param messageBoxParent Set as a parent to the message box that will be shown in case of errors.
-DLLIMPORT void cbWriteBatchBuildPlugins(wxArrayString bbplugins, wxWindow *messageBoxParent);
 
 /* ------------------------------------------------------------------------------------------------------------------
 *  "Builder pattern" class for ConfigManager
@@ -382,7 +327,6 @@ class DLLIMPORT CfgMgrBldr : public Mgr<CfgMgrBldr>
     bool r;
     wxString cfg;
 
-    void Flush();
     void Close();
     void SwitchTo(const wxString& absFN);
     void SwitchToR(const wxString& absFN);
@@ -391,7 +335,7 @@ class DLLIMPORT CfgMgrBldr : public Mgr<CfgMgrBldr>
     wxString DetermineExecutablePath();
 protected:
     CfgMgrBldr();
-    ~CfgMgrBldr() override;
+    ~CfgMgrBldr();
 
 public:
     static ConfigManager* GetConfigManager(const wxString& name_space);

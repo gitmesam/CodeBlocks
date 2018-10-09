@@ -24,7 +24,7 @@
 
 namespace
 {
-    wxsRegisterItem<wxsGridSizer> Reg(_T("GridSizer"),wxsTSizer,_T("Layout"),60);
+    wxsRegisterItem<wxsGridSizer> Reg(_T("GridSizer"),wxsTSizer,_T("Layout"),80);
 }
 
 wxsGridSizer::wxsGridSizer(wxsItemResData* Data):
@@ -36,7 +36,7 @@ wxsGridSizer::wxsGridSizer(wxsItemResData* Data):
 
 wxSizer* wxsGridSizer::OnBuildSizerPreview(wxWindow* Parent)
 {
-    return new wxGridSizer(Rows,Cols,
+	return new wxGridSizer(Rows,Cols,
         VGap.GetPixels(Parent),HGap.GetPixels(Parent));
 }
 
@@ -48,12 +48,11 @@ void wxsGridSizer::OnBuildSizerCreatingCode()
         {
             AddHeader(_T("<wx/sizer.h>"),GetInfo().ClassName,hfInPCH);
             Codef(_T("%C(%d, %d, %s, %s);\n"),Rows,Cols,
-                  VGap.GetPixelsCode(GetCoderContext()).wx_str(),
-                  HGap.GetPixelsCode(GetCoderContext()).wx_str());
+                    VGap.GetPixelsCode(GetCoderContext()).c_str(),
+                    HGap.GetPixelsCode(GetCoderContext()).c_str());
             return;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsGridSizer::OnBuildSizerCreatingCode"),GetLanguage());
@@ -61,7 +60,7 @@ void wxsGridSizer::OnBuildSizerCreatingCode()
     }
 }
 
-void wxsGridSizer::OnEnumSizerProperties(cb_unused long Flags)
+void wxsGridSizer::OnEnumSizerProperties(long Flags)
 {
     WXS_LONG(wxsGridSizer,Cols,_("Cols"),_T("cols"),0);
     WXS_LONG(wxsGridSizer,Rows,_("Rows"),_T("rows"),0);

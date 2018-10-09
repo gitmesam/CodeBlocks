@@ -19,17 +19,17 @@ class DLLIMPORT UserVariableManager : public Mgr<UserVariableManager>
         friend class Manager;
         friend class Mgr<UserVariableManager>;
         friend class MacrosManager;
-
-        ConfigManager * m_CfgMan;
-        wxString        m_ActiveSet;
-        wxArrayString   m_Preempted;
+        ConfigManager * cfg;
+        wxString activeSet;
+        wxArrayString preempted;
 
     public:
         UserVariableManager();
 
-        wxString Replace(const wxString& variable);
+        UserVariableManager(const UserVariableManager& rhs) { cbThrow(_T("Can't call UserVariableManager's copy ctor!!!")); }
+        virtual void operator=(const UserVariableManager& rhs){ cbThrow(_T("Can't assign an UserVariableManager* !!!")); }
 
-        wxString GetVariable(wxWindow *parent, const wxString &old);
+        wxString Replace(const wxString& variable);
 
         void Preempt(const wxString& variable);
         void Arrogate();
@@ -37,14 +37,6 @@ class DLLIMPORT UserVariableManager : public Mgr<UserVariableManager>
 
         void Configure();
         void Migrate();
-
-        UserVariableManager& operator=(cb_unused const UserVariableManager& rhs) // prevent assignment operator
-        {
-            cbThrow(_T("Can't assign a UserVariableManager* !!!"));
-            return *this;
-        }
-    private:
-        UserVariableManager(cb_unused const UserVariableManager& rhs); // prevent copy construction
 };
 
 #endif // USER_VARIABLE_MANAGER_H

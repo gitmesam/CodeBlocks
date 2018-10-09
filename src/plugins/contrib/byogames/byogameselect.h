@@ -1,7 +1,7 @@
 #ifndef BYOGAMESELECT_H
 #define BYOGAMESELECT_H
 
-#include "scrollingdialog.h"
+#include <wx/dialog.h>
 
 class wxBoxSizer;
 class wxStaticText;
@@ -12,7 +12,7 @@ class wxButton;
 class wxStaticLine;
 class wxCommandEvent;
 
-class byoGameSelect: public wxScrollingDialog
+class byoGameSelect: public wxDialog
 {
 	public:
 
@@ -20,8 +20,8 @@ class byoGameSelect: public wxScrollingDialog
 		virtual ~byoGameSelect();
 
 		//(*Identifiers(byoGameSelect)
-		static const long ID_STATICTEXT1;
 		static const long ID_PANEL1;
+		static const long ID_STATICTEXT1;
 		static const long ID_LISTBOX1;
 		static const long ID_STATICLINE1;
 		//*)
@@ -34,17 +34,17 @@ class byoGameSelect: public wxScrollingDialog
 		//*)
 
 		//(*Declarations(byoGameSelect)
+		wxBoxSizer* BoxSizer1;
 		wxPanel* Panel1;
 		wxBoxSizer* BoxSizer3;
-		wxButton* Button1;
-		wxButton* Button2;
-		wxBoxSizer* BoxSizer2;
 		wxStaticText* StaticText1;
-		wxStaticLine* StaticLine1;
-		wxListBox* m_GamesList;
 		wxBoxSizer* BoxSizer4;
-		wxBoxSizer* BoxSizer1;
 		wxStaticBoxSizer* StaticBoxSizer1;
+		wxListBox* m_GamesList;
+		wxBoxSizer* BoxSizer2;
+		wxButton* Button1;
+		wxStaticLine* StaticLine1;
+		wxButton* Button2;
 		//*)
 
 	private:

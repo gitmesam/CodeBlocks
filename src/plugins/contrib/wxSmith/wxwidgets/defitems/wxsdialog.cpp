@@ -20,7 +20,7 @@
 * $HeadURL$
 */
 
-#include <wx/app.h>        // wxTheApp
+#include <wx/app.h>		// wxTheApp
 #include <wx/frame.h> // wxFRAME_SHAPED
 #include <wx/settings.h> // wxSystemSettings, wxSYS_COLOUR_BTNFACE
 #include "wxsdialog.h"
@@ -72,7 +72,7 @@ void wxsDialog::OnBuildCreatingCode()
         case wxsCPP:
         {
             AddHeader(_T("<wx/dialog.h>"),GetInfo().ClassName,hfInPCH);
-            Codef(_T("%C(%W, %I, %t, wxDefaultPosition, wxDefaultSize, %T, %N);\n"),Title.wx_str());
+            Codef(_T("%C(%W, %I, %t, wxDefaultPosition, wxDefaultSize, %T, %N);\n"),Title.c_str());
             if ( !GetBaseProps()->m_Size.IsDefault || (GetPropertiesFlags()&flSource && IsRootItem() && GetBaseProps()->m_SizeFromArg) )
             {
                 Codef(_T("%ASetClientSize(%S);\n"));
@@ -91,7 +91,6 @@ void wxsDialog::OnBuildCreatingCode()
             return;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsDialog::OnBuildCreatingCode"),GetLanguage());
@@ -139,7 +138,11 @@ wxObject* wxsDialog::OnBuildPreview(wxWindow* Parent,long Flags)
             {
                 NewSize.SetDefaults(wxSize(400,450));
                 NewItem->SetSize(NewSize);
-                NewItem->SetInitialSize(NewSize);
+                #if wxCHECK_VERSION(2,8,0)
+                    NewItem->SetInitialSize(NewSize);
+                #else
+                    NewItem->SetBestFittingSize(NewSize);
+                #endif
                 if ( GetChildCount() == 1 )
                 {
                     // If there's only one child it's size gets dialog's size
@@ -153,7 +156,11 @@ wxObject* wxsDialog::OnBuildPreview(wxWindow* Parent,long Flags)
             else
             {
                 NewItem->SetSize(NewSize);
-                NewItem->SetInitialSize(NewSize);
+                #if wxCHECK_VERSION(2,8,0)
+                    NewItem->SetInitialSize(NewSize);
+                #else
+                    NewItem->SetBestFittingSize(NewSize);
+                #endif
             }
         }
     }
@@ -161,7 +168,7 @@ wxObject* wxsDialog::OnBuildPreview(wxWindow* Parent,long Flags)
     return NewItem;
 }
 
-void wxsDialog::OnEnumContainerProperties(cb_unused long Flags)
+void wxsDialog::OnEnumContainerProperties(long Flags)
 {
     WXS_SHORT_STRING(wxsDialog,Title,_("Title"),_T("title"),_T(""),false)
     WXS_BOOL(wxsDialog,Centered,_("Centered"),_T("centered"),false);

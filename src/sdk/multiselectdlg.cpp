@@ -10,7 +10,6 @@
 #include "sdk_precomp.h"
 
 #ifndef CB_PRECOMP
-    #include <wx/button.h>
     #include <wx/checklst.h>
     #include <wx/msgdlg.h>
     #include <wx/stattext.h>
@@ -18,9 +17,11 @@
     #include "globals.h"
 #endif
 
+#include <wx/textdlg.h>
+
 #include "multiselectdlg.h"
 
-BEGIN_EVENT_TABLE(MultiSelectDlg, wxScrollingDialog)
+BEGIN_EVENT_TABLE(MultiSelectDlg, wxDialog)
     EVT_CHECKLISTBOX(XRCID("lstItems"), MultiSelectDlg::OnItemToggle)
     EVT_BUTTON(XRCID("btnSelectWild"), MultiSelectDlg::OnWildcard)
     EVT_BUTTON(XRCID("btnToggle"), MultiSelectDlg::OnToggle)
@@ -34,16 +35,12 @@ MultiSelectDlg::MultiSelectDlg(wxWindow* parent,
                                 const wxString& label,
                                 const wxString& title)
 {
-    //ctor
-    wxXmlResource::Get()->LoadObject(this, parent, _T("dlgGenericMultiSelect"),_T("wxScrollingDialog"));
+	//ctor
+	wxXmlResource::Get()->LoadDialog(this, parent, _T("dlgGenericMultiSelect"));
 
-    SetTitle(title);
-    XRCCTRL(*this, "lblLabel", wxStaticText)->SetLabel(label);
+	SetTitle(title);
+	XRCCTRL(*this, "lblLabel", wxStaticText)->SetLabel(label);
     Init(items, wildcard);
-
-    wxButton *buttonOK = XRCCTRL(*this, "wxID_OK", wxButton);
-    buttonOK->SetDefault();
-    buttonOK->SetFocus();
 }
 
 MultiSelectDlg::MultiSelectDlg(wxWindow* parent,
@@ -52,158 +49,144 @@ MultiSelectDlg::MultiSelectDlg(wxWindow* parent,
                                 const wxString& label,
                                 const wxString& title)
 {
-    //ctor
-    wxXmlResource::Get()->LoadObject(this, parent, _T("dlgGenericMultiSelect"),_T("wxScrollingDialog"));
-    XRCCTRL(*this, "wxID_OK", wxButton)->SetDefault();
+	//ctor
+	wxXmlResource::Get()->LoadDialog(this, parent, _T("dlgGenericMultiSelect"));
 
-    SetTitle(title);
-    XRCCTRL(*this, "lblLabel", wxStaticText)->SetLabel(label);
+	SetTitle(title);
+	XRCCTRL(*this, "lblLabel", wxStaticText)->SetLabel(label);
     Init(items, selectall ? _T("*") : _T(""));
-
-    wxButton *buttonOK = XRCCTRL(*this, "wxID_OK", wxButton);
-    buttonOK->SetDefault();
-    buttonOK->SetFocus();
 }
 
 MultiSelectDlg::~MultiSelectDlg()
 {
-    //dtor
+	//dtor
 }
 
 void MultiSelectDlg::Init(const wxArrayString& items, const wxString& wildcard)
 {
     wxCheckListBox* lst = XRCCTRL(*this, "lstItems", wxCheckListBox);
-    for (size_t i = 0; i < items.GetCount(); ++i)
+	for (size_t i = 0; i < items.GetCount(); ++i)
+	{
         lst->Append(items[i]);
-
-    SelectWildCard(wildcard);
-}
+	}
+	SelectWildCard(wildcard);
+} // end of Init
 
 void MultiSelectDlg::UpdateStatus()
 {
-    int count = 0;
+	int count = 0;
     wxCheckListBox* lst = XRCCTRL(*this, "lstItems", wxCheckListBox);
-    for (size_t i = 0; i < lst->GetCount(); ++i)
-    {
+	for (int i = 0; i < (int)lst->GetCount(); ++i)
+	{
         if (lst->IsChecked(i))
             ++count;
-    }
-    wxString msg;
-    msg << _("Selected: ") << wxString::Format(_T("%d"), count);
-    XRCCTRL(*this, "lblStatus", wxStaticText)->SetLabel(msg);
-}
+	}
+	wxString msg;
+	msg << _("Selected: ") << wxString::Format(_T("%d"), count);
+	XRCCTRL(*this, "lblStatus", wxStaticText)->SetLabel(msg);
+} // end of UpdateStatus
 
 wxArrayString MultiSelectDlg::GetSelectedStrings() const
 {
     wxArrayString ret;
     wxCheckListBox* lst = XRCCTRL(*this, "lstItems", wxCheckListBox);
-    for (size_t i = 0; i < lst->GetCount(); ++i)
-    {
+	for (int i = 0; i < (int)lst->GetCount(); ++i)
+	{
         if (lst->IsChecked(i))
             ret.Add(lst->GetString(i));
-    }
-    return ret;
-}
+	}
+	return ret;
+} // end of GetSelectedStrings
 
 wxArrayInt MultiSelectDlg::GetSelectedIndices() const
 {
     wxArrayInt ret;
     wxCheckListBox* lst = XRCCTRL(*this, "lstItems", wxCheckListBox);
-    for (size_t i = 0; i < lst->GetCount(); ++i)
-    {
+	for (int i = 0; i < (int)lst->GetCount(); ++i)
+	{
         if (lst->IsChecked(i))
             ret.Add(i);
-    }
-    return ret;
-}
+	}
+	return ret;
+} // end of GetSelectedIndices
 
 void MultiSelectDlg::SelectWildCard(const wxString& wild, bool select, bool clearOld)
 {
     if (wild.IsEmpty())
         return;
-    wxArrayString wilds = GetArrayFromString(wild, _T(";"));
+	wxArrayString wilds = GetArrayFromString(wild, _T(";"));
     wxCheckListBox* lst = XRCCTRL(*this, "lstItems", wxCheckListBox);
-    for (size_t i = 0; i < lst->GetCount(); ++i)
-    {
-        if (clearOld || !lst->IsChecked(i))
-        {
+	for (int i = 0; i < (int)lst->GetCount(); ++i)
+	{
+		if (clearOld || !lst->IsChecked(i))
+		{
             wxString entry = lst->GetString(i).Lower();
             bool MatchesWildCard = false;
-            for (unsigned int x = 0; x < wilds.GetCount(); ++x)
-            {
-                if (entry.Matches(wilds[x].Lower()))
-                {
+			for (unsigned int x = 0; x < wilds.GetCount(); ++x)
+			{
+				if (entry.Matches(wilds[x]))
+				{
                     lst->Check(i, select);
                     MatchesWildCard = true;
                     break;
-                }
-            }
-            // did not match the wildcard and was selected ( == in the old list)
-            // and we want those to be removed (clearOld) -> uncheck
-            if (!MatchesWildCard && clearOld && lst->IsChecked(i))
+				}
+			}
+			if(!MatchesWildCard && clearOld && lst->IsChecked(i))
+			{   // did not match the wildcard and was selected ( == in the old list)
+			    // and we want those to be removed (clearOld) -> uncheck
                 lst->Check(i, false);
-        }
-    }
-    UpdateStatus();
-}
+			}
+		}
+	}
+	UpdateStatus();
+} // end of SelectWildCard
 
-void MultiSelectDlg::OnWildcard(cb_unused wxCommandEvent& event)
+void MultiSelectDlg::OnWildcard(wxCommandEvent& /*event*/)
 {
-    wxString wild = cbGetTextFromUser(_("Enter a selection wildcard\n(e.g. \"dlg*.cpp\" "
+    wxString wild = wxGetTextFromUser(_("Enter a selection wildcard\n(e.g. \"dlg*.cpp\" "
                                         "would select all files starting with \"dlg\" and "
                                         "ending in \".cpp\")\nSeparate multiple masks with \";\":"),
                                         _("Wildcard selection"));
     if (wild.IsEmpty())
         return;
 
-    // Do not ask to un-select before if there are no items selected
-    bool ask_clear = false;
-    wxCheckListBox* lst = XRCCTRL(*this, "lstItems", wxCheckListBox);
-    for (size_t i = 0; i < lst->GetCount(); ++i)
-    {
-        if (lst->IsChecked(i))
-        {
-            ask_clear = true;
-            break;
-        }
-    }
-
-    bool clear = false;
-    if (ask_clear)
-        clear = cbMessageBox(_("Do you want to clear the previous selections?"),
-                             _("Question"),
-                             wxICON_QUESTION | wxYES_NO, this) == wxID_YES;
+    bool clear = cbMessageBox(_("Do you want to clear the previous selections?"),
+                            _("Question"),
+                            wxICON_QUESTION | wxYES_NO) == wxID_YES;
     SelectWildCard(wild, true, clear);
-}
+} // end of OnWildcard
 
-void MultiSelectDlg::OnItemToggle(cb_unused wxCommandEvent& event)
+void MultiSelectDlg::OnItemToggle(wxCommandEvent& /*event*/)
 {
-    UpdateStatus();
-}
+	UpdateStatus();
+} // end of OnItemToggle
 
-void MultiSelectDlg::OnToggle(cb_unused wxCommandEvent& event)
+void MultiSelectDlg::OnToggle(wxCommandEvent& /*event*/)
 {
     wxCheckListBox* lst = XRCCTRL(*this, "lstItems", wxCheckListBox);
-    for (size_t i = 0; i < lst->GetCount(); ++i)
+	for (int i = 0; i < (int)lst->GetCount(); ++i)
+	{
         lst->Check(i, !lst->IsChecked(i));
+	}
+	UpdateStatus();
+} // end of OnToggle
 
-    UpdateStatus();
-}
-
-void MultiSelectDlg::OnSelectAll(cb_unused wxCommandEvent& event)
+void MultiSelectDlg::OnSelectAll(wxCommandEvent& /*event*/)
 {
     wxCheckListBox* lst = XRCCTRL(*this, "lstItems", wxCheckListBox);
-    for (size_t i = 0; i < lst->GetCount(); ++i)
+	for (int i = 0; i < (int)lst->GetCount(); ++i)
+	{
         lst->Check(i, true);
+	}
+	UpdateStatus();
+} // end of OnSelectAll
 
-    UpdateStatus();
-}
-
-void MultiSelectDlg::OnDeselectAll(cb_unused wxCommandEvent& event)
+void MultiSelectDlg::OnDeselectAll(wxCommandEvent& /*event*/)
 {
     wxCheckListBox* lst = XRCCTRL(*this, "lstItems", wxCheckListBox);
-    for (size_t i = 0; i < lst->GetCount(); ++i)
+	for (int i = 0; i < (int)lst->GetCount(); ++i)
+	{
         lst->Check(i, false);
-
-    UpdateStatus();
-}
+	}
+	UpdateStatus();
+} // end of OnDeselectAll

@@ -1,11 +1,15 @@
-AM_CPPFLAGS = $(WX_CXXFLAGS) \
+AM_CPPFLAGS = -DWXMAKINGLIB_PROPGRID
+
+INCLUDES = $(WX_CXXFLAGS) \
 		-I$(top_srcdir)/src/include \
-		-I$(top_srcdir)/src/sdk/wxscintilla/include \
-		$(WXPROPGRID_INCLUDE)
+		-I$(top_srcdir)/src/include/wxFlatNotebook/include \
+		-I$(top_srcdir)/src/include/wxscintilla/include \
+		-I$(top_srcdir)/src/include/wxFlatNotebook \
+		-I$(top_srcdir)/src/plugins/contrib/wxSmith/propgrid/contrib/include
 
 noinst_LTLIBRARIES = libwxsmith_wxwidgets_properties.la
 
-libwxsmith_wxwidgets_properties_la_LDFLAGS = @MODULE_SHARED_LDFLAGS@ -version-info 0:1:0 -no-undefined -avoid-version
+libwxsmith_wxwidgets_properties_la_LDFLAGS = -module -version-info 0:1:0 -shared -no-undefined -avoid-version
 
 libwxsmith_wxwidgets_properties_la_LIBADD = ../../../../../sdk/libcodeblocks.la
 
@@ -22,19 +26,9 @@ libwxsmith_wxwidgets_properties_la_SOURCES = \
 ./wxsbitmapiconeditordlg.cpp \
 ./wxsdimensionproperty.cpp \
 ./wxsbitmapiconproperty.cpp \
-./wxssimplefonteditordlg.cpp \
-./wxsimagelisteditordlg.cpp \
-./wxsimagelistproperty.cpp \
-./wxsimageproperty.cpp \
-./wxsimagecomboeditordlg.cpp \
-./wxsimagecomboproperty.cpp \
-./wxsimagetreeeditordlg.cpp \
-./wxsimagetreeproperty.cpp
+./wxssimplefonteditordlg.cpp
 
-
-sdkdir=$(includedir)/wxsmith/wxwidgets/properties/
-
-sdk_HEADERS = \
+noinst_HEADERS = \
 ./wxsdimensionproperty.h \
 ./wxsbitmapiconproperty.h \
 ./wxsarraystringcheckeditordlg.h \
@@ -47,12 +41,4 @@ sdk_HEADERS = \
 ./wxssizerflagsproperty.h \
 ./wxsfontfaceeditordlg.h \
 ./wxsbitmapiconeditordlg.h \
-./wxssimplefonteditordlg.h \
-./wxsimagelisteditordlg.h \
-./wxsimagelistproperty.h \
-./wxsimageproperty.h \
-./wxsimagecomboeditordlg.h \
-./wxsimagecomboproperty.h \
-./wxsimagetreeeditordlg.h \
-./wxsimagetreeproperty.h
-
+./wxssimplefonteditordlg.h

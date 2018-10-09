@@ -21,7 +21,7 @@ struct SQExceptionTrap{
 	SQInteger _extarget;
 };
 
-#define _INLINE
+#define _INLINE 
 
 #define STK(a) _stack._vals[_stackbase+(a)]
 #define TARGET _stack._vals[_stackbase+arg0]
@@ -32,21 +32,16 @@ struct SQVM : public CHAINABLE_OBJ
 {
 	struct VarArgs {
 		VarArgs() { size = 0; base = 0; }
-		// C::B patch: Eliminate compiler warnings
-		/*
 		unsigned short size;
 		unsigned short base;
-		*/
-		SQInt32 size;
-		SQInt32 base;
 	};
 
 	struct CallInfo{
-		//CallInfo() { _generator._type = OT_NULL;}
+		CallInfo() { _generator._type = OT_NULL;}
 		SQInstruction *_ip;
 		SQObjectPtr *_literals;
-		SQObjectPtr _closure;
-		SQGenerator *_generator;
+		SQObject _closure;
+		SQObject _generator;
 		SQInt32 _etraps;
 		SQInt32 _prevstkbase;
 		SQInt32 _prevtop;
@@ -55,16 +50,16 @@ struct SQVM : public CHAINABLE_OBJ
 		SQBool _root;
 		VarArgs _vargs;
 	};
-
+	
 typedef sqvector<CallInfo> CallInfoVec;
 public:
-	enum ExecutionType { ET_CALL, ET_RESUME_GENERATOR, ET_RESUME_VM, ET_RESUME_THROW_VM };
+	enum ExecutionType { ET_CALL, ET_RESUME_GENERATOR, ET_RESUME_VM };
 	SQVM(SQSharedState *ss);
 	~SQVM();
 	bool Init(SQVM *friendvm, SQInteger stacksize);
 	bool Execute(SQObjectPtr &func, SQInteger target, SQInteger nargs, SQInteger stackbase, SQObjectPtr &outres, SQBool raiseerror, ExecutionType et = ET_CALL);
 	//starts a native call return when the NATIVE closure returns
-	bool CallNative(SQNativeClosure *nclosure, SQInteger nargs, SQInteger stackbase, SQObjectPtr &retval,bool &suspend);
+	bool CallNative(SQNativeClosure *nclosure, SQInteger nargs, SQInteger stackbase, bool tailcall, SQObjectPtr &retval,bool &suspend);
 	//starts a SQUIRREL call in the same "Execution loop"
 	bool StartCall(SQClosure *closure, SQInteger target, SQInteger nargs, SQInteger stackbase, bool tailcall);
 	bool CreateClassInstance(SQClass *theclass, SQObjectPtr &inst, SQObjectPtr &constructor);
@@ -86,7 +81,7 @@ public:
 	void ToString(const SQObjectPtr &o,SQObjectPtr &res);
 	SQString *PrintObjVal(const SQObject &o);
 
-
+ 
 	void Raise_Error(const SQChar *s, ...);
 	void Raise_Error(SQObjectPtr &desc);
 	void Raise_IdxError(SQObject &o);
@@ -107,13 +102,12 @@ public:
 	bool CLASS_OP(SQObjectPtr &target,SQInteger base,SQInteger attrs);
 	bool GETPARENT_OP(SQObjectPtr &o,SQObjectPtr &target);
 	//return true if the loop is finished
-	bool FOREACH_OP(SQObjectPtr &o1,SQObjectPtr &o2,SQObjectPtr &o3,SQObjectPtr &o4,SQInteger arg_2,int exitpos,int &jump);
+	bool FOREACH_OP(SQObjectPtr &o1,SQObjectPtr &o2,SQObjectPtr &o3,SQObjectPtr &o4,SQInteger arg_2,bool &finished);
 	bool DELEGATE_OP(SQObjectPtr &trg,SQObjectPtr &o1,SQObjectPtr &o2);
 	_INLINE bool LOCAL_INC(SQInteger op,SQObjectPtr &target, SQObjectPtr &a, SQObjectPtr &incr);
 	_INLINE bool PLOCAL_INC(SQInteger op,SQObjectPtr &target, SQObjectPtr &a, SQObjectPtr &incr);
 	_INLINE bool DerefInc(SQInteger op,SQObjectPtr &target, SQObjectPtr &self, SQObjectPtr &key, SQObjectPtr &incr, bool postfix);
 	void PopVarArgs(VarArgs &vargs);
-	void ClearStack(SQInteger last_top);
 #ifdef _DEBUG_DUMP
 	void dumpstack(SQInteger stackbase=-1, bool dumpall = false);
 #endif
@@ -124,8 +118,7 @@ public:
 	void Finalize();
 	void GrowCallStack() {
 		SQInteger newsize = _alloccallsstacksize*2;
-		_callstackdata.resize(newsize);
-		_callsstack = &_callstackdata[0];
+		_callsstack = (CallInfo*)sq_realloc(_callsstack,_alloccallsstacksize*sizeof(CallInfo),newsize*sizeof(CallInfo));
 		_alloccallsstacksize = newsize;
 	}
 	void Release(){ sq_delete(this,SQVM); } //does nothing
@@ -134,7 +127,7 @@ public:
 	void Remove(SQInteger n);
 
 	bool IsFalse(SQObjectPtr &o);
-
+	
 	void Pop();
 	void Pop(SQInteger n);
 	void Push(const SQObjectPtr &o);
@@ -153,12 +146,11 @@ public:
 	SQObjectPtr _debughook;
 
 	SQObjectPtr temp_reg;
-
+	
 
 	CallInfo* _callsstack;
 	SQInteger _callsstacksize;
 	SQInteger _alloccallsstacksize;
-	sqvector<CallInfo>  _callstackdata;
 
 	ExceptionsTraps _etraps;
 	CallInfo *ci;
@@ -181,6 +173,8 @@ struct AutoDec{
 };
 
 inline SQObjectPtr &stack_get(HSQUIRRELVM v,SQInteger idx){return ((idx>=0)?(v->GetAt(idx+v->_stackbase-1)):(v->GetUp(idx)));}
+const SQChar *GetTypeName(const SQObjectPtr &obj1);
+const SQChar *IdType2Name(SQObjectType type);
 
 #define _ss(_vm_) (_vm_)->_sharedstate
 
@@ -201,7 +195,6 @@ inline SQObjectPtr &stack_get(HSQUIRRELVM v,SQInteger idx){return ((idx>=0)?(v->
 
 #define POP_CALLINFO(v){ \
 	v->_callsstacksize--; \
-	v->ci->_closure.Null(); \
 	if(v->_callsstacksize)	\
 		v->ci = &v->_callsstack[v->_callsstacksize-1] ; \
 	else	\

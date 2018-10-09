@@ -29,7 +29,6 @@
 #endif
 
 #include <wx/stream.h>
-#include <wx/tokenzr.h>
 
 #include "prep.h"
 #include "importers_globals.h"
@@ -41,8 +40,8 @@
  * compatibility function in wxWidgets-2.8. So in future it will be dropped.
  */
 
-MSVCLoader::MSVCLoader(cbProject* project) :
-    m_pProject(project),
+MSVCLoader::MSVCLoader(cbProject* project)
+    : m_pProject(project),
     m_ConvertSwitches(true)
 {
     //ctor
@@ -100,7 +99,7 @@ bool MSVCLoader::Open(const wxString& filename)
     return ParseSourceFiles();
 }
 
-bool MSVCLoader::Save(cb_unused const wxString& filename)
+bool MSVCLoader::Save(const wxString& filename)
 {
     // no support to save MSVC projects
     return false;
@@ -124,8 +123,8 @@ bool MSVCLoader::ReadConfigurations()
     {
         wxString line = input.ReadLine();
         ++currentLine;
-        line.Trim(true).Trim(false);
-
+        line.Trim(true);
+        line.Trim(false);
         int size = -1;
         if (line.StartsWith(_T("# TARGTYPE")))
         {
@@ -197,8 +196,8 @@ bool MSVCLoader::ReadConfigurations()
         {
             // read configuration name
             line = line.Mid(size);
-            line.Trim(true).Trim(false);
-
+            line.Trim(true);
+            line.Trim(false);
             wxString tmp = RemoveQuotes(line);
             // remove the project name part, i.e "anothertest - "
             int idx = tmp.Find('-');
@@ -211,7 +210,7 @@ bool MSVCLoader::ReadConfigurations()
             {
                 m_Configurations.Add(tmp);
                 m_ConfigurationsLineIndex.Add(currentLine);
-                Manager::Get()->GetLogManager()->DebugLog(F(_T("Detected configuration '%s' at line %d"), tmp.wx_str(), currentLine));
+                Manager::Get()->GetLogManager()->DebugLog(F(_T("Detected configuration '%s' at line %d"), tmp.c_str(), currentLine));
             }
         }
     }
@@ -250,44 +249,22 @@ bool MSVCLoader::ParseConfiguration(int index)
     while (!file.Eof())
     {
         wxString line = input.ReadLine();
-        line.Trim(true).Trim(false);
+        line.Trim(true);
+        line.Trim(false);
 
         // we want empty lines (skipped) or lines starting with #
         // if we encounter a line starting with !, we break out of here
         if (line.GetChar(0) == '!')
-        {
             break;
-        }
-
         if (line.IsEmpty() || line.GetChar(0) != '#')
-        {
-            // Unhandled, but for this exception:
-            if (line.StartsWith(_T("PostBuild_Cmds=")))
-            {
-                line = line.Mid(15);
-
-                while (!line.StartsWith(_T("# End Special Build Tool")))
-                {
-                    bool next_line = line.EndsWith(_T("\\"));
-                    ProcessPostBuildCommand(bt, line);
-
-                    if (!next_line)
-                        break; // exit while-loop
-
-                    // next line (iteration) as post build commands are usually multiple lines
-                    line = input.ReadLine();
-                    line.Trim(true).Trim(false);
-                }
-            }
-            else
-                continue;
-        }
+            continue;
 
 //        if (line.StartsWith("# PROP BASE Output_Dir "))
         if (line.StartsWith(_T("# PROP Output_Dir ")))
         {
             line = line.Mid(18);
-            line.Trim(true).Trim(false);
+            line.Trim(true);
+            line.Trim(false);
             wxString tmp = RemoveQuotes(line);
             if (!line.IsEmpty())
             {
@@ -302,7 +279,8 @@ bool MSVCLoader::ParseConfiguration(int index)
         else if (line.StartsWith(_T("# PROP Intermediate_Dir ")))
         {
             line = line.Mid(24);
-            line.Trim(true).Trim(false);
+            line.Trim(true);
+            line.Trim(false);
             wxString tmp = RemoveQuotes(line);
             if (!line.IsEmpty())
             {
@@ -312,37 +290,43 @@ bool MSVCLoader::ParseConfiguration(int index)
         else if (line.StartsWith(_T("# ADD BASE CPP ")))
         {
             line = line.Mid(15);
-            line.Trim(true).Trim(false);
+            line.Trim(true);
+            line.Trim(false);
             ProcessCompilerOptions(bt, line);
         }
         else if (line.StartsWith(_T("# ADD CPP ")))
         {
             line = line.Mid(10);
-            line.Trim(true).Trim(false);
+            line.Trim(true);
+            line.Trim(false);
             ProcessCompilerOptions(bt, line);
         }
         else if (line.StartsWith(_T("# ADD BASE LINK32 ")))
         {
             line = line.Mid(18);
-            line.Trim(true).Trim(false);
+            line.Trim(true);
+            line.Trim(false);
             ProcessLinkerOptions(bt, line);
         }
         else if (line.StartsWith(_T("# ADD LINK32 ")))
         {
             line = line.Mid(13);
-            line.Trim(true).Trim(false);
+            line.Trim(true);
+            line.Trim(false);
             ProcessLinkerOptions(bt, line);
         }
         else if (line.StartsWith(_T("# ADD BASE RSC "))) // To import resource compiler options
         {
             line = line.Mid(16);
-            line.Trim(true).Trim(false);
+            line.Trim(true);
+            line.Trim(false);
             ProcessResourceCompilerOptions(bt, line);
         }
         else if (line.StartsWith(_T("# ADD RSC ")))
         {
             line = line.Mid(11);
-            line.Trim(true).Trim(false);
+            line.Trim(true);
+            line.Trim(false);
             ProcessResourceCompilerOptions(bt, line);
         }
     }
@@ -372,12 +356,14 @@ bool MSVCLoader::ParseSourceFiles()
     while (!file.Eof())
     {
         wxString line = input.ReadLine();
-        line.Trim(true).Trim(false);
+        line.Trim(true);
+        line.Trim(false);
 
         if (line.StartsWith(_T("SOURCE=")))
         {
             line = line.Mid(7);
-            line.Trim(true).Trim(false);
+            line.Trim(true);
+            line.Trim(false);
 
             wxString fname (RemoveQuotes(line));
 
@@ -520,8 +506,8 @@ void MSVCLoader::ProcessCompilerOptions(ProjectBuildTarget* target, const wxStri
                 wxArrayString options;
                 if (ParseResponseFile(m_pProject->GetBasePath() + opt.Mid(1), options))
                 {
-                    for (size_t j = 0; j < options.GetCount(); ++j)
-                        ProcessCompilerOptions(target, options[j]);
+                    for (size_t i = 0; i < options.GetCount(); ++i)
+                        ProcessCompilerOptions(target, options[i]);
                 }
                 else
                 { // Fallback: Remember GCC will process Pre-processor macros only
@@ -588,11 +574,6 @@ void MSVCLoader::ProcessLinkerOptions(ProjectBuildTarget* target, const wxString
             {
                 // do nothing (ignore silently)
             }
-            else if (opt.Matches(_T("/dll")))
-            {
-                opt = opt.Mid(4);
-                target->AddLinkerOption(_T("--dll ") + RemoveQuotes(opt));
-            }
             else if (opt.StartsWith(_T("/out:")))
             {
                 // do nothing; it is handled below, in common options
@@ -602,8 +583,8 @@ void MSVCLoader::ProcessLinkerOptions(ProjectBuildTarget* target, const wxString
                 wxArrayString options;
                 if (ParseResponseFile(m_pProject->GetBasePath() + opt.Mid(1), options))
                 {
-                    for (size_t j = 0; j < options.GetCount(); ++j)
-                        ProcessLinkerOptions(target, options[j]);
+                    for (size_t i = 0; i < options.GetCount(); ++i)
+                        ProcessLinkerOptions(target, options[i]);
                 } // else ignore
             }
             else if (opt.Find(_T(".lib")) == -1) // don't add linking lib (added below, in common options)
@@ -653,14 +634,11 @@ void MSVCLoader::ProcessLinkerOptions(ProjectBuildTarget* target, const wxString
                 if (newf.IsRelative())
                     newf.MakeAbsolute(m_pProject->GetBasePath());
                 Compiler* compiler = CompilerFactory::GetCompiler(m_pProject->GetCompilerID());
-                if (compiler)
-                {
-                    newf.SetExt(compiler->GetSwitches().libExtension);
-                    wxString name = newf.GetName();
-                    wxString prefix = compiler->GetSwitches().libPrefix;
-                    if (!prefix.IsEmpty() && !name.StartsWith(prefix))
-                        newf.SetName(prefix + name);
-                }
+                newf.SetExt(compiler->GetSwitches().libExtension);
+                wxString name = newf.GetName();
+                wxString prefix = compiler->GetSwitches().libPrefix;
+                if (!prefix.IsEmpty() && !name.StartsWith(prefix))
+                    newf.SetName(prefix + name);
                 target->SetOutputFilename(newf.GetFullPath());
             }
             else
@@ -683,33 +661,6 @@ void MSVCLoader::ProcessResourceCompilerOptions(ProjectBuildTarget* target, cons
         {
             if (opt.StartsWith(_T("/i"))) // Only include dir is imported
                 target->AddResourceIncludeDir(RemoveQuotes(array[++i]));
-        }
-    }
-}
-
-void MSVCLoader::ProcessPostBuildCommand(ProjectBuildTarget* target, const wxString& cmd)
-{
-    wxString post_build_cmd = cmd;
-
-/*
-     remove "line continues", like in:
-     PostBuild_Cmds=if NOT exist ..\binary\*.* mkdir ..\binary	\
-     copy $(OutDir)\NetHackW.exe ..\binary
-*/
-    if (post_build_cmd.EndsWith(_T("\\")))
-        post_build_cmd.RemoveLast(1).Trim(true).Trim(false);
-
-    if (!post_build_cmd.IsEmpty())
-    {
-        // Some weirdness: VC6 separates commands by a linefeed OR a TAB (?!)
-        // Linefeeds are handled by the caller, we do handle tabs here only.
-        wxStringTokenizer tkz(post_build_cmd, wxT("\t"));
-        while (tkz.HasMoreTokens())
-        {
-            // process token
-            wxString current_post_build_cmd = tkz.GetNextToken().Trim(true).Trim(false);
-            if (!current_post_build_cmd.IsEmpty())
-                target->AddCommandsAfterBuild(current_post_build_cmd);
         }
     }
 }

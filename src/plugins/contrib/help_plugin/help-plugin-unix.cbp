@@ -8,9 +8,8 @@
 		<Option compiler="gcc" />
 		<Build>
 			<Target title="bzip2">
-				<Option output="bzip2/libbzip2" prefix_auto="0" extension_auto="1" />
+				<Option output="bzip2/libbzip2.a" prefix_auto="0" extension_auto="0" />
 				<Option working_dir="" />
-				<Option object_output="../../../.objs/plugins/contrib/help_plugin/bzip2" />
 				<Option type="2" />
 				<Option compiler="gcc" />
 				<Option createDefFile="1" />
@@ -20,9 +19,8 @@
 				</Compiler>
 			</Target>
 			<Target title="zlib">
-				<Option output="zlib/libz" prefix_auto="0" extension_auto="1" />
+				<Option output="zlib/libz.a" prefix_auto="0" extension_auto="0" />
 				<Option working_dir="" />
-				<Option object_output="../../../.objs/plugins/contrib/help_plugin/zlib" />
 				<Option type="2" />
 				<Option compiler="gcc" />
 				<Option createDefFile="1" />
@@ -32,17 +30,15 @@
 				</Compiler>
 			</Target>
 			<Target title="help_plugin">
-				<Option output="../../../devel/share/codeblocks/plugins/libhelp_plugin" prefix_auto="0" extension_auto="1" />
-				<Option object_output="../../../.objs/plugins/contrib/help_plugin" />
+				<Option output="../../../devel/share/codeblocks/plugins/libhelp_plugin.so" prefix_auto="0" extension_auto="0" />
+				<Option working_dir="../../../devel/share/codeblocks/plugins" />
 				<Option type="3" />
 				<Option compiler="gcc" />
-				<Option parameters="--debug-log --multiple-instance -ns -ni -p debug" />
-				<Option host_application="../../../devel/codeblocks" />
-				<Option run_host_application_in_terminal="0" />
+				<Option host_application="../../../devel/run.sh" />
 				<Option createDefFile="1" />
 				<Compiler>
 					<Add option="-Wall" />
-					<Add option="$(#CB_RELEASE_TYPE)" />
+					<Add option="-g" />
 				</Compiler>
 				<Linker>
 					<Add library="bzip2/libbzip2.a" />
@@ -54,18 +50,17 @@
 			<Add alias="All" targets="bzip2;zlib;help_plugin;" />
 		</VirtualTargets>
 		<Compiler>
-			<Add option="-Wextra" />
-			<Add option="-Wall" />
-			<Add option="`wx-config --version=2.8 --cflags`" />
+			<Add option="-Ulinux" />
+			<Add option="-Uunix" />
+			<Add option="`wx-config --cflags`" />
 			<Add option="-Winvalid-pch" />
+			<Add option='-include &quot;sdk.h&quot;' />
 			<Add option="-fexceptions" />
 			<Add option="-fPIC" />
 			<Add option="-DCB_PRECOMP" />
 			<Add option="-DcbDEBUG" />
-			<Add option="-std=c++11" />
 			<Add directory="../../../include" />
-			<Add directory="../../../include/tinyxml" />
-			<Add directory="../../../sdk/wxscintilla/include" />
+			<Add directory="../../../include/wxscintilla/include" />
 			<Add directory="../../../include/scripting/bindings" />
 			<Add directory="../../../include/scripting/include" />
 			<Add directory="../../../include/scripting/sqplus" />
@@ -73,9 +68,12 @@
 			<Add directory="zlib" />
 		</Compiler>
 		<Linker>
-			<Add option="`wx-config --version=2.8 --libs`" />
-			<Add option="-Wl,--no-undefined" />
-			<Add library="libcodeblocks.a" />
+			<Add option="`wx-config --libs`" />
+			<Add library="codeblocks" />
+			<Add library="wxscintilla" />
+			<Add library="sqplus" />
+			<Add library="sqstdlib" />
+			<Add library="squirrel" />
 			<Add directory="../../../devel" />
 			<Add directory="../../../sdk/scripting/lib" />
 			<Add directory="bzip2" />
@@ -154,9 +152,6 @@
 		<Unit filename="man2html.h">
 			<Option target="help_plugin" />
 		</Unit>
-		<Unit filename="manifest.xml">
-			<Option target="help_plugin" />
-		</Unit>
 		<Unit filename="zlib/adler32.c">
 			<Option compilerVar="CC" />
 			<Option target="zlib" />
@@ -179,22 +174,7 @@
 		<Unit filename="zlib/deflate.h">
 			<Option target="zlib" />
 		</Unit>
-		<Unit filename="zlib/gzclose.c">
-			<Option compilerVar="CC" />
-			<Option target="zlib" />
-		</Unit>
-		<Unit filename="zlib/gzguts.h">
-			<Option target="zlib" />
-		</Unit>
-		<Unit filename="zlib/gzlib.c">
-			<Option compilerVar="CC" />
-			<Option target="zlib" />
-		</Unit>
-		<Unit filename="zlib/gzread.c">
-			<Option compilerVar="CC" />
-			<Option target="zlib" />
-		</Unit>
-		<Unit filename="zlib/gzwrite.c">
+		<Unit filename="zlib/gzio.c">
 			<Option compilerVar="CC" />
 			<Option target="zlib" />
 		</Unit>
@@ -252,8 +232,8 @@
 		</Unit>
 		<Extensions>
 			<code_completion />
-			<debugger />
 			<envvars />
+			<debugger />
 		</Extensions>
 	</Project>
 </CodeBlocks_project_file>

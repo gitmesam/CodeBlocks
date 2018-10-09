@@ -5,8 +5,7 @@
 #include <setjmp.h>
 #include "sqstdstring.h"
 
-// C::B patch: Fix wrong spelling of UNICODE
-#ifdef _UNICODE
+#ifdef _UINCODE
 #define scisprint iswprint
 #else
 #define scisprint isprint
@@ -100,7 +99,7 @@ static void sqstd_rex_error(SQRex *exp,const SQChar *error)
 }
 
 static void sqstd_rex_expect(SQRex *exp, SQInteger n){
-	if((*exp->_p) != n)
+	if((*exp->_p) != n) 
 		sqstd_rex_error(exp, _SC("expected paren"));
 	exp->_p++;
 }
@@ -139,31 +138,31 @@ static SQInteger sqstd_rex_charnode(SQRex *exp,SQBool isclass)
 			case 'r': exp->_p++; return sqstd_rex_newnode(exp,'\r');
 			case 'f': exp->_p++; return sqstd_rex_newnode(exp,'\f');
 			case 'v': exp->_p++; return sqstd_rex_newnode(exp,'\v');
-			case 'a': case 'A': case 'w': case 'W': case 's': case 'S':
-			case 'd': case 'D': case 'x': case 'X': case 'c': case 'C':
-			case 'p': case 'P': case 'l': case 'u':
+			case 'a': case 'A': case 'w': case 'W': case 's': case 'S': 
+			case 'd': case 'D': case 'x': case 'X': case 'c': case 'C': 
+			case 'p': case 'P': case 'l': case 'u': 
 				{
-				t = *exp->_p; exp->_p++;
+				t = *exp->_p; exp->_p++; 
 				return sqstd_rex_charclass(exp,t);
 				}
-			case 'b':
+			case 'b': 
 			case 'B':
 				if(!isclass) {
 					SQInteger node = sqstd_rex_newnode(exp,OP_WB);
 					exp->_nodes[node].left = *exp->_p;
-					exp->_p++;
+					exp->_p++; 
 					return node;
 				} //else default
-			default:
-				t = *exp->_p; exp->_p++;
+			default: 
+				t = *exp->_p; exp->_p++; 
 				return sqstd_rex_newnode(exp,t);
 		}
 	}
 	else if(!scisprint(*exp->_p)) {
-
+		
 		sqstd_rex_error(exp,_SC("letter expected"));
 	}
-	t = *exp->_p; exp->_p++;
+	t = *exp->_p; exp->_p++; 
 	return sqstd_rex_newnode(exp,t);
 }
 static SQInteger sqstd_rex_class(SQRex *exp)
@@ -174,15 +173,15 @@ static SQInteger sqstd_rex_class(SQRex *exp)
 		ret = sqstd_rex_newnode(exp,OP_NCLASS);
 		exp->_p++;
 	}else ret = sqstd_rex_newnode(exp,OP_CLASS);
-
+	
 	if(*exp->_p == ']') sqstd_rex_error(exp,_SC("empty class"));
 	chain = ret;
 	while(*exp->_p != ']' && exp->_p != exp->_eol) {
-		if(*exp->_p == '-' && first != -1){
+		if(*exp->_p == '-' && first != -1){ 
 			SQInteger r;
 			if(*exp->_p++ == ']') sqstd_rex_error(exp,_SC("unfinished range"));
 			r = sqstd_rex_newnode(exp,OP_RANGE);
-			if(exp->_nodes[first].type>*exp->_p) sqstd_rex_error(exp,_SC("invalid range"));
+			if(first>*exp->_p) sqstd_rex_error(exp,_SC("invalid range"));
 			if(exp->_nodes[first].type == OP_CCLASS) sqstd_rex_error(exp,_SC("cannot use character classes in ranges"));
 			exp->_nodes[r].left = exp->_nodes[first].type;
 			SQInteger t = sqstd_rex_escapechar(exp);
@@ -264,8 +263,7 @@ static SQInteger sqstd_rex_element(SQRex *exp)
 	}
 
 
-  // C::B patch: Avoid compiler warnings (1) (and below)
-//	SQInteger op;
+	SQInteger op;
 	SQBool isgreedy = SQFalse;
 	unsigned short p0 = 0, p1 = 0;
 	switch(*exp->_p){
@@ -293,14 +291,13 @@ static SQInteger sqstd_rex_element(SQRex *exp)
 			sqstd_rex_error(exp,_SC(", or } expected"));
 			}
 			/*******************************/
-			isgreedy = SQTrue;
+			isgreedy = SQTrue; 
 			break;
 
 	}
 	if(isgreedy) {
 		SQInteger nnode = sqstd_rex_newnode(exp,OP_GREEDY);
-        // C::B patch: Avoid compiler warnings (2) (and above)
-//		op = OP_GREEDY;
+		op = OP_GREEDY;
 		exp->_nodes[nnode].left = ret;
 		exp->_nodes[nnode].right = ((p0)<<16)|p1;
 		ret = nnode;
@@ -381,7 +378,7 @@ static SQBool sqstd_rex_matchclass(SQRex* exp,SQRexNode *node,SQChar c)
 
 static const SQChar *sqstd_rex_matchnode(SQRex* exp,SQRexNode *node,const SQChar *str,SQRexNode *next)
 {
-
+	
 	SQRexNodeType type = node->type;
 	switch(type) {
 	case OP_GREEDY: {
@@ -425,7 +422,7 @@ static const SQChar *sqstd_rex_matchnode(SQRex* exp,SQRexNode *node,const SQChar
 					}
 				}
 			}
-
+			
 			if(s >= exp->_eol)
 				break;
 		}
@@ -464,7 +461,7 @@ static const SQChar *sqstd_rex_matchnode(SQRex* exp,SQRexNode *node,const SQChar
 				exp->_matches[capture].begin = cur;
 				exp->_currsubexp++;
 			}
-
+			
 			do {
 				SQRexNode *subnext = NULL;
 				if(n->next != -1) {
@@ -481,16 +478,15 @@ static const SQChar *sqstd_rex_matchnode(SQRex* exp,SQRexNode *node,const SQChar
 				}
 			} while((n->next != -1) && (n = &exp->_nodes[n->next]));
 
-			if(capture != -1)
+			if(capture != -1) 
 				exp->_matches[capture].len = cur - exp->_matches[capture].begin;
 			return cur;
-	}
+	}				 
 	case OP_WB:
-		// C::B patch: Eliminate compiler warnings
-		if( (str == exp->_bol && !isspace(*str))
-		 || ((str == exp->_eol && !isspace(*(str-1))))
-		 || ((!isspace(*str) && isspace(*(str+1))))
-		 || ((isspace(*str) && !isspace(*(str+1)))) ) {
+		if(str == exp->_bol && !isspace(*str)
+		 || (str == exp->_eol && !isspace(*(str-1)))
+		 || (!isspace(*str) && isspace(*(str+1)))
+		 || (isspace(*str) && !isspace(*(str+1))) ) {
 			return (node->left == 'b')?str:NULL;
 		}
 		return (node->left == 'b')?NULL:str;
@@ -501,29 +497,25 @@ static const SQChar *sqstd_rex_matchnode(SQRex* exp,SQRexNode *node,const SQChar
 		if(str == exp->_eol) return str;
 		return NULL;
 	case OP_DOT:{
-        // C::B patch: Avoid compiler warnings (1) (and below)
-		++str;
+		*str++;
 				}
 		return str;
 	case OP_NCLASS:
 	case OP_CLASS:
 		if(sqstd_rex_matchclass(exp,&exp->_nodes[node->left],*str)?(type == OP_CLASS?SQTrue:SQFalse):(type == OP_NCLASS?SQTrue:SQFalse)) {
-            // C::B patch: Avoid compiler warnings (2) (and above/below)
-			++str;
+			*str++;
 			return str;
 		}
 		return NULL;
 	case OP_CCLASS:
 		if(sqstd_rex_matchcclass(node->left,*str)) {
-            // C::B patch: Avoid compiler warnings (3) (and above/below)
-			++str;
+			*str++;
 			return str;
 		}
 		return NULL;
 	default: /* char */
 		if(*str != node->type) return NULL;
-        // C::B patch: Avoid compiler warnings (4) (and above)
-		++str;
+		*str++;
 		return str;
 	}
 	return NULL;
@@ -613,8 +605,7 @@ SQBool sqstd_rex_searchrange(SQRex* exp,const SQChar* text_begin,const SQChar* t
 				break;
 			node = exp->_nodes[node].next;
 		}
-        // C::B patch: Avoid compiler warnings
-		++text_begin;
+		*text_begin++;
 	} while(cur == NULL && text_begin != text_end);
 
 	if(cur == NULL)

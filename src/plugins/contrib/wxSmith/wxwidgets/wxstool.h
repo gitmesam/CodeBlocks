@@ -70,12 +70,12 @@ class wxsTool: public wxsParent
          * All QPPChild panels will be added before additional panels
          * generic for tools.
          */
-        virtual void OnAddToolQPP(wxsAdvQPP* /*QPP*/) { }
+        virtual void OnAddToolQPP(wxsAdvQPP* QPP) { }
 
         /** \brief Checking if this tool can be added to given resource
          *
          * One can override this function to limit tool's availability.
-         * Default implementation checks if we are in XRC edit mode and if this
+         * Default implemetnation checks if we are in XRC edit mode and if this
          * item can not be used inside XRC
          *
          * \param Data data of checked resource
@@ -105,7 +105,7 @@ class wxsTool: public wxsParent
         virtual wxsTool* ConvertToTool() { return this; }
 
         /** \brief Tools don't generate preview */
-        virtual wxObject* OnBuildPreview(wxWindow* /*Parent*/, long /*Flags*/) { return 0; }
+        virtual wxObject* OnBuildPreview(wxWindow* Parent,long Flags) { return 0; }
 };
 
 

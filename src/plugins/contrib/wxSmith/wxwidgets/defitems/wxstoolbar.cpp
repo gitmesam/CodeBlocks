@@ -25,20 +25,19 @@
 #include "wxstoolbareditor.h"
 #include "../wxsitemresdata.h"
 #include <wx/toolbar.h>
-#include "scrollingdialog.h"
 
 namespace
 {
-    wxsRegisterItem<wxsToolBar> Reg(_T("ToolBar"),wxsTTool,_T("Tools"),10);
+    wxsRegisterItem<wxsToolBar> Reg(_T("ToolBar"),wxsTTool,_T("Tools"),80);
 
-    class ToolBarEditorDialog: public wxScrollingDialog
+    class ToolBarEditorDialog: public wxDialog
     {
         public:
 
             wxsToolBarEditor* Editor;
 
             ToolBarEditorDialog(wxsToolBar* ToolBar):
-                wxScrollingDialog(0,-1,_("ToolBar editor"),wxDefaultPosition,wxDefaultSize,wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER)
+                wxDialog(0,-1,_("ToolBar editor"),wxDefaultPosition,wxDefaultSize,wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER)
             {
                 wxBoxSizer* Sizer = new wxBoxSizer(wxVERTICAL);
                 Sizer->Add(Editor = new wxsToolBarEditor(this,ToolBar),1,wxEXPAND,0);
@@ -48,7 +47,7 @@ namespace
                 PlaceWindow(this,pdlCentre,true);
             }
 
-            void OnOK(cb_unused wxCommandEvent& event)
+            void OnOK(wxCommandEvent& event)
             {
                 Editor->ApplyChanges();
                 EndModal(wxID_OK);
@@ -57,7 +56,7 @@ namespace
             DECLARE_EVENT_TABLE()
     };
 
-    BEGIN_EVENT_TABLE(ToolBarEditorDialog,wxScrollingDialog)
+    BEGIN_EVENT_TABLE(ToolBarEditorDialog,wxDialog)
         EVT_BUTTON(wxID_OK,ToolBarEditorDialog::OnOK)
     END_EVENT_TABLE()
 
@@ -67,16 +66,20 @@ namespace
         WXS_ST(wxTB_DOCKABLE)
         WXS_ST(wxTB_VERTICAL)
         WXS_ST(wxTB_HORIZONTAL)
+        WXS_ST(wxTB_3DBUTTONS)
         WXS_ST(wxTB_TEXT)
         WXS_ST(wxTB_NOICONS)
         WXS_ST(wxTB_NODIVIDER)
         WXS_ST(wxTB_NOALIGN)
         WXS_ST(wxTB_HORZ_LAYOUT)
         WXS_ST(wxTB_HORZ_TEXT)
-        WXS_ST(wxTB_TOP)
-        WXS_ST(wxTB_LEFT)
-        WXS_ST(wxTB_RIGHT)
-        WXS_ST(wxTB_BOTTOM)
+        // TODO: Get rid of this guard after switching to strict 2.8
+        #if wxCHECK_VERSION(2,8,0)
+            WXS_ST(wxTB_TOP)
+            WXS_ST(wxTB_LEFT)
+            WXS_ST(wxTB_RIGHT)
+            WXS_ST(wxTB_BOTTOM)
+        #endif
         WXS_ST_DEFAULTS()
     WXS_ST_END()
 }
@@ -156,16 +159,15 @@ void wxsToolBar::OnBuildCreatingCode()
             }
             break;
 
-        case wxsUnknownLanguage: // fall-through
         default:
             wxsCodeMarks::Unknown(_T("wxsToolBar::OnBuildCreatingCode"),GetLanguage());
     }
 }
 
-void wxsToolBar::OnEnumToolProperties(cb_unused long Flags)
+void wxsToolBar::OnEnumToolProperties(long Flags)
 {
-    WXS_SIZE(wxsToolBar,m_BitmapSize,_("Use Bitmap size"),_("  Bitmapwidth"),_("  Bitmapheight"),_("  Bmp in Dialog Units"),_T("bitmapsize"));
-    WXS_SIZE(wxsToolBar,m_Margins,_("Use Margins"),_("  Marginwidth"),_("  MarginhHeight"),_("  Margin in Dialog Units "),_T("margins"));
+    WXS_SIZE(wxsToolBar,m_BitmapSize,_("Use Bitmap size"),_("  Width"),_("  Height"),_("  In Dialog Units"),_T("bitmapsize"));
+    WXS_SIZE(wxsToolBar,m_Margins,_("Use Margins"),_("  Width"),_("  Height"),_("  In Dialog Units"),_T("margins"));
     WXS_LONG(wxsToolBar,m_Packing,_("Packing"),_T("packing"),-1);
     WXS_LONG(wxsToolBar,m_Separation,_("Separation"),_T("separation"),-1);
 }
@@ -206,7 +208,6 @@ bool wxsToolBar::OnCanAddChild(wxsItem* Item,bool ShowMessage)
         wxString ClassName = Item->GetClassName();
         if ( ClassName == _T("wxPanel") ||
              ClassName == _T("wxDialog") ||
-             ClassName == _T("wxScrollingDialog") ||
              ClassName == _T("wxFrame") )
         {
             if ( ShowMessage )
@@ -246,7 +247,7 @@ bool wxsToolBar::OnCanAddChild(wxsItem* Item,bool ShowMessage)
     return true;
 }
 
-bool wxsToolBar::OnMouseDClick(cb_unused wxWindow* Preview,cb_unused int PosX,cb_unused int PosY)
+bool wxsToolBar::OnMouseDClick(wxWindow* Preview,int PosX,int PosY)
 {
     ToolBarEditorDialog Dlg(this);
     Dlg.ShowModal();

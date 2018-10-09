@@ -26,6 +26,8 @@
 
 #include <wx/zstream.h>
 
+#include "wx/pdfdoc.h"
+#include "wx/pdftemplate.h"
 #include "wx/pdfobjects.h"
 #include "wx/pdfparser.h"
 
@@ -63,8 +65,7 @@ wxPdfParser::ASCIIHexDecode(wxMemoryOutputStream* osIn)
     int n = wxPdfTokenizer::GetHex(ch);
     if (n == -1)
     {
-      wxLogError(wxString(wxT("wxPdfParser::ASCIIHexDecode: ")) + 
-                 wxString(_("Illegal character.")));
+      wxLogError(_T("wxPdfParser::ASCIIHexDecode: Illegal character."));
       osOut->Close();
       delete osOut;
       return NULL;
@@ -120,8 +121,7 @@ wxPdfParser::ASCII85Decode(wxMemoryOutputStream* osIn)
     }
     if (ch < '!' || ch > 'u')
     {
-      wxLogError(wxString(wxT("wxPdfParser::ASCII85Decode: ")) + 
-                 wxString(_("Illegal character.")));
+      wxLogError(_T("wxPdfParser::ASCII85Decode: Illegal character."));
       osOut->Close();
       delete osOut;
       return NULL;
@@ -145,8 +145,7 @@ wxPdfParser::ASCII85Decode(wxMemoryOutputStream* osIn)
   int r = 0;
   if (state == 1)
   {
-    wxLogError(wxString(wxT("wxPdfParser::ASCII85Decode: ")) +
-               wxString(_("Illegal length.")));
+    wxLogError(_T("wxPdfParser::ASCII85Decode: Illegal length."));
     osOut->Close();
     delete osOut;
     return NULL;
@@ -185,7 +184,7 @@ wxPdfParser::DecodePredictor(wxMemoryOutputStream* osIn, wxPdfObject* dicPar)
   }
 
   wxPdfDictionary* dic = (wxPdfDictionary*) dicPar;
-  wxPdfObject* obj = ResolveObject(dic->Get(wxT("Predictor")));
+  wxPdfObject* obj = ResolveObject(dic->Get(_T("/Predictor")));
   if (obj == NULL || obj->GetType() != OBJTYPE_NUMBER)
   {
     return osIn;
@@ -197,19 +196,19 @@ wxPdfParser::DecodePredictor(wxMemoryOutputStream* osIn, wxPdfObject* dicPar)
   }
 
   int width = 1;
-  obj = ResolveObject(dic->Get(wxT("Columns")));
+  obj = ResolveObject(dic->Get(_T("/Columns")));
   if (obj != NULL && obj->GetType() == OBJTYPE_NUMBER)
   {
     width = ((wxPdfNumber*) obj)->GetInt();
   }
-  int colours = 1;
-  obj = ResolveObject(dic->Get(wxT("Colors")));
+  int colors = 1;
+  obj = ResolveObject(dic->Get(_T("/Colors")));
   if (obj != NULL && obj->GetType() == OBJTYPE_NUMBER)
   {
-    colours = ((wxPdfNumber*) obj)->GetInt();
+    colors = ((wxPdfNumber*) obj)->GetInt();
   }
   int bpc = 8;
-  obj = ResolveObject(dic->Get(wxT("BitsPerComponent")));
+  obj = ResolveObject(dic->Get(_T("/BitsPerComponent")));
   if (obj != NULL && obj->GetType() == OBJTYPE_NUMBER)
   {
     bpc = ((wxPdfNumber*) obj)->GetInt();
@@ -218,8 +217,8 @@ wxPdfParser::DecodePredictor(wxMemoryOutputStream* osIn, wxPdfObject* dicPar)
   wxMemoryInputStream dataStream(*osIn);
   wxMemoryOutputStream* osOut = new wxMemoryOutputStream();;
 
-  int bytesPerPixel = colours * bpc / 8;
-  int bytesPerRow = (colours * width * bpc + 7) / 8;
+  int bytesPerPixel = colors * bpc / 8;
+  int bytesPerRow = (colors * width * bpc + 7) / 8;
   char* curr = new char[bytesPerRow];
   char* prior = new char[bytesPerRow];
 
@@ -305,8 +304,7 @@ wxPdfParser::DecodePredictor(wxMemoryOutputStream* osIn, wxPdfObject* dicPar)
         }
         break;
       default:
-        wxLogError(wxString(wxT("wxPdfParser::DecodePredictor: ")) +
-                   wxString(_("PNG filter unknown.")));
+        wxLogError(_T("wxPdfParser::DecodePredictor: PNG filter unknown."));
         // TODO: Should set error flag and abort method
         break;
     }
@@ -397,8 +395,7 @@ wxPdfLzwDecoder::Decode(wxMemoryInputStream* dataIn, wxMemoryOutputStream* dataO
   m_dataIn->SeekI(0);
   if (ch1 == 0 && ch2 == 1)
   {
-    wxLogError(wxString(wxT("wxPdfLzwDecoder::Decode: ")) +
-               wxString(_("LZW flavour not supported.")));
+    wxLogError(_T("wxPdfLzwDecoder::Decode: LZW flavour not supported."));
     return false;
   }
 
@@ -452,7 +449,7 @@ wxPdfLzwDecoder::Decode(wxMemoryInputStream* dataIn, wxMemoryOutputStream* dataO
 void
 wxPdfLzwDecoder::InitializeStringTable()
 {
-  unsigned int j;
+  size_t j;
   for (j = 0; j < WXPDF_LZW_STRINGTABLE_SIZE; j++)
   {
     m_stringTable[j].Empty();

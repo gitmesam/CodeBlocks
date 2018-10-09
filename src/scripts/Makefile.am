@@ -1,7 +1,7 @@
 pkgdatadir = $(datadir)/@PACKAGE@/scripts
 
-dist_pkgdata_DATA = $(srcdir)/*.script
-
-# install tests files in a subfolder
-tests_dir = $(pkgdatadir)/tests
-dist_tests__DATA = $(srcdir)/tests/*.script
+dist_pkgdata_DATA = startup.script \
+			gdb_types.script \
+			edit_startup_script.script \
+			wx_help.script \
+			make_dist.script

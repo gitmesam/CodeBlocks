@@ -6,14 +6,12 @@
 #ifndef FILEGROUPSANDMASKS_H
 #define FILEGROUPSANDMASKS_H
 
-#include <wx/arrstr.h>
 #include <wx/dynarray.h>
-#include <wx/string.h>
 #include <settings.h>
 
 struct FileGroups
 {
-    wxString      groupName;
+    wxString groupName;
     wxArrayString fileMasks;
 };
 
@@ -67,12 +65,11 @@ class DLLIMPORT FilesGroupsAndMasks
           * \param ext The extension to query
           * \param group Group index to match
           * \return Extension matches the group in question? */
-        bool MatchesMask(const wxString& ext, unsigned int group) const;
+        bool MatchesMask(const wxString& ext, unsigned int group);
 
     private:
         /** Load groups/masks from config */
         void Load();
-
         FileGroupsArray m_Groups; //!< Internal storage for file groups ans masks
 };
 

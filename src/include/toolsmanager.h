@@ -20,7 +20,7 @@ class wxMenuItem;
 class PipedProcess;
 class CodeBlocksEvent;
 
-class DLLIMPORT ToolsManager : public Mgr<ToolsManager>, public wxEvtHandler
+class ToolsManager : public Mgr<ToolsManager>, public wxEvtHandler
 {
 	public:
 		friend class Mgr<ToolsManager>;
@@ -42,8 +42,8 @@ class DLLIMPORT ToolsManager : public Mgr<ToolsManager>, public wxEvtHandler
 		void OnConfigure(wxCommandEvent& event);
 	private:
 		ToolsManager();
-		~ToolsManager() override;
-
+		~ToolsManager();
+		void DoRemoveTool(ToolsList::Node* node);
 		int Configure();
 		bool Execute(const cbTool* tool);
 		void LoadTools();

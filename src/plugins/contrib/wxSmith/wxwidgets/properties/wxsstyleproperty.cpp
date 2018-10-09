@@ -68,20 +68,20 @@ void wxsStyleProperty::PGCreate(wxsPropertyContainer* Object,wxPropertyGridManag
 
         if ( StyleConsts.GetCount() )
         {
-            wxPGId ID = Grid->AppendIn(Parent,NEW_IN_WXPG14X wxFlagsProperty(GetPGName(),wxPG_LABEL,StyleConsts,STYLEBITS));
+            wxPGId ID = Grid->AppendIn(Parent,wxFlagsProperty(GetPGName(),wxPG_LABEL,StyleConsts,STYLEBITS));
             Grid->SetPropertyAttribute(ID,wxPG_BOOL_USE_CHECKBOX,1L,wxPG_RECURSE);
             PGRegister(Object,Grid,ID);
         }
     }
 }
 
-bool wxsStyleProperty::PGRead(wxsPropertyContainer* Object,wxPropertyGridManager* Grid,wxPGId Id,cb_unused long Index)
+bool wxsStyleProperty::PGRead(wxsPropertyContainer* Object,wxPropertyGridManager* Grid,wxPGId Id,long Index)
 {
     STYLEBITS = Grid->GetPropertyValue(Id).GetLong();
     return true;
 }
 
-bool wxsStyleProperty::PGWrite(wxsPropertyContainer* Object,wxPropertyGridManager* Grid,wxPGId Id,cb_unused long Index)
+bool wxsStyleProperty::PGWrite(wxsPropertyContainer* Object,wxPropertyGridManager* Grid,wxPGId Id,long Index)
 {
     Grid->SetPropertyValue(Id,STYLEBITS);
     return true;
@@ -105,18 +105,6 @@ bool wxsStyleProperty::XmlRead(wxsPropertyContainer* Object,TiXmlElement* Elemen
     {
         STYLEBITS = STYLESETPTR?STYLESETPTR->GetDefaultBits(IsExtra):0;
         return false;
-    }
-    else
-    {
-        // Do some string replacements to support loading files saved with old versions. It is not
-        // really fast, but lets hope it is not called much, so it shouldn't be a performance
-        // problem.
-        Str.Replace(wxT("wxSIMPLE_BORDER"), wxT("wxBORDER_SIMPLE"));
-        Str.Replace(wxT("wxDOUBLE_BORDER"), wxT("wxBORDER_DOUBLE"));
-        Str.Replace(wxT("wxSUNKEN_BORDER"), wxT("wxBORDER_SUNKEN"));
-        Str.Replace(wxT("wxRAISED_BORDER"), wxT("wxBORDER_RAISED"));
-        Str.Replace(wxT("wxSTATIC_BORDER"), wxT("wxBORDER_STATIC"));
-        Str.Replace(wxT("wxNO_BORDER"), wxT("wxBORDER_NONE"));
     }
     STYLEBITS = STYLESETPTR->GetBits(Str,IsExtra);
     return true;

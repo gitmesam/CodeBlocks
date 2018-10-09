@@ -1,14 +1,14 @@
-AM_CPPFLAGS = $(WX_CXXFLAGS) \
+INCLUDES = $(WX_CXXFLAGS) \
 		-I$(top_srcdir)/src/include \
-		-I$(top_srcdir)/src/sdk/wxscintilla/include
+		-I$(top_srcdir)/src/include/wxscintilla/include
 
-pluginlibdir = $(pkglibdir)/plugins
+libdir = $(pkgdatadir)/plugins
 
-pluginlib_LTLIBRARIES = libcb_koders.la
+lib_LTLIBRARIES = libcb_koders.la
 
-libcb_koders_la_LDFLAGS = @MODULE_SHARED_LDFLAGS@ -version-info 0:1:0 -no-undefined -avoid-version
+libcb_koders_la_LDFLAGS = -module -version-info 0:1:0 -shared -no-undefined -avoid-version
 
-libcb_koders_la_LIBADD = ../../../sdk/libcodeblocks.la $(WX_LIBS)
+libcb_koders_la_LIBADD = $(PLUGIN_WX_LIBS) ../../../sdk/libcodeblocks.la
 
 libcb_koders_la_SOURCES = kodersdialog.cpp \
 			cb_koders.cpp
@@ -16,8 +16,8 @@ libcb_koders_la_SOURCES = kodersdialog.cpp \
 noinst_HEADERS = kodersdialog.h \
 			cb_koders.h
 
-EXTRA_DIST = $(srcdir)/*.cbp \
-		wxsmith/KodersDialog.wxs \
+EXTRA_DIST = wxsmith/KodersDialog.wxs \
+			cb_koders.cbp \
 			manifest.xml
 
 pkgdata_DATA = cb_koders.zip

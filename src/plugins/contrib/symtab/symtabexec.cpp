@@ -38,7 +38,7 @@
 
 /* ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- */
 
-BEGIN_EVENT_TABLE(SymTabExecDlg, wxScrollingDialog)
+BEGIN_EVENT_TABLE(SymTabExecDlg, wxDialog)
   EVT_BUTTON         (XRCID("btnExport"),     SymTabExecDlg::OnWriteToFile)
   EVT_BUTTON         (XRCID("btnNext"),       SymTabExecDlg::OnNext)
   EVT_BUTTON         (XRCID("btnCancel"),     SymTabExecDlg::OnCancel)
@@ -119,9 +119,9 @@ void SymTabExecDlg::DoInitDialog()
   {
     // Instantiate and initialise dialog
     SymTabExecDlgLoaded =
-      wxXmlResource::Get()->LoadObject(this, parent, _T("dlgSymTabExec"),_T("wxScrollingDialog"));
+      wxXmlResource::Get()->LoadDialog(this, parent, _T("dlgSymTabExec"));
 
-    wxFont font(10, wxFONTFAMILY_MODERN, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
+    wxFont font(10, wxMODERN, wxNORMAL, wxNORMAL);
 
     m_ListCtrl = XRCCTRL(*this, "lstLib2Symbol",     wxListCtrl);
     // Setting colums names
@@ -145,7 +145,7 @@ void SymTabExecDlg::EndModal(int retCode)
 	Manager::Get()->GetLogManager()->DebugLog(_T("SymTabExecDlg::EndModal"));
 #endif
 
-  wxScrollingDialog::EndModal(retCode);
+  wxDialog::EndModal(retCode);
 }// EndModal
 
 /* ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- */
@@ -158,7 +158,7 @@ void SymTabExecDlg::OnWriteToFile(wxCommandEvent& WXUNUSED(event))
 #endif
 
   wxString     es = wxEmptyString;
-  wxFileDialog fd(parent, _("Save NM output to file"), es, es, _T("*.*"), wxFD_SAVE);
+  wxFileDialog fd(parent, _("Save NM output to file"), es, es, _T("*.*"), wxSAVE);
 
   if (fd.ShowModal() == wxID_OK)
   {
@@ -180,7 +180,7 @@ void SymTabExecDlg::OnNext(wxCommandEvent& WXUNUSED(event))
 	Manager::Get()->GetLogManager()->DebugLog(_T("SymTabExecDlg::OnNext"));
 #endif
 
-  wxScrollingDialog::EndModal(wxID_OK);
+  wxDialog::EndModal(wxID_OK);
 }// OnNext
 
 /* ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- */
@@ -191,7 +191,7 @@ void SymTabExecDlg::OnCancel(wxCommandEvent& WXUNUSED(event))
 	Manager::Get()->GetLogManager()->DebugLog(_T("SymTabExecDlg::OnCancel"));
 #endif
 
-  wxScrollingDialog::EndModal(wxID_CANCEL);
+  wxDialog::EndModal(wxID_CANCEL);
 }// OnCancel
 
 /* ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- */
@@ -239,7 +239,7 @@ void SymTabExecDlg::ClearUserData()
 /* ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- */
 
 // Sorting function of the nm output columns
-inline int wxCALLBACK SortFunction(wxIntPtr item1, wxIntPtr item2, wxIntPtr dlg)
+int wxCALLBACK SortFunction(long item1, long item2, long dlg)
 {
   SymTabExecDlg   *dialog = (SymTabExecDlg*)   dlg;
   customListEntry *data1  = (customListEntry*) item1;
@@ -288,7 +288,7 @@ void SymTabExecDlg::OnColumnClick(wxListEvent& event)
 
   ms_iSortColumn = event.GetColumn();
   wxBusyInfo wait(_("Please wait, sorting..."));
-  m_ListCtrl->SortItems(SortFunction, (intptr_t)this);
+  m_ListCtrl->SortItems(SortFunction, (long)this);
 }// OnColumnClick
 
 /* ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- */
@@ -345,7 +345,7 @@ int SymTabExecDlg::ExecuteMulti(struct_config &config, wxString cmd)
         if (i==(num_files-1))
           XRCCTRL(*this, "btnNext", wxButton)->Enable(false);
         XRCCTRL(*this, "stxtFile", wxStaticText)->SetLabel(_("File: ") + files[i]);
-        int retval = wxScrollingDialog::ShowModal();
+        int retval = wxDialog::ShowModal();
         if      (retval == wxID_OK)
           ;      // continue
         else if (retval == wxID_CANCEL)
@@ -395,7 +395,7 @@ int SymTabExecDlg::ExecuteSingle(struct_config &config, wxString cmd)
   {
     XRCCTRL(*this, "stxtFile", wxStaticText)->SetLabel(_("File: ") + the_library);
     XRCCTRL(*this, "btnNext",  wxButton)->Enable(false); // there is no next
-    wxScrollingDialog::ShowModal(); // Done on success only.
+    wxDialog::ShowModal(); // Done on success only.
   }
 
   return (wxID_OK); // always success.
@@ -505,7 +505,7 @@ int SymTabExecDlg::ParseOutputSuccess(wxString lib, wxString filter)
     return 0;
   }
 
-	Manager::Get()->GetLogManager()->DebugLog(F(_T("SymTab: Parsing %lu items..."), static_cast<unsigned long>(count)));
+	Manager::Get()->GetLogManager()->DebugLog(F(_T("SymTab: Parsing %d items..."), count));
 
   wxProgressDialog* progress = 0L;
   if (count>2000) // avoid flickering for small libs
@@ -539,7 +539,7 @@ int SymTabExecDlg::ParseOutputSuccess(wxString lib, wxString filter)
 
         if (item!=-1)
         {
-          s_item.Printf(_T("%6ld"), item);
+          s_item.Printf(_T("%6d"), item);
           m_ListCtrl->SetItem(item, 0, s_item);
 
           // Symbols can have colons in it, too        -> like Class::Method()
@@ -566,7 +566,7 @@ int SymTabExecDlg::ParseOutputSuccess(wxString lib, wxString filter)
           }
 
           // now associate a user-data with this entry
-          m_ListCtrl->SetItemData(item, (intptr_t)new customListEntry(n, the_value, the_type, the_name));
+          m_ListCtrl->SetItemData(item, (long)new customListEntry(n, the_value, the_type, the_name));
 
           ++entries;
         }

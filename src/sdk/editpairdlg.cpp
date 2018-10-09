@@ -13,7 +13,6 @@
     #include <wx/xrc/xmlres.h>
     #include <wx/button.h>
     #include <wx/textctrl.h>
-    #include <wx/regex.h>
     #include "globals.h"
 #endif
 
@@ -21,9 +20,7 @@
 #include "editpairdlg.h"
 #include "filefilters.h"
 
-static const wxRegEx reKey(wxT("^[[:alnum:]_]+$"), wxRE_EXTENDED);
-
-BEGIN_EVENT_TABLE(EditPairDlg, wxScrollingDialog)
+BEGIN_EVENT_TABLE(EditPairDlg, wxDialog)
     EVT_BUTTON(XRCID("btnBrowse"), EditPairDlg::OnBrowse)
     EVT_UPDATE_UI(-1, EditPairDlg::OnUpdateUI)
 END_EVENT_TABLE()
@@ -34,9 +31,8 @@ EditPairDlg::EditPairDlg(wxWindow* parent, wxString& key, wxString& value, const
     m_BrowseMode(allowBrowse)
 {
     //ctor
-    wxXmlResource::Get()->LoadObject(this, parent, _T("dlgEditPair"),_T("wxScrollingDialog"));
-    XRCCTRL(*this, "wxID_OK", wxButton)->SetDefault();
-    SetTitle(title);
+	wxXmlResource::Get()->LoadDialog(this, parent, _T("dlgEditPair"));
+	SetTitle(title);
     XRCCTRL(*this, "btnBrowse", wxButton)->Enable(m_BrowseMode != bmDisable);
     XRCCTRL(*this, "txtKey", wxTextCtrl)->SetValue(key);
     XRCCTRL(*this, "txtValue", wxTextCtrl)->SetValue(value);
@@ -47,16 +43,12 @@ EditPairDlg::~EditPairDlg()
     //dtor
 }
 
-void EditPairDlg::OnUpdateUI(cb_unused wxUpdateUIEvent& event)
+void EditPairDlg::OnUpdateUI(wxUpdateUIEvent& event)
 {
-    const wxString &value = XRCCTRL(*this, "txtKey", wxTextCtrl)->GetValue();
-    bool enable = !value.IsEmpty();
-    if (enable)
-        enable = reKey.Matches(value);
-    XRCCTRL(*this, "wxID_OK", wxButton)->Enable(enable);
+    XRCCTRL(*this, "wxID_OK", wxButton)->Enable(!XRCCTRL(*this, "txtKey", wxTextCtrl)->GetValue().IsEmpty());
 }
 
-void EditPairDlg::OnBrowse(cb_unused wxCommandEvent& event)
+void EditPairDlg::OnBrowse(wxCommandEvent& event)
 {
     switch (m_BrowseMode)
     {
@@ -67,7 +59,7 @@ void EditPairDlg::OnBrowse(cb_unused wxCommandEvent& event)
                             XRCCTRL(*this, "txtValue", wxTextCtrl)->GetValue(),
                             _T(""),
                             FileFilters::GetFilterAll(),
-                            wxFD_OPEN | compatibility::wxHideReadonly);
+                            wxOPEN | compatibility::wxHideReadonly);
             PlaceWindow(&dlg);
             if (dlg.ShowModal() == wxID_OK)
                 XRCCTRL(*this, "txtValue", wxTextCtrl)->SetValue(dlg.GetPath());
@@ -85,7 +77,6 @@ void EditPairDlg::OnBrowse(cb_unused wxCommandEvent& event)
                 XRCCTRL(*this, "txtValue", wxTextCtrl)->SetValue(dir);
             break;
         }
-        case bmDisable: // fall through
         default: break;
     }
 }
@@ -97,5 +88,5 @@ void EditPairDlg::EndModal(int retCode)
         m_Key = XRCCTRL(*this, "txtKey", wxTextCtrl)->GetValue();
         m_Value = XRCCTRL(*this, "txtValue", wxTextCtrl)->GetValue();
     }
-    wxScrollingDialog::EndModal(retCode);
+    wxDialog::EndModal(retCode);
 }

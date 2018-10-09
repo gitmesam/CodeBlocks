@@ -47,9 +47,7 @@ wxsPropertyContainer::~wxsPropertyContainer()
     // Unbinding from grid if there's one associated
     if ( wxsPGRID() )
     {
-        // if UnbindPropertyContainer is called from here the Thaw in it leads to a crash, so we have
-        // to disable Freeze-Thaw until we find another workaround or are sure, that we do not need it.
-        wxsPGRID()->UnbindPropertyContainer(this, false);
+        wxsPGRID()->UnbindPropertyContainer(this);
     }
 
     // Unbinding prom quick properties if there's one
@@ -72,9 +70,8 @@ void wxsPropertyContainer::ShowInPropertyGrid()
     wxsPGRID()->NewPropertyContainerFinish(this);
     Flags = 0;
     OnAddExtraProperties(wxsPGRID());
-    wxsPGRID()->Thaw();
-    // call RestoreSelected() after Thaw(), to ensure the selected property is visible
     wxsPGRID()->RestoreSelected();
+    wxsPGRID()->Thaw();
 }
 
 void wxsPropertyContainer::XmlRead(TiXmlElement* Element)

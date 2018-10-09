@@ -19,7 +19,7 @@
 #include "menuitemsmanager.h"
 #include <wx/intl.h>
 
-struct SquirrelError;
+class SquirrelError;
 
 /** @brief Provides scripting in Code::Blocks.
   *
@@ -63,6 +63,10 @@ class DLLIMPORT ScriptingManager : public Mgr<ScriptingManager>, public wxEvtHan
         /// Script trusts container struct
         typedef std::map<wxString, TrustedScriptProps> TrustedScripts;
 
+        // needed for SqPlus bindings
+        ScriptingManager(const ScriptingManager& rhs) { cbThrow(_T("Can't call ScriptingManager's copy ctor!!!")); }
+        void operator=(const ScriptingManager& rhs){ cbThrow(_T("Can't assign an ScriptingManager* !!!")); }
+
         /** @brief Loads a script.
           *
           * @param filename The filename of the script to run.
@@ -94,7 +98,7 @@ class DLLIMPORT ScriptingManager : public Mgr<ScriptingManager>, public wxEvtHan
           *        accumulated error messages are cleared.
           * @return The error string. If empty, it means "no errors".
           */
-        wxString GetErrorString(SquirrelError* exception = nullptr, bool clearErrors = true);
+        wxString GetErrorString(SquirrelError* exception = 0, bool clearErrors = true);
 
         /** @brief Display error dialog.
           *
@@ -106,7 +110,7 @@ class DLLIMPORT ScriptingManager : public Mgr<ScriptingManager>, public wxEvtHan
           * @param clearErrors If true (default), when this function returns all
           *        accumulated error messages are cleared.
           */
-        void DisplayErrors(SquirrelError* exception = nullptr, bool clearErrors = true);
+        void DisplayErrors(SquirrelError* exception = 0, bool clearErrors = true);
 
         /** @brief Injects script output.
           *
@@ -214,23 +218,13 @@ class DLLIMPORT ScriptingManager : public Mgr<ScriptingManager>, public wxEvtHan
           * @return The script trusts container.
           */
         const TrustedScripts& GetTrustedScripts();
-
-        // needed for SqPlus bindings
-        ScriptingManager& operator=(cb_unused const ScriptingManager& rhs) // prevent assignment operator
-        {
-        	cbThrow(_T("Can't assign a ScriptingManager* !!!"));
-        	return *this;
-		}
     private:
-        // needed for SqPlus bindings
-        ScriptingManager(cb_unused const ScriptingManager& rhs); // prevent copy construction
-
         void OnScriptMenu(wxCommandEvent& event);
         void OnScriptPluginMenu(wxCommandEvent& event);
         void RegisterScriptFunctions();
 
         ScriptingManager();
-        ~ScriptingManager() override;
+        ~ScriptingManager();
 
         TrustedScripts m_TrustedScripts;
 
@@ -254,8 +248,5 @@ class DLLIMPORT ScriptingManager : public Mgr<ScriptingManager>, public wxEvtHan
 
         DECLARE_EVENT_TABLE()
 };
-
-typedef char SQChar; // HACK, MUST match with the type as defined for the dedicated platform in squirrel.h
-void PrintSquirrelToWxString(wxString& msg, const SQChar* s, va_list& vl);
 
 #endif // SCRIPTING_H

@@ -8,7 +8,6 @@
 
 #include <vector>
 #include <map>
-#include <set>
 
 #include <wx/dynarray.h>
 #include "globals.h" // PluginType
@@ -18,7 +17,6 @@
 //forward decls
 struct PluginInfo;
 class cbPlugin;
-class cbCompilerPlugin;
 class cbMimePlugin;
 class cbConfigurationPanel;
 class cbProject;
@@ -76,9 +74,6 @@ WX_DEFINE_ARRAY(cbConfigurationPanel*, ConfigurationPanelsArray);
 class DLLIMPORT PluginManager : public Mgr<PluginManager>, public wxEvtHandler
 {
     public:
-        typedef std::vector<cbCompilerPlugin*> CompilerPlugins;
-
-    public:
         friend class Mgr<PluginManager>;
         friend class Manager; // give Manager access to our private members
         void CreateMenu(wxMenuBar* menuBar);
@@ -95,6 +90,7 @@ class DLLIMPORT PluginManager : public Mgr<PluginManager>, public wxEvtHandler
         void UnloadAllPlugins();
         void UnloadPlugin(cbPlugin* plugin);
         int ExecutePlugin(const wxString& pluginName);
+        int ConfigurePlugin(const wxString& pluginName);
 
         bool AttachPlugin(cbPlugin* plugin, bool ignoreSafeMode = false);
         bool DetachPlugin(cbPlugin* plugin);
@@ -106,50 +102,19 @@ class DLLIMPORT PluginManager : public Mgr<PluginManager>, public wxEvtHandler
         const PluginInfo* GetPluginInfo(const wxString& pluginName);
         const PluginInfo* GetPluginInfo(cbPlugin* plugin);
 
-        const PluginElementsArray& GetPlugins() const { return m_Plugins; }
+        PluginElementsArray& GetPlugins(){ return m_Plugins; }
 
         PluginElement* FindElementByName(const wxString& pluginName);
         cbPlugin* FindPluginByName(const wxString& pluginName);
         cbPlugin* FindPluginByFileName(const wxString& pluginFileName);
 
-        const CompilerPlugins& GetCompilerPlugins() const { return m_CompilerPlugins; }
-        cbCompilerPlugin* GetFirstCompiler() const;
-
         PluginsArray GetToolOffers();
         PluginsArray GetMimeOffers();
+        PluginsArray GetCompilerOffers();
         PluginsArray GetDebuggerOffers();
         PluginsArray GetCodeCompletionOffers();
-        PluginsArray GetSmartIndentOffers();
         PluginsArray GetOffersFor(PluginType type);
-
-        void AskPluginsForModuleMenu(const ModuleType type, wxMenu* menu, const FileTreeData* data = nullptr);
-        /// Called by the code creating the context menu for the editor. Must not be called by
-        /// plugins.
-        void ResetModuleMenu();
-        /// Can be called by plugins' BuildModuleMenu when building the EditorManager's context
-        /// menu. This method has two purposes:
-        /// 1. to control the number of find related items in the menu
-        /// 2. to control the number of items that are placed before the find related items.
-        /// @param before Pass true when you're adding items before the find group and false when
-        /// adding in the find group.
-        /// @param count The number of items you're adding to the menu.
-        void RegisterFindMenuItems(bool before, int count);
-        /// Returns the number of items in the find group already added to the menu.
-        int GetFindMenuItemCount() const;
-        /// Returns the position of the first menu item in the find group.
-        int GetFindMenuItemFirst() const;
-        /// Called by the editor code which adds the non-plugin related menu items to store the id
-        /// of the last fixed menu item. Must not be called by plugins.
-        void RegisterLastNonPluginMenuItem(int id);
-        /// Called by plugins when they want to add menu items to the editor's context menu.
-        /// Using this method will produce a menu which is sorted alphabetically (case
-        /// insensitive). The menu items are added at the bottom of the menu.
-        /// @param popup The context menu passed to BuildModuleMenu.
-        /// @param label The label of the new menu item. It will be used to find the correct
-        /// position.
-        /// @return The position where to insert the item.
-        int FindSortedMenuItemPosition(wxMenu &popup, const wxString& label) const;
-
+        void AskPluginsForModuleMenu(const ModuleType type, wxMenu* menu, const FileTreeData* data = 0);
         cbMimePlugin* GetMIMEHandlerForFile(const wxString& filename);
         void GetConfigurationPanels(int group, wxWindow* parent, ConfigurationPanelsArray& arrayToFill);
         void GetProjectConfigurationPanels(wxWindow* parent, cbProject* project, ConfigurationPanelsArray& arrayToFill);
@@ -159,22 +124,22 @@ class DLLIMPORT PluginManager : public Mgr<PluginManager>, public wxEvtHandler
         void NotifyPlugins(CodeBlocksEvent& event);
         void NotifyPlugins(CodeBlocksDockEvent& event);
         void NotifyPlugins(CodeBlocksLayoutEvent& event);
-
+        
         static void SetSafeMode(bool on){ s_SafeMode = on; }
         static bool GetSafeMode(){ return s_SafeMode; }
     private:
         PluginManager();
-        ~PluginManager() override;
+        ~PluginManager();
 
-        void OnScriptMenu(wxCommandEvent& event);
-        void OnScriptModuleMenu(wxCommandEvent& event);
+		void OnScriptMenu(wxCommandEvent& event);
+		void OnScriptModuleMenu(wxCommandEvent& event);
 
         /// @return True if the plugin should be loaded, false if not.
         bool ReadManifestFile(const wxString& pluginFilename,
                                 const wxString& pluginName = wxEmptyString,
-                                PluginInfo* infoOut = nullptr);
-        void ReadExtraFilesFromManifestFile(const wxString& pluginFilename,
-                                            wxArrayString& extraFiles);
+                                PluginInfo* infoOut = 0);
+		void ReadExtraFilesFromManifestFile(const wxString& pluginFilename,
+											wxArrayString& extraFiles);
         bool ExtractFile(const wxString& bundlename,
                         const wxString& src_filename,
                         const wxString& dst_filename,
@@ -195,7 +160,7 @@ class DLLIMPORT PluginManager : public Mgr<PluginManager>, public wxEvtHandler
         // inside the plugins (yes, it happened to me ;)).
         struct PluginRegistration
         {
-            PluginRegistration() : createProc(nullptr), freeProc(nullptr), versionProc(nullptr) {}
+            PluginRegistration() : createProc(0), freeProc(0), versionProc(0) {}
             PluginRegistration(const PluginRegistration& rhs)
                 : name(rhs.name),
                 createProc(rhs.createProc),
@@ -210,18 +175,10 @@ class DLLIMPORT PluginManager : public Mgr<PluginManager>, public wxEvtHandler
             PluginInfo info;
         };
         std::vector<PluginRegistration> m_RegisteredPlugins;
-        CompilerPlugins m_CompilerPlugins;
-
-        int m_FindMenuItemCount = 0;
-        int m_FindMenuItemFirst = 0;
-        int m_LastNonPluginMenuId = 0;
-
+        
         static bool s_SafeMode;
-
-        DECLARE_EVENT_TABLE()
+        
+		DECLARE_EVENT_TABLE()
 };
-
-DLLIMPORT bool cbHasRunningCompilers(const PluginManager *manager);
-DLLIMPORT void cbStopRunningCompilers(PluginManager *manager);
 
 #endif // PLUGINMANAGER_H

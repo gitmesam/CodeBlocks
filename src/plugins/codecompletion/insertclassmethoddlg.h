@@ -7,37 +7,38 @@
 #define INSERTCLASSMETHODDLG_H
 
 #include <wx/arrstr.h>
+#include <wx/dialog.h>
 #include <wx/string.h>
 
-#include "scrollingdialog.h"
-
 class Parser;
-class ParserBase;
 class Token;
 class wxCheckListBox;
 class wxCommandEvent;
 
-// When instance this class, *MUST* entered a critical section, and should call ShowModal() rather than the other
-class InsertClassMethodDlg : public wxScrollingDialog
+class InsertClassMethodDlg : public wxDialog
 {
-public:
-    InsertClassMethodDlg(wxWindow* parent, ParserBase* parser, const wxString& filename);
-    virtual ~InsertClassMethodDlg();
+	public:
+		InsertClassMethodDlg(wxWindow* parent, Parser* parser, const wxString& filename);
+		virtual ~InsertClassMethodDlg();
 
-    wxArrayString GetCode() const; // return an array of checked methods
+        wxArrayString GetCode() const; // return an array of checked methods
+	private:
+        void FillClasses();
+        void FillMethods();
+        void DoFillMethodsFor(wxCheckListBox* clb,
+                                Token* parentToken,
+                                const wxString& ns,
+                                bool includePrivate,
+                                bool includeProtected,
+                                bool includePublic);
+        void OnClassesChange(wxCommandEvent& event);
+        void OnCodeChange(wxCommandEvent& event);
+        void OnFilterChange(wxCommandEvent& event);
 
-private:
-    void FillClasses();
-    void FillMethods();
-    void OnClassesChange(wxCommandEvent& event);
-    void OnCodeChange(wxCommandEvent& event);
-    void OnFilterChange(wxCommandEvent& event);
-
-    ParserBase* m_Parser;
-    bool        m_Decl;
-    wxString    m_Filename;
-
-    DECLARE_EVENT_TABLE();
+        Parser* m_pParser;
+        bool m_Decl;
+        wxString m_Filename;
+        DECLARE_EVENT_TABLE();
 };
 
 #endif // INSERTCLASSMETHODDLG_H

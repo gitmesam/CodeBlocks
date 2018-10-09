@@ -34,7 +34,7 @@ namespace
         _T(""),
         _T("www.wxwidgets.org"),
         _T("Layout"),
-        100,
+        30,
         _T(""),
         wxsCPP,
         2,6,
@@ -50,14 +50,10 @@ namespace
 
         private:
 
-            void OnPaint(cb_unused wxPaintEvent& event)
+            void OnPaint(wxPaintEvent& event)
             {
                 wxPaintDC DC(this);
-#if wxCHECK_VERSION(3, 0, 0)
-                DC.SetBrush(wxBrush(wxColour(0,0,0),wxHATCHSTYLE_CROSSDIAG));
-#else
                 DC.SetBrush(wxBrush(wxColour(0,0,0),wxCROSSDIAG_HATCH));
-#endif
                 DC.SetPen(wxPen(wxColour(0,0,0),1));
                 DC.DrawRectangle(0,0,GetSize().GetWidth(),GetSize().GetHeight());
             }
@@ -74,7 +70,7 @@ namespace
 wxsSpacer::wxsSpacer(wxsItemResData* Data): wxsItem(Data,&Reg.Info,flSize,0,0)
 {}
 
-void wxsSpacer::OnEnumItemProperties(cb_unused long Flags)
+void wxsSpacer::OnEnumItemProperties(long Flags)
 {}
 
 wxObject* wxsSpacer::OnBuildPreview(wxWindow* Parent,long Flags)
@@ -107,24 +103,23 @@ void wxsSpacer::OnBuildCreatingCode()
 
                 Codef(_T("wxSize %s = %z;\n")
                       _T("%MAdd(%s.GetWidth(),%s.GetHeight(),%s);\n"),
-                      SizeName.wx_str(),
-                      &Size,
-                      SizeName.wx_str(),
-                      SizeName.wx_str(),
-                      Extra->AllParamsCode(GetCoderContext()).wx_str());
+                         SizeName.c_str(),
+                         &Size,
+                         SizeName.c_str(),
+                         SizeName.c_str(),
+                         Extra->AllParamsCode(GetCoderContext()).c_str());
             }
             else
             {
                 Codef(_T("%MAdd(%d,%d,%s);\n"),
                     (int)Size.X,
                     (int)Size.Y,
-                    Extra->AllParamsCode(GetCoderContext()).wx_str());
+                    Extra->AllParamsCode(GetCoderContext()).c_str());
             }
 
             break;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsSpacer::OnBuildCreatingCode"),GetLanguage());

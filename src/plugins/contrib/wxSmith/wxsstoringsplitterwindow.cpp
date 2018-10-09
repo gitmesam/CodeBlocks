@@ -51,20 +51,14 @@ void wxsStoringSplitterWindow::Split(wxWindow* Top,wxWindow* Bottom,int SashPosi
 
 void wxsStoringSplitterWindow::OnSize(wxSizeEvent& event)
 {
-    Splitter->SetSashPosition(SplitterFixup(SplitPosition));
-    event.Skip();
-}
-
-void wxsStoringSplitterWindow::OnSplitterDClick(wxSplitterEvent& event)
-{
-    // Do not allow UnSplit of splitter window
-    event.Veto();
+	Splitter->SetSashPosition(SplitterFixup(SplitPosition));
+	event.Skip();
 }
 
 void wxsStoringSplitterWindow::OnSplitterChanging(wxSplitterEvent& event)
 {
-    SplitPosition = event.GetSashPosition();
-    event.SetSashPosition(SplitterFixup(SplitPosition));
+	SplitPosition = event.GetSashPosition();
+	event.SetSashPosition(SplitterFixup(SplitPosition));
 }
 
 void wxsStoringSplitterWindow::OnSplitterChanged(wxSplitterEvent& event)
@@ -78,20 +72,19 @@ void wxsStoringSplitterWindow::OnSplitterChanged(wxSplitterEvent& event)
 int wxsStoringSplitterWindow::SplitterFixup(int Position)
 {
     int Height = GetSize().GetHeight();
-    int MinMargin = Height / 2;
+	int MinMargin = Height / 2;
 
     if ( Position<0 || Position>Height ) return Height/2;
 
-    if ( MinMargin > MIN_MARGIN ) MinMargin = MIN_MARGIN;
-    if ( Position < MinMargin ) Position = MinMargin;
-    if ( Position > Height - MinMargin ) Position = Height - MinMargin;
+	if ( MinMargin > MIN_MARGIN ) MinMargin = MIN_MARGIN;
+	if ( Position < MinMargin ) Position = MinMargin;
+	if ( Position > Height - MinMargin ) Position = Height - MinMargin;
 
-    return Position;
+	return Position;
 }
 
 BEGIN_EVENT_TABLE(wxsStoringSplitterWindow,wxPanel)
     EVT_SIZE(wxsStoringSplitterWindow::OnSize)
-    EVT_SPLITTER_DCLICK(SplitterId,wxsStoringSplitterWindow::OnSplitterDClick)
     EVT_SPLITTER_SASH_POS_CHANGING(SplitterId,wxsStoringSplitterWindow::OnSplitterChanging)
     EVT_SPLITTER_SASH_POS_CHANGED(SplitterId,wxsStoringSplitterWindow::OnSplitterChanged)
 END_EVENT_TABLE()

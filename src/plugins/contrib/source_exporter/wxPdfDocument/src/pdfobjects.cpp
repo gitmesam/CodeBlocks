@@ -24,10 +24,8 @@
 
 // includes
 
+#include "wx/pdfdoc.h"
 #include "wx/pdfobjects.h"
-#include "wx/pdfutility.h"
-
-#include "wxmemdbg.h"
 
 // --- Object queue for processing the resource tree
 
@@ -46,18 +44,11 @@ wxPdfObject::wxPdfObject(int type)
   m_type = type;
   m_objNum = -1;
   m_objGen = -1;
-  m_actualId = -1;
   m_indirect = false;
 }
 
 wxPdfObject::~wxPdfObject()
 {
-}
-
-bool
-wxPdfObject::CanBeInObjStm()
-{
-  return (m_type >= 1 && m_type <= 7);
 }
 
 void
@@ -117,7 +108,7 @@ wxPdfBoolean::~wxPdfBoolean()
 wxString
 wxPdfBoolean::GetAsString()
 {
-  return (m_value) ? wxT("true") : wxT("false");
+  return (m_value) ? _T("true") : _T("false");
 }
 
 // --- String / Hex string
@@ -137,25 +128,22 @@ wxPdfString::~wxPdfString()
 wxPdfNumber::wxPdfNumber(const wxString& value)
   : wxPdfObject(OBJTYPE_NUMBER)
 {
-  m_value = wxPdfUtility::String2Double(value);
+  m_value = wxPdfDocument::String2Double(value);
   m_string = value;
-  m_isInt = false;
 }
 
 wxPdfNumber::wxPdfNumber(int value)
   : wxPdfObject(OBJTYPE_NUMBER)
 {
   m_value = value;
-  m_string = wxString::Format(wxT("%d"), value);
-  m_isInt = true;
+  m_string = wxString::Format(_T("%d"), value);
 }
 
 wxPdfNumber::wxPdfNumber(double value)
   : wxPdfObject(OBJTYPE_NUMBER)
 {
   m_value = value;
-  m_string = wxPdfUtility::Double2String(value, 5);
-  m_isInt = false;
+  m_string = wxPdfDocument::Double2String(value, 3);
 }
 
 wxPdfNumber::~wxPdfNumber()
@@ -225,7 +213,7 @@ wxPdfObject*
 wxPdfArray::Get(size_t index)
 {
   wxPdfObject* obj = NULL;
-  if (index < m_array.GetCount())
+  if (index >= 0 && index < m_array.GetCount())
   {
     obj = (wxPdfObject*) m_array.Item(index);
   }
@@ -238,13 +226,6 @@ wxPdfDictionary::wxPdfDictionary()
   : wxPdfObject(OBJTYPE_DICTIONARY)
 {
   m_hashMap = new wxPdfDictionaryMap();
-}
-
-wxPdfDictionary::wxPdfDictionary(const wxString& type)
-  : wxPdfObject(OBJTYPE_DICTIONARY)
-{
-  m_hashMap = new wxPdfDictionaryMap();
-  Put(wxT("Type"), new wxPdfName(type));
 }
 
 wxPdfDictionary::~wxPdfDictionary()
@@ -262,12 +243,6 @@ void
 wxPdfDictionary::Put(wxPdfName* key, wxPdfObject* value)
 {
   (*m_hashMap)[key->GetName()] = value;
-}
-
-void
-wxPdfDictionary::Put(const wxString& key, wxPdfObject* value)
-{
-  (*m_hashMap)[key] = value;
 }
 
 wxPdfObject*

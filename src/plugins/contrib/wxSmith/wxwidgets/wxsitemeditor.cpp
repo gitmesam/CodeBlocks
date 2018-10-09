@@ -77,7 +77,7 @@ wxsItemEditor::wxsItemEditor(wxWindow* parent,wxsItemRes* Resource):
 wxsItemEditor::~wxsItemEditor()
 {
     delete m_Data;
-    m_AllEditors.erase(this);
+	m_AllEditors.erase(this);
 }
 
 void wxsItemEditor::InitializeResourceData()
@@ -120,7 +120,7 @@ void wxsItemEditor::InitializeVisualStuff()
     m_Content = new wxsItemEditorContent(this,m_Data,this);
     m_HorizSizer->Add(m_Content,1,wxEXPAND);
 
-    m_QPArea = new wxScrolledWindow(this,-1,wxDefaultPosition,wxDefaultSize,wxVSCROLL|wxHSCROLL|wxSUNKEN_BORDER/*|wxALWAYS_SHOW_SB*/);
+    m_QPArea = new wxScrolledWindow(this,-1,wxDefaultPosition,wxDefaultSize,wxVSCROLL|wxSUNKEN_BORDER|wxALWAYS_SHOW_SB);
     m_QPArea->SetScrollbars(0,5,0,0);
     m_HorizSizer->Add(m_QPArea,0,wxEXPAND);
     m_QPSizer = new wxBoxSizer(wxVERTICAL);
@@ -216,18 +216,15 @@ void wxsItemEditor::RebuildPreview()
         BackgroundSizer->Fit(m_PreviewBackground);
         wxSizer* NewSizer = new wxGridSizer(1);
         NewSizer->Add(m_PreviewBackground,0,wxALL,10);
-#if !wxCHECK_VERSION(3, 0, 0)
         m_Content->SetVirtualSizeHints(1,1);
-#endif
         m_Content->SetSizer(NewSizer);
-#if wxCHECK_VERSION(3, 0, 0)
-        NewSizer->FitInside(m_Content);
-#else
         NewSizer->SetVirtualSizeHints(m_Content);
-#endif
+        NewSizer->FitInside(m_Content);
         m_PreviewBackground->Layout();
         m_Content->Layout();
         m_HorizSizer->Layout();
+        m_VertSizer->Layout();
+        Layout();
     }
 
     m_ToolSpace->AfterPreviewChanged();
@@ -241,9 +238,8 @@ void wxsItemEditor::RebuildPreview()
     }
     m_VertSizer->Layout();
 
-    Layout();
     Thaw();
-    Refresh();
+    Update();
 
     // Updating all informations in Content
     m_Content->AfterPreviewChanged();
@@ -297,12 +293,12 @@ bool wxsItemEditor::Save()
         // TODO: Some message here please
     }
     UpdateModified();
-    return true;
+	return true;
 }
 
 bool wxsItemEditor::GetModified() const
 {
-    return m_Data ? m_Data->GetModified() : false;
+	return m_Data ? m_Data->GetModified() : false;
 }
 
 void wxsItemEditor::UpdateModified()
@@ -319,12 +315,12 @@ void wxsItemEditor::UpdateModified()
 
 bool wxsItemEditor::CanUndo() const
 {
-    return m_Data ? m_Data->CanUndo() : false;
+	return m_Data ? m_Data->CanUndo() : false;
 }
 
 bool wxsItemEditor::CanRedo() const
 {
-    return m_Data ? m_Data->CanRedo() : false;
+	return m_Data ? m_Data->CanRedo() : false;
 }
 
 void wxsItemEditor::Undo()
@@ -380,9 +376,6 @@ void wxsItemEditor::Paste()
         case itInto:
             Parent = Reference->ConvertToParent();
             RefIndex = Parent ? Parent->GetChildCount() : 0;
-            break;
-
-        default:
             break;
     }
 
@@ -648,20 +641,7 @@ namespace
     }
 
     WX_DEFINE_ARRAY(const wxsItemInfo*,ItemsT);
-
-    int CategorySort(ItemsT* it1, ItemsT* it2)
-    {
-        if (it1->Item(0)->Category.IsSameAs(_T("Standard")))
-            return -1;
-
-        if (it2->Item(0)->Category.IsSameAs(_T("Standard")))
-            return 1;
-
-        return wxStrcmp(it1->Item(0)->Category, it2->Item(0)->Category);
-    }
-
     WX_DECLARE_STRING_HASH_MAP(ItemsT,MapT);
-    WX_DEFINE_SORTED_ARRAY(ItemsT*,ArrayOfItemsT);
 }
 
 void wxsItemEditor::BuildPalette(wxNotebook* Palette)
@@ -673,7 +653,6 @@ void wxsItemEditor::BuildPalette(wxNotebook* Palette)
     // it will be done using multimap (map of arrays)
 
     MapT Map;
-    ArrayOfItemsT aoi(CategorySort);
 
     for ( const wxsItemInfo* Info = wxsItemFactory::GetFirstInfo(); Info; Info = wxsItemFactory::GetNextInfo() )
     {
@@ -685,20 +664,17 @@ void wxsItemEditor::BuildPalette(wxNotebook* Palette)
 
     for ( MapT::iterator i = Map.begin(); i!=Map.end(); ++i )
     {
-        aoi.Add(&(i->second));
-    }
-    for (size_t i = 0; i < aoi.Count(); ++i)
-    {
-        ItemsT* Items = aoi.Item(i);
-        Items->Sort(PrioritySort);
         wxScrolledWindow* CurrentPanel = new wxScrolledWindow(Palette,-1,wxDefaultPosition,wxDefaultSize,0/*wxALWAYS_SHOW_SB|wxHSCROLL*/);
         CurrentPanel->SetScrollRate(1,0);
-        Palette->AddPage(CurrentPanel,Items->Item(0)->Category);
+        Palette->AddPage(CurrentPanel,i->first);
         wxSizer* RowSizer = new wxBoxSizer(wxHORIZONTAL);
 
-        for ( size_t j=Items->Count(); j-->0; )
+        ItemsT& Items = i->second;
+        Items.Sort(PrioritySort);
+
+        for ( size_t j=Items.Count(); j-->0; )
         {
-            const wxsItemInfo* Info = Items->Item(j);
+            const wxsItemInfo* Info = Items[j];
             const wxBitmap& Icon = ( PalIconSize() == 16L ) ? Info->Icon16 : Info->Icon32;
 
             if ( AllowNonXRCItems || Info->AllowInXRC )
@@ -722,35 +698,31 @@ void wxsItemEditor::BuildPalette(wxNotebook* Palette)
             }
         }
         CurrentPanel->SetSizer(RowSizer);
-#if wxCHECK_VERSION(3, 0, 0)
-        RowSizer->FitInside(CurrentPanel);
-#else
         RowSizer->SetVirtualSizeHints(CurrentPanel);
-#endif
     }
 }
 
-void wxsItemEditor::OnInsPoint(cb_unused wxCommandEvent& event)
+void wxsItemEditor::OnInsPoint(wxCommandEvent& event)
 {
     SetInsertionType(itPoint);
 }
 
-void wxsItemEditor::OnInsInto(cb_unused wxCommandEvent& event)
+void wxsItemEditor::OnInsInto(wxCommandEvent& event)
 {
     SetInsertionType(itInto);
 }
 
-void wxsItemEditor::OnInsAfter(cb_unused wxCommandEvent& event)
+void wxsItemEditor::OnInsAfter(wxCommandEvent& event)
 {
     SetInsertionType(itAfter);
 }
 
-void wxsItemEditor::OnInsBefore(cb_unused wxCommandEvent& event)
+void wxsItemEditor::OnInsBefore(wxCommandEvent& event)
 {
     SetInsertionType(itBefore);
 }
 
-void wxsItemEditor::OnDelete(cb_unused wxCommandEvent& event)
+void wxsItemEditor::OnDelete(wxCommandEvent& event)
 {
     if ( !m_Data ) return;
     m_Data->BeginChange();
@@ -758,7 +730,7 @@ void wxsItemEditor::OnDelete(cb_unused wxCommandEvent& event)
     m_Data->EndChange();
 }
 
-void wxsItemEditor::OnPreview(cb_unused wxCommandEvent& event)
+void wxsItemEditor::OnPreview(wxCommandEvent& event)
 {
     if ( !m_Data ) return;
 
@@ -776,7 +748,7 @@ void wxsItemEditor::OnPreview(cb_unused wxCommandEvent& event)
     m_Content->BlockFetch(false);
 }
 
-void wxsItemEditor::OnQuickProps(cb_unused wxCommandEvent& event)
+void wxsItemEditor::OnQuickProps(wxCommandEvent& event)
 {
     m_QuickPropsOpen = !m_QuickPropsOpen;
     RebuildQuickPropsIcon();
@@ -847,9 +819,6 @@ void wxsItemEditor::OnKeyDown(wxKeyEvent& event)
             m_Data->BeginChange();
             m_Data->DeleteSelected();
             m_Data->EndChange();
-            break;
-
-        default:
             break;
     }
 }

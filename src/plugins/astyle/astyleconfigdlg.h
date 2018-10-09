@@ -7,8 +7,17 @@
 #define ASTYLECONFIGDLG_H
 
 #include <wx/intl.h>
-#include "astylepredefinedstyles.h"
 #include "configurationpanel.h"
+
+enum AStylePredefinedStyle
+{
+  aspsAnsi = 0,
+  aspsKr,
+  aspsLinux,
+  aspsGnu,
+  aspsJava,
+  aspsCustom
+};
 
 class AstyleConfigDlg : public cbConfigurationPanel
 {
@@ -19,8 +28,6 @@ class AstyleConfigDlg : public cbConfigurationPanel
 	protected:
         void OnStyleChange(wxCommandEvent& event);
         void OnPreview(wxCommandEvent& event);
-        void OnBreakLineChange(wxCommandEvent& event);
-        void OnBreakBlocksChange(wxCommandEvent& event);
 
         virtual wxString GetTitle() const { return _("Source formatter"); }
         virtual wxString GetBitmapBaseName() const { return _T("astyle-plugin"); }

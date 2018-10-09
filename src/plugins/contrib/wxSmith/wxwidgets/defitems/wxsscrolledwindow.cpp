@@ -24,10 +24,12 @@
 
 namespace
 {
-    wxsRegisterItem<wxsScrolledWindow> Reg(_T("ScrolledWindow"),wxsTContainer, _T("Standard"), 140);
+    wxsRegisterItem<wxsScrolledWindow> Reg(_T("ScrolledWindow"),wxsTContainer, _T("Standard"), 75);
 
     WXS_ST_BEGIN(wxsScrolledWindowStyles,_T("wxHSCROLL|wxVSCROLL"))
         WXS_ST_CATEGORY("wxScrolledWindow")
+        WXS_ST(wxHSCROLL)
+        WXS_ST(wxVSCROLL)
         WXS_ST_DEFAULTS()
     WXS_ST_END()
 
@@ -57,7 +59,6 @@ void wxsScrolledWindow::OnBuildCreatingCode()
             return;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsScrolledWindow::OnBuildCreatingCode"),GetLanguage());
@@ -74,6 +75,6 @@ wxObject* wxsScrolledWindow::OnBuildPreview(wxWindow* Parent,long Flags)
     return NewItem;
 }
 
-void wxsScrolledWindow::OnEnumContainerProperties(cb_unused long Flags)
+void wxsScrolledWindow::OnEnumContainerProperties(long Flags)
 {
 }

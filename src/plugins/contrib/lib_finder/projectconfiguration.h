@@ -16,9 +16,9 @@
 * along with wxSmith; if not, write to the Free Software
 * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
 *
-* $Revision$
-* $Id$
-* $HeadURL$
+* $Revision: 4504 $
+* $Id: wxsmithpluginregistrants.cpp 4504 2007-10-02 21:52:30Z byo $
+* $HeadURL: svn+ssh://byo@svn.berlios.de/svnroot/repos/codeblocks/trunk/src/plugins/contrib/wxSmith/plugin/wxsmithpluginregistrants.cpp $
 */
 
 #ifndef PROJECTCONFIGURATION_H
@@ -27,7 +27,7 @@
 #include <wx/arrstr.h>
 #include <wx/string.h>
 #include <wx/hashmap.h>
-#include <tinyxml.h>
+#include <tinyxml/tinyxml.h>
 #include <cbproject.h>
 
 /** \brief Configuration of one project */

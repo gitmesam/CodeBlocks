@@ -6,13 +6,18 @@
 #ifndef FILEPATHPANEL_H
 #define FILEPATHPANEL_H
 
+#include <wx/wxprec.h>
 
-//(*HeadersPCH(FilePathPanel)
-#include <wx/checklst.h>
-#include <wx/checkbox.h>
-#include <wx/sizer.h>
+#ifdef __BORLANDC__
+    #pragma hdrstop
+#endif
+
+//(*Headers(FilePathPanel)
 #include <wx/button.h>
+#include <wx/checkbox.h>
+#include <wx/checklst.h>
 #include <wx/panel.h>
+#include <wx/sizer.h>
 #include <wx/stattext.h>
 #include <wx/textctrl.h>
 //*)
@@ -63,18 +68,18 @@ class FilePathPanel: public wxPanel
 		//*)
 
 		//(*Declarations(FilePathPanel)
-		wxButton* btnAll;
-		wxStaticText* lblGuard;
-		wxFlexGridSizer* FlexGridSizer1;
-		wxBoxSizer* BoxSizer3;
-		wxCheckListBox* clbTargets;
 		wxBoxSizer* BoxSizer2;
-		wxCheckBox* chkAddToProject;
 		wxTextCtrl* txtFilename;
-		wxButton* btnNone;
 		wxButton* btnBrowse;
+		wxStaticText* lblGuard;
 		wxTextCtrl* txtGuard;
+		wxCheckBox* chkAddToProject;
+		wxFlexGridSizer* FlexGridSizer1;
+		wxCheckListBox* clbTargets;
 		wxBoxSizer* BoxSizer6;
+		wxButton* btnAll;
+		wxButton* btnNone;
+		wxBoxSizer* BoxSizer3;
 		//*)
 
 		wxString m_ExtFilter;

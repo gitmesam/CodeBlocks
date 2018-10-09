@@ -1,14 +1,13 @@
 bin_PROGRAMS = cb_share_config
 
-AM_CPPFLAGS = $(WX_CXXFLAGS) \
-			$(CB_GLIB2_CFLAGS) \
-			-I$(top_srcdir)/src/include
+INCLUDES = $(WX_CXXFLAGS) \
+			-I$(top_srcdir)/src/include \
+			-I$(top_srcdir)/src/include/tinyxml
 
-cb_share_config_LDFLAGS =
+cb_share_config_LDFLAGS = 
 
-cb_share_config_LDADD = $(WX_LIBS)  \
-					$(CB_GLIB2_LIBS) \
-					$(CB_TINYXML_LIBS)
+cb_share_config_LDADD =  -L../../base/tinyxml -ltinyxml \
+			$(WX_LIBS)
 
 cb_share_config_SOURCES = app.cpp \
 			mainframe.cpp
@@ -18,6 +17,6 @@ noinst_HEADERS = app.h \
 
 man_MANS = cb_share_config.1
 
-EXTRA_DIST = $(srcdir)/*.cbp \
-		$(srcdir)/wxsmith/*.wxs \
+EXTRA_DIST = cb_share_config.cbp \
+		cb_share_config-unix.cbp \
 		$(man_MANS)

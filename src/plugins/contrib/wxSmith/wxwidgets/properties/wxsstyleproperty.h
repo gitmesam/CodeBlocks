@@ -55,12 +55,14 @@ class wxsStyleProperty: public wxsProperty
         /** \brief Ctor
          *  \param StyleName    name of style property used in Property Grid
          *  \param DataName     name of style data
+         *  \param StyleSet     pointer to array of wxsStyle classes defining available styles
          *  \param Offset       offset to bitfield for styles
-         *  \param StyleSetPtrOffset offset for pointer to styleset class describing all styles
+         *  \param Offset       offset for pointer to styleset class describing all styles
+         *  \param Default      default style set (as string - names of styles separated through |)
          *  \param IsExtra      if true, this is extra style, false otherwise
          *  \param Priority     priority of this property
          */
-        wxsStyleProperty(
+		wxsStyleProperty(
             const wxString& StyleName,
             const wxString& DataName,
             long  Offset,

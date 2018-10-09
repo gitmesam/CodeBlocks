@@ -27,56 +27,33 @@ public:
     friend class Mgr<MacrosManager>;
     void CreateMenu(wxMenuBar* menuBar);
     void ReleaseMenu(wxMenuBar* menuBar);
-    void ReplaceMacros(wxString& buffer, ProjectBuildTarget* target = nullptr, bool subrequest = false);
-    wxString ReplaceMacros(const wxString& buffer, ProjectBuildTarget* target = nullptr);
-    void ReplaceEnvVars(wxString& buffer) { ReplaceMacros(buffer); }  /* misnomer, should be ReplaceVariables */;
-    void RecalcVars(cbProject* project, EditorBase* editor, ProjectBuildTarget* target);
+    void ReplaceMacros(wxString& buffer, ProjectBuildTarget* target = 0, bool subrequest = false);
+    wxString ReplaceMacros(const wxString& buffer, ProjectBuildTarget* target = 0);
+    void ReplaceEnvVars(wxString& buffer){ ReplaceMacros(buffer); }  /* misnomer, should be ReplaceVariables */;
+    void RecalcVars(cbProject* project,EditorBase* editor,ProjectBuildTarget* target);
     void ClearProjectKeys();
-    void Reset();
 protected:
-    ProjectBuildTarget* m_LastTarget;
-    cbProject*          m_LastProject;
-
-    wxFileName          m_ProjectWxFileName;
-    wxFileName          m_WorkspaceWxFileName;
-
-    wxString            m_AppPath;
-    wxString            m_DataPath;
-    wxString            m_Plugins;
-    wxString            m_ActiveEditorFilename;
-    int                 m_ActiveEditorLine;
-    int                 m_ActiveEditorColumn;
-    wxString            m_WorkspaceFilename;
-    wxString            m_WorkspaceName;
-    wxString            m_WorkspaceDir;
-    wxString            m_ProjectFilename;
-    wxString            m_ProjectName;
-    wxString            m_ProjectDir;
-    wxString            m_ProjectTopDir;
-    wxString            m_ProjectFiles;
-    wxString            m_Makefile;
-    wxString            m_TargetOutputDir;
-    wxString            m_TargetName;
-    wxString            m_TargetOutputBaseName;
-    wxString            m_TargetOutputFilename;
-    wxString            m_TargetFilename;
-
-    MacrosMap           m_Macros;
-    wxRegEx             m_RE_Unix;
-    wxRegEx             m_RE_DOS;
-    wxRegEx             m_RE_If;
-    wxRegEx             m_RE_IfSp;
-    wxRegEx             m_RE_Script;
-    wxRegEx             m_RE_ToAbsolutePath;
-    wxRegEx             m_RE_To83Path;
-    wxRegEx             m_RE_RemoveQuotes;
-    UserVariableManager *m_UserVarMan;
-
+    ProjectBuildTarget* m_lastTarget;
+    cbProject* m_lastProject;
+    EditorBase* m_lastEditor;
+    wxFileName m_prjname;
+    wxString m_AppPath, m_DataPath, m_Plugins, m_ActiveEditorFilename,
+    m_ProjectFilename, m_ProjectName, m_ProjectDir, m_ProjectTopDir,
+    m_ProjectFiles, m_Makefile, m_TargetOutputDir, m_TargetName,
+    m_TargetOutputBaseName, m_TargetFilename;
+	MacrosMap macros;
+    wxRegEx m_re_unx;
+    wxRegEx m_re_dos;
+    wxRegEx m_re_if;
+    wxRegEx m_re_ifsp;
+    wxRegEx m_re_script;
+    UserVariableManager *m_uVarMan;
+public:
+    void Reset();
 private:
     MacrosManager();
-    ~MacrosManager() override;
+    ~MacrosManager();
     wxString EvalCondition(const wxString& cond, const wxString& true_clause, const wxString& false_clause, ProjectBuildTarget* target);
-    int MatchBrace(const wxString& buffer, int index);
 };
 
 #endif // MACROSMANAGER_H

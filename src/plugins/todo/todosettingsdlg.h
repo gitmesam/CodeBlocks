@@ -6,6 +6,7 @@
 #ifndef TODOSETTINGSDLG_H
 #define TODOSETTINGSDLG_H
 
+// #include <wx/dialog.h>
 #include <wx/intl.h>
 #include "configurationpanel.h"
 #include <settings.h>
@@ -16,7 +17,7 @@ class ToDoSettingsDlg : public cbConfigurationPanel
 		ToDoSettingsDlg(wxWindow* parent);
 		~ToDoSettingsDlg();
 
-        virtual wxString GetTitle() const { return _("Todo list"); }
+        virtual wxString GetTitle() const { return _("To-do list"); }
         virtual wxString GetBitmapBaseName() const { return _T("todo"); }
         virtual void OnApply();
         virtual void OnCancel(){}

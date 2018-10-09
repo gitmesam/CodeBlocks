@@ -23,38 +23,38 @@
 
 namespace
 {
-    const int ID_List = wxNewId();
-}
+	const int ID_List = wxNewId();
+};
 
-BEGIN_EVENT_TABLE(cbSearchResultsLog, wxEvtHandler)
+BEGIN_EVENT_TABLE(SearchResultsLog, wxEvtHandler)
 //
 END_EVENT_TABLE()
 
-cbSearchResultsLog::cbSearchResultsLog(const wxArrayString& titles_in, wxArrayInt& widths_in)
-    : ListCtrlLogger(titles_in, widths_in)
+SearchResultsLog::SearchResultsLog(const wxArrayString& titles, wxArrayInt& widths)
+    : ListCtrlLogger(titles, widths)
 {
-    //ctor
+	//ctor
 }
 
-cbSearchResultsLog::~cbSearchResultsLog()
+SearchResultsLog::~SearchResultsLog()
 {
-    //dtor
+	//dtor
 }
 
-wxWindow* cbSearchResultsLog::CreateControl(wxWindow* parent)
+wxWindow* SearchResultsLog::CreateControl(wxWindow* parent)
 {
-    ListCtrlLogger::CreateControl(parent);
+	ListCtrlLogger::CreateControl(parent);
     control->SetId(ID_List);
     Connect(ID_List, -1, wxEVT_COMMAND_LIST_ITEM_ACTIVATED,
             (wxObjectEventFunction) (wxEventFunction) (wxCommandEventFunction)
-            &cbSearchResultsLog::OnDoubleClick);
-    Manager::Get()->GetAppWindow()->PushEventHandler(this);
-    return control;
-}
+            &SearchResultsLog::OnDoubleClick);
+	control->PushEventHandler(this);
+	return control;
+};
 
-void cbSearchResultsLog::FocusEntry(size_t index)
+void SearchResultsLog::FocusEntry(size_t index)
 {
-    if (index < (size_t)control->GetItemCount())
+    if (index >= 0 && index < (size_t)control->GetItemCount())
     {
         control->SetItemState(index, wxLIST_STATE_FOCUSED | wxLIST_STATE_SELECTED, wxLIST_STATE_FOCUSED | wxLIST_STATE_SELECTED);
         control->EnsureVisible(index);
@@ -62,7 +62,7 @@ void cbSearchResultsLog::FocusEntry(size_t index)
     }
 }
 
-void cbSearchResultsLog::SyncEditor(int selIndex)
+void SearchResultsLog::SyncEditor(int selIndex)
 {
     wxFileName filename(control->GetItemText(selIndex));
     wxString file;
@@ -85,12 +85,12 @@ void cbSearchResultsLog::SyncEditor(int selIndex)
     ed->Activate();
     ed->GotoLine(line);
 
-    if (cbStyledTextCtrl* ctrl = ed->GetControl()) {
-        ctrl->EnsureVisible(line);
+    if (cbStyledTextCtrl* control = ed->GetControl()) {
+        control->EnsureVisible(line);
     }
 }
 
-void cbSearchResultsLog::OnDoubleClick(cb_unused wxCommandEvent& event)
+void SearchResultsLog::OnDoubleClick(wxCommandEvent& /*event*/)
 {
     // go to the relevant file/line
     if (control->GetSelectedItemCount() == 0)

@@ -1,16 +1,16 @@
 SUBDIRS = resources
 
-AM_CPPFLAGS = $(WX_CXXFLAGS) \
+INCLUDES = $(WX_CXXFLAGS) \
 		-I$(top_srcdir)/src/include \
-		-I$(top_srcdir)/src/sdk/wxscintilla/include
+		-I$(top_srcdir)/src/include/wxscintilla/include
 
-pluginlibdir = $(pkglibdir)/plugins
+libdir = $(pkgdatadir)/plugins
 
-pluginlib_LTLIBRARIES = libProfiler.la
+lib_LTLIBRARIES = libProfiler.la
 
-libProfiler_la_LDFLAGS = @MODULE_SHARED_LDFLAGS@ -version-info 0:1:0 -no-undefined -avoid-version
+libProfiler_la_LDFLAGS = -module -version-info 0:1:0 -shared -no-undefined -avoid-version
 
-libProfiler_la_LIBADD = ../../../sdk/libcodeblocks.la $(WX_LIBS)
+libProfiler_la_LIBADD = $(PLUGIN_WX_LIBS) ../../../sdk/libcodeblocks.la
 
 libProfiler_la_SOURCES = cbprofilerconfig.cpp \
 			cbprofiler.cpp \
@@ -20,4 +20,7 @@ noinst_HEADERS = cbprofilerconfig.h \
 			cbprofilerexec.h \
 			cbprofiler.h
 
-EXTRA_DIST = $(srcdir)/*.cbp
+EXTRA_DIST = InstallationInstructions.txt \
+			BuildInstructions.txt \
+			cbprofiler.cbp \
+			cbprofiler.unix.cbp

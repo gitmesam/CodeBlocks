@@ -177,20 +177,8 @@ bool SQTable::Set(const SQObjectPtr &key, const SQObjectPtr &val)
 	return false;
 }
 
-void SQTable::_ClearNodes()
-{
-	for(SQInteger i = 0;i < _numofnodes; i++) { _nodes[i].key = _null_; _nodes[i].val = _null_; }
-}
-
 void SQTable::Finalize()
 {
-	_ClearNodes();
-	SetDelegate(NULL);
-}
-
-void SQTable::Clear()
-{
-	_ClearNodes();
-	_usednodes = 0;
-	Rehash(true);
+	for(SQInteger i = 0;i < _numofnodes; i++) { _nodes[i].key = _null_; _nodes[i].val = _null_; }
+		SetDelegate(NULL);
 }

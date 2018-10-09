@@ -33,40 +33,43 @@
 #include <wx/sizer.h>
 #include <wx/textctrl.h>
 #include <wx/button.h>
-#include "scrollingdialog.h"
+#include <wx/dialog.h>
 //*)
 
-class wxsFontFaceEditorDlg: public wxScrollingDialog
+class wxsFontFaceEditorDlg: public wxDialog
 {
-    public:
+	public:
 
-        wxsFontFaceEditorDlg(wxWindow* parent,wxString& Face,wxWindowID id = -1);
-        virtual ~wxsFontFaceEditorDlg();
+		wxsFontFaceEditorDlg(wxWindow* parent,wxString& Face,wxWindowID id = -1);
+		virtual ~wxsFontFaceEditorDlg();
 
-        //(*Identifiers(wxsFontFaceEditorDlg)
-        static const long ID_TEXTCTRL1;
-        static const long ID_BUTTON1;
-        //*)
+		//(*Identifiers(wxsFontFaceEditorDlg)
+		static const long ID_TEXTCTRL1;
+		static const long ID_BUTTON1;
+		//*)
 
-    protected:
+	protected:
 
-        //(*Handlers(wxsFontFaceEditorDlg)
-        void OnButton2Click(wxCommandEvent& event);
-        void OnButton1Click(wxCommandEvent& event);
-        //*)
+		//(*Handlers(wxsFontFaceEditorDlg)
+		void OnButton2Click(wxCommandEvent& event);
+		void OnButton1Click(wxCommandEvent& event);
+		//*)
 
-        //(*Declarations(wxsFontFaceEditorDlg)
-        wxTextCtrl* FaceName;
-        wxButton* Button1;
-        wxButton* Button2;
-        wxButton* Button3;
-        //*)
+		//(*Declarations(wxsFontFaceEditorDlg)
+		wxTextCtrl* FaceName;
+		wxButton* Button1;
+		wxBoxSizer* BoxSizer2;
+		wxButton* Button2;
+		wxButton* Button3;
+		wxBoxSizer* BoxSizer1;
+		wxStaticBoxSizer* StaticBoxSizer1;
+		//*)
 
-    private:
+	private:
 
         wxString& Face;
 
-        DECLARE_EVENT_TABLE()
+		DECLARE_EVENT_TABLE()
 };
 
 #endif

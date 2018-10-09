@@ -56,7 +56,6 @@ wxsItem* wxsItemFactory::Build(const wxString& Name,wxsItemResData* Data)
         case wxsTWidget:
             break;
 
-        case wxsTInvalid:
         default:
             delete Item;
             return 0;

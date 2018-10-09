@@ -6,14 +6,14 @@
 #ifndef PROJECTSFILEMASKSDLG_H
 #define PROJECTSFILEMASKSDLG_H
 
-#include "scrollingdialog.h"
+#include <wx/dialog.h>
 #include "filegroupsandmasks.h"
 
-class DLLIMPORT ProjectsFileMasksDlg : public wxScrollingDialog
+class ProjectsFileMasksDlg : public wxDialog
 {
     public:
         ProjectsFileMasksDlg(wxWindow* parent, FilesGroupsAndMasks* fgam);
-        ~ProjectsFileMasksDlg() override;
+        virtual ~ProjectsFileMasksDlg();
 
         void OnUpdateUI(wxUpdateUIEvent& event);
         void OnAdd(wxCommandEvent& event);
@@ -26,11 +26,10 @@ class DLLIMPORT ProjectsFileMasksDlg : public wxScrollingDialog
         void RebuildList();
         void ListChange();
 
-        void EndModal(int retCode) override;
-
-        FilesGroupsAndMasks  m_FileGroupsAndMasksCopy;
-        FilesGroupsAndMasks* m_pFileGroupsAndMasks;
-        int                  m_LastListSelection;
+        virtual void EndModal(int retCode);
+        FilesGroupsAndMasks m_FileGroups;
+        FilesGroupsAndMasks* m_pOrigFileGroups;
+        int m_LastListSelection;
 
         DECLARE_EVENT_TABLE();
 };

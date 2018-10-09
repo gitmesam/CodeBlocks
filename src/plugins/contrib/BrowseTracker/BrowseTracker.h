@@ -14,9 +14,9 @@
 
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
-	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+	Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
-// RCS-ID: $Id$
+// RCS-ID: $Id: BrowseTracker.h 47 2008-01-12 20:18:59Z Pecan $
 
 
 #ifndef BROWSETRACKER_H_INCLUDED
@@ -25,17 +25,11 @@
 #include "cbplugin.h" // for "class cbPlugin"
 #include "BrowseTrackerDefs.h"
 
-class wxFileConfig;
-
 class TiXmlElement;
 class BrowseSelector;
 class BrowseMarks;
 class ProjectData;
 class BrowseMarks;
-class cbStyledTextCtrl;
-class wxAuiNotebookEvent;
-class JumpTracker;
-
 // ----------------------------------------------------------------------------
 // The following have been moved to BrowseTrackerDefs.h
 // ----------------------------------------------------------------------------
@@ -52,7 +46,6 @@ extern int gBrowse_MarkerStyle;
 class BrowseTracker : public cbPlugin
 // ----------------------------------------------------------------------------
 {
-    friend class BrowseTrackerConfPanel;
 
 	public:
 		/** Constructor. */
@@ -61,7 +54,7 @@ class BrowseTracker : public cbPlugin
 		~BrowseTracker();
 
 		/** Invoke configuration dialog. */
-		virtual int Configure() ;
+		int Configure() { return 0; }
 
 		/** Return the plugin's configuration priority.
 		 * This is a number (default is 50) that is used to sort plugins
@@ -74,13 +67,13 @@ class BrowseTracker : public cbPlugin
 		 * Notice that you can logically AND more than one configuration groups,
 		 * so you could set it, for example, as "cgCompiler | cgContribPlugin".
 		*/
-		int GetConfigurationGroup() const { return cgEditor; }
+		int GetConfigurationGroup() const { return cgContribPlugin; }
 
 		/** Return plugin's configuration panel.
 		  * @param parent The parent window.
 		  * @return A pointer to the plugin's cbConfigurationPanel. It is deleted by the caller.
 		  */
-		cbConfigurationPanel* GetConfigurationPanel(wxWindow* parent) ;
+		cbConfigurationPanel* GetConfigurationPanel(wxWindow* parent){ return 0; }
 
 		/** Return plugin's configuration panel for projects.
 		 * The panel returned from this function will be added in the project's
@@ -89,7 +82,7 @@ class BrowseTracker : public cbPlugin
 		 * @param project The project that is being edited.
 		 * @return A pointer to the plugin's cbConfigurationPanel. It is deleted by the caller.
 		*/
-		cbConfigurationPanel* GetProjectConfigurationPanel(wxWindow* /*parent*/, cbProject* /*project*/){ return 0; }
+		cbConfigurationPanel* GetProjectConfigurationPanel(wxWindow* parent, cbProject* project){ return 0; }
 
 		/** This method is called by Code::Blocks and is used by the plugin
 		 * to add any menu items it needs on Code::Blocks's menu bar.\n
@@ -125,7 +118,7 @@ class BrowseTracker : public cbPlugin
 		 * @param toolBar the wxToolBar to create items on
 		 * @return The plugin should return true if it needed the toolbar, false if not
 		*/
-		bool BuildToolBar(wxToolBar* /*toolBar*/);/*{ return false; }*/
+		bool BuildToolBar(wxToolBar* toolBar){ return false; }
 	protected:
 		/** Any descendent plugin should override this virtual method and
 		 * perform any necessary initialization. This method is called by
@@ -153,60 +146,45 @@ class BrowseTracker : public cbPlugin
 		// ---
 
     public:
-        wxString    GetPageFilename(int TrackerIndex);
-        wxString    GetPageFilename(EditorBase* eb);
-        EditorBase* GetEditor(int index);
-        int         GetEditor(EditorBase* eb);
-        EditorBase* GetCurrentEditor();
-        int         GetCurrentEditorIndex();
-        EditorBase* GetPreviousEditor();
-        int         GetPreviousEditorIndex();
-        int         GetEditorBrowsedCount();
-        void        SetSelection(int nEditorIndex);
-        void        AddEditor(EditorBase* eb);
-        void        RemoveEditor(EditorBase* eb);
-        void        ClearEditor(int index);
-        void        RecordBrowseMark(EditorBase* eb);
-        void        ClearLineBrowseMark(bool removeScreenMark);
-        void        ClearLineBrowseMark(int line, bool removeScreenMark);
-        void        ImportBrowse_Marks(cbEditor* ed);
-        void        RebuildBrowse_Marks(cbEditor* ed, bool addedlines);
-        bool        IsBrowseMarksEnabled(){return m_BrowseMarksEnabled;}
-        bool        IsWrapJumpEntriesEnabled(){return m_WrapJumpEntries;}
-        bool        IsViewToolbarEnabled();
-        void        ShowBrowseTrackerToolBar(const bool onOrOff);
+            wxString    GetPageFilename(int TrackerIndex);
+            wxString    GetPageFilename(EditorBase* eb);
+            EditorBase* GetEditor(int index);
+            int         GetEditor(EditorBase* eb);
+            EditorBase* GetCurrentEditor();
+            int         GetCurrentEditorIndex();
+            EditorBase* GetPreviousEditor();
+            int         GetPreviousEditorIndex();
+            int         GetEditorBrowsedCount();
+            void        SetSelection(int nEditorIndex);
+            void        AddEditor(EditorBase* eb);
+            void        RemoveEditor(EditorBase* eb);
+            void        ClearEditor(int index);
+            void        RecordBrowseMark(EditorBase* eb);
+            //-void        RecordBrowseMarkPosition(EditorBase*, int pos);
+            void        ClearLineBrowseMark(bool removeScreenMark);
+            //-void        ClearLineBrowseMark(int posn);
+            void        ImportBrowse_Marks(cbEditor* ed);
+            void        RebuildBrowse_Marks(cbEditor* ed, bool addedlines);
+            bool        IsBrowseMarksEnabled(){return m_BrowseMarksEnabled;}
 
-        // Book Marks recording
-        void        ToggleBook_Mark(EditorBase* eb);
-        void        ClearLineBookMark();
-        bool        LineHasBookMarker(cbStyledTextCtrl* pControl, int line) const;
-
-        void        ReadUserOptions(wxString configFullPath);
-        void        SaveUserOptions(wxString configFullPath);
-        wxFileConfig* GetBrowseTrackerCfgFile(){return m_pCfgFile; }
-        wxString      GetBrowseTrackerCfgFilename(){return m_CfgFilenameStr;}
-
-        int         m_UpdateUIEditorIndex;
-
-    protected:
-        bool            m_BrowseMarksEnabled; //user has enabled BrowseTracker
-        int             m_OldUserMarksStyle;
-        bool            m_OldBrowseMarksEnabled;
-        bool            m_WrapJumpEntries;    //wrap jump entries when top or botton reached
-        bool            m_ShowToolbar;        // Show BrowseTracker toolbar
+            // Book Marks recording
+            void        ToggleBook_Mark(EditorBase* eb);
+            void        ClearLineBookMark();
+            bool        LineHasBookMarker(cbStyledTextCtrl* pControl, int line) const;
 
 	private:
 
         wxString FindAppPath(const wxString& argv0, const wxString& cwd, const wxString& appVariableName);
         void     GetCurrentScreenPositions();
 
+		void OnMenuTrackBackward(wxCommandEvent& event);
+		void OnMenuTrackforward(wxCommandEvent& event);
 		void OnMenuTrackerClear(wxCommandEvent& event);
         void OnMenuTrackerSelect(wxCommandEvent& event);
 
 		void OnMenuTrackerDump(wxCommandEvent& event);
 		void OnUpdateUI(wxUpdateUIEvent& event);
 		void OnIdle(wxIdleEvent& event);
-        void OnWindowSetFocus(wxFocusEvent& event);
 
 		void OnEditorDeactivated(CodeBlocksEvent& event);
 		void OnEditorActivated(CodeBlocksEvent& event);
@@ -221,25 +199,17 @@ class BrowseTracker : public cbPlugin
         void OnProjectLoadingHook(cbProject* project, TiXmlElement* elem, bool loading);
 
         void OnStartShutdown(CodeBlocksEvent& event);
-        void OnAppStartupDone(CodeBlocksEvent& event);
-
-        //-void OnPageChanged(wxAuiNotebookEvent& event);
-        void AppShuttingDown(CodeBlocksEvent& event); //2017/12/7
+        void OnPageChanged(wxFlatNotebookEvent& event);
 
         void OnMenuBrowseMarkPrevious(wxCommandEvent& event);
         void OnMenuBrowseMarkNext(wxCommandEvent& event);
         void OnMenuRecordBrowseMark(wxCommandEvent& event);
         void OnMenuClearBrowseMark(wxCommandEvent& event);
-        void OnMenuToggleBrowseMark(wxCommandEvent& event);
         void OnMenuClearAllBrowse_Marks(wxCommandEvent& event);
         void OnMenuSortBrowse_Marks( wxCommandEvent& event);
-        void OnMenuSettings( wxCommandEvent& event);
-        void OnConfigApply();
+        void OnMenuConfigBrowse_Marks( wxCommandEvent& event);
 
-		void TrackEditorBackward();
-		void TrackEditorForward();
         void OnMouseKeyEvent(wxMouseEvent& event);
-
         //-- BOOK marks
         void AddBook_Mark(EditorBase* eb, int line = -1);
         void OnBook_MarksToggle(wxCommandEvent& event);
@@ -254,31 +224,28 @@ class BrowseTracker : public cbPlugin
         void MarkLine(cbStyledTextCtrl* pControl, int line);
         void MarkRemove(cbStyledTextCtrl* pControl, int line);
         BrowseMarks* HashAddBrowse_Marks( const wxString fullPath);
+        BrowseMarks* HashAddBook_Marks( const wxString fullPath);
         void SetBrowseMarksStyle( int userStyle);
         //-int  GetBrowseMarkerId(){return gBrowse_MarkerId;}
         //-int  GetBrowseMarkerStyle(){return gBrowse_MarkerStyle;}
 
         BrowseMarks* GetBrowse_MarksFromHash( EditorBase* eb);
+        BrowseMarks* GetBook_MarksFromHash( EditorBase* eb);
         BrowseMarks* GetBrowse_MarksFromHash( wxString filePath);
+        BrowseMarks* GetBook_MarksFromHash( wxString filePath);
         ProjectData* GetProjectDataFromHash(cbProject* pProject);
         ProjectData* GetProjectDataByProjectName( wxString filePath);
         ProjectData* GetProjectDataByEditorName( wxString filePath);
         cbProject*   GetProject(EditorBase* eb);
-        bool         IsEditorBaseOpen(EditorBase* eb);
 
         void         DumpHash( wxString hashtype);
 
-        bool            m_InitDone;
         wxString        m_CfgFilenameStr;
-
-        wxFileConfig*   m_pCfgFile;
-
+        bool            m_InitDone;
         EditorManager*  m_pEdMgr;
         ProjectManager* m_pPrjMgr;
 		wxWindow*       m_pAppWin;
         wxMenuBar*      m_pMenuBar;
-        wxToolBar*      m_pToolBar;
-
         wxString        m_ConfigFolder;
         wxString        m_ExecuteFolder;
         wxString        m_AppName;
@@ -294,17 +261,18 @@ class BrowseTracker : public cbPlugin
         ArrayOfEditorBasePtrs  m_apEditors;
         int             m_nBrowsedEditorCount;
         BrowseSelector* m_popupWin;
-        EditorBase*     m_UpdateUIFocusEditor;
-        EditorBase*     m_LastEbDeactivated;
+        bool            m_UpdateUIFocusEditor;
         int             m_nRemoveEditorSentry;
         int             m_nBrowseMarkPreviousSentry;
         int             m_nBrowseMarkNextSentry;
         bool            m_OnEditorEventHookIgnoreMarkerChanges;
 
+
+        EbBrowse_MarksHash m_EdBook_MarksHash;
         EbBrowse_MarksHash m_EbBrowse_MarksHash;
 
         ProjectDataHash m_ProjectDataHash;
-
+;
         int             m_CurrScrLine;
         int             m_CurrScrTopLine;
         int             m_CurrLinesOnScreen;
@@ -321,16 +289,12 @@ class BrowseTracker : public cbPlugin
         wxLongLong      m_MouseDownTime;
         long            m_MouseXPosn;
         long            m_MouseYPosn;
+        bool            m_BrowseMarksEnabled; //user has enabled BrowseTracker
         bool            m_IsMouseDoubleClick;   //last mouse click was a DClick
         int             m_UserMarksStyle;       //BrowseMarks style Browse/Book/Hidden
         int             m_ToggleKey;            //Left_Mouse or Ctrl-Left_Mouse
         int             m_LeftMouseDelay;       //milliseconds before testing toggle
         int             m_ClearAllKey;          //Ctrl-Left_Mouse or Ctrl-Left_Mouse_DClick
-        bool            m_bProjectClosing;      // project close in progress
-        bool            m_bAppShutdown;
-        int             m_nProjectClosingFileCount;
-
-        JumpTracker*    m_pJumpTracker;
 
 		DECLARE_EVENT_TABLE();
 

@@ -1,5 +1,4 @@
-/**  \file wxsgenericdirctrl.cpp
-*
+/*
 * This file is part of wxSmith plugin for Code::Blocks Studio
 * Copyright (C) 2006-2007  Bartlomiej Swiecki
 *
@@ -27,23 +26,19 @@
 
 namespace
 {
-    wxsRegisterItem<wxsGenericDirCtrl> Reg(_T("GenericDirCtrl"),wxsTWidget,_T("Advanced"),90);
+    wxsRegisterItem<wxsGenericDirCtrl> Reg(_T("GenericDirCtrl"),wxsTWidget,_T("Standard"),30);
 
     WXS_ST_BEGIN(wxsGenericDirCtrlStyles,_T(""))
         WXS_ST_CATEGORY("wxGenericDirCtrl")
         WXS_ST(wxDIRCTRL_DIR_ONLY)
         WXS_ST(wxDIRCTRL_3D_INTERNAL)
         WXS_ST(wxDIRCTRL_SELECT_FIRST)
-#if !wxCHECK_VERSION(3, 0, 0)
         WXS_ST(wxDIRCTRL_SHOW_FILTERS)
-#endif
         WXS_ST(wxDIRCTRL_EDIT_LABELS)
         WXS_ST_DEFAULTS()
     WXS_ST_END()
 
     WXS_EV_BEGIN(wxsGenericDirCtrlEvents)
-        WXS_EVI(EVT_CMD_DIRCTRL_SELECTIONCHANGED,wxEVT_DIRCTRL_SELECTIONCHANGED,wxTreeEvent,SelectionChanged)  // added in 3.0
-        WXS_EVI(EVT_CMD_DIRCTRL_FILEACTIVATED,wxEVT_DIRCTRL_FILEACTIVATED,wxTreeEvent,FileActivated)           // added in 3.0
     WXS_EV_END()
 }
 
@@ -64,12 +59,11 @@ void wxsGenericDirCtrl::OnBuildCreatingCode()
         case wxsCPP:
         {
             AddHeader(_T("<wx/dirctrl.h>"),GetInfo().ClassName,0);
-            Codef(_T("%C(%W, %I, %n, %P, %S, %T, %n, %d, %N);\n"),DefaultFolder.wx_str(),Filter.wx_str(),DefaultFilter);
+            Codef(_T("%C(%W, %I, %n, %P, %S, %T, %n, %d, %N);\n"),DefaultFolder.c_str(),Filter.c_str(),DefaultFilter);
             BuildSetupWindowCode();
             return;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsGenericDirCtrl::OnBuildCreatingCode"),GetLanguage());
@@ -83,7 +77,7 @@ wxObject* wxsGenericDirCtrl::OnBuildPreview(wxWindow* Parent,long Flags)
     return SetupWindow(Preview,Flags);
 }
 
-void wxsGenericDirCtrl::OnEnumWidgetProperties(cb_unused long Flags)
+void wxsGenericDirCtrl::OnEnumWidgetProperties(long Flags)
 {
     WXS_SHORT_STRING(wxsGenericDirCtrl,DefaultFolder,_("Default Folder"),_T("defaultfolder"),_T(""),true)
     WXS_SHORT_STRING(wxsGenericDirCtrl,Filter,_("Filter"),_T("filter"),_T(""),true)

@@ -20,7 +20,7 @@
 
 #include <wx/arrstr.h>
 
-template<> PersonalityManager* Mgr<PersonalityManager>::instance = nullptr;
+template<> PersonalityManager* Mgr<PersonalityManager>::instance = 0;
 template<> bool  Mgr<PersonalityManager>::isShutdown = false;
 
 PersonalityManager::PersonalityManager()
@@ -28,9 +28,9 @@ PersonalityManager::PersonalityManager()
     PersonalityManager::pers = _T("default");
 }
 
-void PersonalityManager::SetPersonality(const wxString& personality, cb_unused bool createIfNotExist)
+void PersonalityManager::SetPersonality(const wxString& personality, bool createIfNotExist)
 {
-    pers = personality;
+	pers = personality;
 }
 
 const wxString PersonalityManager::GetPersonality()
@@ -40,13 +40,13 @@ const wxString PersonalityManager::GetPersonality()
 
 const wxArrayString PersonalityManager::GetPersonalitiesList()
 {
-    wxArrayString list;
-    wxDir::GetAllFiles(ConfigManager::GetConfigFolder(), &list, _T("*.conf"), wxDIR_FILES);
+	wxArrayString list;
+	wxDir::GetAllFiles(ConfigManager::GetFolder(sdConfig), &list, _T("*.conf"), wxDIR_FILES);
 
-    for(size_t i = 0; i < list.GetCount(); ++i)
+	for(size_t i = 0; i < list.GetCount(); ++i)
         list[i] = wxFileName(list[i]).GetName();
 
-    return list;
+	return list;
 }
 
 wxString PersonalityManager::pers;

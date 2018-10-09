@@ -28,75 +28,98 @@
 #include "wxstoolbar.h"
 
 //(*Headers(wxsToolBarEditor)
-#include <wx/sizer.h>
-#include <wx/stattext.h>
-#include <wx/textctrl.h>
-#include <wx/listbox.h>
-#include <wx/statline.h>
-#include <wx/radiobut.h>
-#include <wx/panel.h>
 #include <wx/bmpbuttn.h>
 #include <wx/button.h>
+#include <wx/listbox.h>
+#include <wx/panel.h>
+#include <wx/radiobut.h>
+#include <wx/sizer.h>
+#include <wx/statline.h>
+#include <wx/stattext.h>
+#include <wx/textctrl.h>
 //*)
 
 class wxsToolBarEditor: public wxPanel
 {
-    public:
+	public:
 
-        wxsToolBarEditor(wxWindow* parent,wxsToolBar* ToolBar);
-        ~wxsToolBarEditor();
+		wxsToolBarEditor(wxWindow* parent,wxsToolBar* ToolBar);
+		~wxsToolBarEditor();
 
-        void ApplyChanges();
+		void ApplyChanges();
 
-    private:
+	private:
 
-        //(*Identifiers(wxsToolBarEditor)
-        static const long ID_LISTBOX1;
-        static const long ID_RADIOBUTTON1;
-        static const long ID_RADIOBUTTON2;
-        static const long ID_RADIOBUTTON3;
-        static const long ID_RADIOBUTTON4;
-        static const long ID_STATICLINE1;
-        static const long ID_TEXTCTRL4;
-        static const long ID_TEXTCTRL1;
-        static const long ID_BITMAPBUTTON1;
-        static const long ID_BITMAPBUTTON2;
-        static const long ID_TEXTCTRL2;
-        static const long ID_TEXTCTRL3;
-        static const long ID_STATICLINE2;
-        static const long ID_BUTTON3;
-        static const long ID_BUTTON4;
-        static const long ID_BUTTON1;
-        static const long ID_BUTTON2;
-        //*)
+		//(*Identifiers(wxsToolBarEditor)
+		static const long ID_LISTBOX1;
+		static const long ID_RADIOBUTTON1;
+		static const long ID_RADIOBUTTON2;
+		static const long ID_RADIOBUTTON3;
+		static const long ID_RADIOBUTTON4;
+		static const long ID_STATICLINE1;
+		static const long ID_STATICTEXT6;
+		static const long ID_TEXTCTRL4;
+		static const long ID_STATICTEXT1;
+		static const long ID_TEXTCTRL1;
+		static const long ID_STATICTEXT4;
+		static const long ID_BITMAPBUTTON1;
+		static const long ID_STATICTEXT5;
+		static const long ID_BITMAPBUTTON2;
+		static const long ID_STATICTEXT2;
+		static const long ID_TEXTCTRL2;
+		static const long ID_STATICTEXT3;
+		static const long ID_TEXTCTRL3;
+		static const long ID_STATICLINE2;
+		static const long ID_BUTTON3;
+		static const long ID_BUTTON4;
+		static const long ID_BUTTON1;
+		static const long ID_BUTTON2;
+		//*)
 
-        //(*Handlers(wxsToolBarEditor)
-        void OnTypeChanged(wxCommandEvent& event);
-        void Onm_ContentSelect(wxCommandEvent& event);
-        void Onm_LabelText(wxCommandEvent& event);
-        void OnUpClick(wxCommandEvent& event);
-        void OnDownClick(wxCommandEvent& event);
-        void OnNewClick(wxCommandEvent& event);
-        void OnDelClick(wxCommandEvent& event);
-        void OnBitmapClick(wxCommandEvent& event);
-        void OnBitmap2Click(wxCommandEvent& event);
-        //*)
+		//(*Handlers(wxsToolBarEditor)
+		void OnTypeChanged(wxCommandEvent& event);
+		void Onm_ContentSelect(wxCommandEvent& event);
+		void Onm_LabelText(wxCommandEvent& event);
+		void OnUpClick(wxCommandEvent& event);
+		void OnDownClick(wxCommandEvent& event);
+		void OnNewClick(wxCommandEvent& event);
+		void OnDelClick(wxCommandEvent& event);
+		void OnBitmapClick(wxCommandEvent& event);
+		void OnBitmap2Click(wxCommandEvent& event);
+		//*)
 
-        //(*Declarations(wxsToolBarEditor)
-        wxBitmapButton* m_Bitmap2;
-        wxTextCtrl* m_HelpText;
-        wxRadioButton* m_TypeNormal;
-        wxRadioButton* m_TypeRadio;
-        wxBitmapButton* m_Bitmap;
-        wxStaticLine* StaticLine2;
-        wxRadioButton* m_TypeCheck;
-        wxRadioButton* m_TypeSeparator;
-        wxStaticLine* StaticLine1;
-        wxTextCtrl* m_ToolTip;
-        wxListBox* m_Content;
-        wxTextCtrl* m_Label;
-        wxTextCtrl* m_Id;
-        //*)
+		//(*Declarations(wxsToolBarEditor)
+		wxBoxSizer* BoxSizer1;
+		wxStaticBoxSizer* StaticBoxSizer1;
+		wxListBox* m_Content;
+		wxStaticBoxSizer* StaticBoxSizer2;
+		wxGridSizer* GridSizer1;
+		wxRadioButton* m_TypeNormal;
+		wxRadioButton* m_TypeSeparator;
+		wxRadioButton* m_TypeRadio;
+		wxRadioButton* m_TypeCheck;
+		wxStaticLine* StaticLine1;
+		wxFlexGridSizer* FlexGridSizer1;
+		wxStaticText* StaticText6;
+		wxTextCtrl* m_Id;
+		wxStaticText* StaticText1;
+		wxTextCtrl* m_Label;
+		wxStaticText* StaticText4;
+		wxBitmapButton* m_Bitmap;
+		wxStaticText* StaticText5;
+		wxBitmapButton* m_Bitmap2;
+		wxStaticText* StaticText2;
+		wxTextCtrl* m_ToolTip;
+		wxStaticText* StaticText3;
+		wxTextCtrl* m_HelpText;
+		wxStaticLine* StaticLine2;
+		wxBoxSizer* BoxSizer3;
+		wxButton* Button3;
+		wxButton* Button4;
+		wxBoxSizer* BoxSizer2;
+		wxButton* Button1;
+		wxButton* Button2;
+		//*)
 
         enum ItemType
         {
@@ -117,7 +140,6 @@ class wxsToolBarEditor: public wxPanel
                     m_OriginalPos(CopyFrom.m_OriginalPos),
                     m_Type(CopyFrom.m_Type),
                     m_Id(CopyFrom.m_Id),
-                    m_Variable(CopyFrom.m_Variable),
                     m_Label(CopyFrom.m_Label),
                     m_Bitmap(CopyFrom.m_Bitmap),
                     m_Bitmap2(CopyFrom.m_Bitmap2),
@@ -129,7 +151,6 @@ class wxsToolBarEditor: public wxPanel
                 int m_OriginalPos;
                 ItemType m_Type;
                 wxString m_Id;
-                wxString m_Variable;
                 wxString m_Label;
                 wxsBitmapData m_Bitmap;
                 wxsBitmapData m_Bitmap2;
@@ -150,7 +171,7 @@ class wxsToolBarEditor: public wxPanel
         bool m_BlockTextChange;
         bool m_BlockSelect;
 
-        DECLARE_EVENT_TABLE()
+		DECLARE_EVENT_TABLE()
 };
 
 #endif

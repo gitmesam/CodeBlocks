@@ -13,6 +13,8 @@ class CompilerGDC : public Compiler
     public:
         CompilerGDC();
         virtual ~CompilerGDC();
+        virtual void Reset();
+        virtual void LoadDefaultRegExArray();
         virtual AutoDetectResult AutoDetectInstallationDir();
     protected:
         virtual Compiler* CreateCopy();

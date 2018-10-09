@@ -1,5 +1,4 @@
-/** \file wxsflexgridsizer.cpp
-*
+/*
 * This file is part of wxSmith plugin for Code::Blocks Studio
 * Copyright (C) 2006-2007  Bartlomiej Swiecki
 *
@@ -78,19 +77,19 @@ wxsFlexGridSizer::wxsFlexGridSizer(wxsItemResData* Data):
 
 wxSizer* wxsFlexGridSizer::OnBuildSizerPreview(wxWindow* Parent)
 {
-    wxFlexGridSizer* Sizer = new wxFlexGridSizer(Rows,Cols,
+	wxFlexGridSizer* Sizer = new wxFlexGridSizer(Rows,Cols,
         VGap.GetPixels(Parent),HGap.GetPixels(Parent));
 
-    wxArrayInt _Cols = GetArray(GrowableCols);
-    for ( size_t i=0; i<_Cols.Count(); i++ )
+    wxArrayInt Cols = GetArray(GrowableCols);
+    for ( size_t i=0; i<Cols.Count(); i++ )
     {
-        Sizer->AddGrowableCol(_Cols[i]);
+    	Sizer->AddGrowableCol(Cols[i]);
     }
 
-    wxArrayInt _Rows = GetArray(GrowableRows);
-    for ( size_t i=0; i<_Rows.Count(); i++ )
+    wxArrayInt Rows = GetArray(GrowableRows);
+    for ( size_t i=0; i<Rows.Count(); i++ )
     {
-        Sizer->AddGrowableRow(_Rows[i]);
+    	Sizer->AddGrowableRow(Rows[i]);
     }
     return Sizer;
 }
@@ -103,25 +102,24 @@ void wxsFlexGridSizer::OnBuildSizerCreatingCode()
         {
             AddHeader(_T("<wx/sizer.h>"),GetInfo().ClassName,hfInPCH);
             Codef(_T("%C(%d, %d, %s, %s);\n"),Rows,Cols,
-                  VGap.GetPixelsCode(GetCoderContext()).wx_str(),
-                  HGap.GetPixelsCode(GetCoderContext()).wx_str());
+                 VGap.GetPixelsCode(GetCoderContext()).c_str(),
+                 HGap.GetPixelsCode(GetCoderContext()).c_str());
 
-            wxArrayInt _Cols = GetArray(GrowableCols);
-            for ( size_t i=0; i<_Cols.Count(); i++ )
+            wxArrayInt Cols = GetArray(GrowableCols);
+            for ( size_t i=0; i<Cols.Count(); i++ )
             {
-                Codef(_T("%AAddGrowableCol(%d);\n"),_Cols[i]);
+                Codef(_T("%AAddGrowableCol(%d);\n"),Cols[i]);
             }
 
-            wxArrayInt _Rows = GetArray(GrowableRows);
-            for ( size_t i=0; i<_Rows.Count(); i++ )
+            wxArrayInt Rows = GetArray(GrowableRows);
+            for ( size_t i=0; i<Rows.Count(); i++ )
             {
-                Codef(_T("%AAddGrowableRow(%d);\n"),_Rows[i]);
+                Codef(_T("%AAddGrowableRow(%d);\n"),Rows[i]);
             }
 
             return;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsFlexGridSizer::OnBuildSizerCreatingCode"),GetLanguage());
@@ -129,7 +127,7 @@ void wxsFlexGridSizer::OnBuildSizerCreatingCode()
     }
 }
 
-void wxsFlexGridSizer::OnEnumSizerProperties(cb_unused long Flags)
+void wxsFlexGridSizer::OnEnumSizerProperties(long Flags)
 {
     FixupList(GrowableCols);
     FixupList(GrowableRows);

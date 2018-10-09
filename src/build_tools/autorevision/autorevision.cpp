@@ -11,55 +11,19 @@
 #include <string>
 #include <fstream>
 
-#include <tinyxml.h>
+#include "tinyxml/tinystr.h"
+#include "tinyxml/tinyxml.h"
 
 using namespace std;
 
-#if defined(__WIN32__) || defined(_WIN32) || defined(__WIN32) || defined(__WIN64) || defined(__WIN64__)
+#ifdef __WIN32__
     #define WIN32_LEAN_AND_MEAN 1
     #define NOGDI
     #include <windows.h>
-    #include <direct.h>
-    inline void set_env(const char* k, const char* v) { SetEnvironmentVariable(k, v); }
-    inline bool fileExists(const char* path)
-    {
-        DWORD attr = GetFileAttributes(path);
-        if(attr == INVALID_FILE_ATTRIBUTES && GetLastError()==ERROR_FILE_NOT_FOUND)
-            return false;   //  not a file
-        else
-            return true;
-    }
-    inline std::string getCwd()
-    {
-        char buffer[1000]={0};
-        _getcwd(buffer, 1000);
-        return buffer;
-    }
+    inline void set_env(const char* k, const char* v) { SetEnvironmentVariable(k, v); };
 #else
     #include <stdlib.h>
-    #include <unistd.h>
-    #include <sys/types.h>
-    #include <sys/stat.h>
-    inline void set_env(const char* k, const char* v) { setenv(k, v, 1); }
-    inline bool fileExists(const char* path)
-    {
-        struct stat buffer;
-        return (stat(path, &buffer) == 0);
-    }
-    inline std::string getCwd()
-    {
-        char buffer[1000]={0};
-        getcwd(buffer, 1000);
-        return buffer;
-    }
-#endif
-
-#if !defined WIFEXITED
-    #define WIFEXITED(x) 1
-#endif
-
-#if !defined WEXITSTATUS
-    #define WEXITSTATUS(x) x
+    inline void set_env(const char* k, const char* v) { setenv(k, v, 1); };
 #endif
 
 bool QuerySvn(const string& workingDir, string& revision, string &date);
@@ -126,123 +90,50 @@ int main(int argc, char** argv)
     return 0;
 }
 
-bool getProcessOutput(std::string &output, const std::string &cmd)
-{
-    FILE *svn = popen(cmd.c_str(), "r");
-    if (!svn)
-        return false;
-    char buf[16384] = {'0'};
-    fread(buf, 16383, 1, svn);
-    int ret = pclose(svn);
-    output = buf;
-    return (WIFEXITED(ret) && (WEXITSTATUS(ret) == 0));
-}
+
 
 bool QuerySvn(const string& workingDir, string& revision, string &date)
 {
     revision = "0";
     date = "unknown date";
+    string svncmd("svn info --xml --non-interactive ");
+    svncmd.append(workingDir);
 
-    std::string svnRoot = getCwd() + '/' + workingDir + "/.svn";
-    std::string gitRoot = getCwd() + '/' + workingDir + "/.git";
+    FILE *svn = popen(svncmd.c_str(), "r");
 
-    bool hasSvn = fileExists(svnRoot.c_str());
-    bool hasGit = fileExists(gitRoot.c_str());
-
-    if (hasSvn)
+    if(svn)
     {
-        // first try svn info with xml-output
-        std::string output;
-        if(getProcessOutput(output, "svn info --xml --non-interactive " + workingDir))
+        char buf[16384] = {'0'};
+        fread(buf, 16383, 1, svn);
+        pclose(svn);
+
+        TiXmlDocument doc;
+        doc.Parse(buf);
+
+        if(doc.Error())
+            return 0;
+
+        TiXmlHandle hCommit(&doc);
+        hCommit = hCommit.FirstChildElement("info").FirstChildElement("entry").FirstChildElement("commit");
+        if(const TiXmlElement* e = hCommit.ToElement())
         {
-            TiXmlDocument doc;
-            doc.Parse(output.c_str());
-
-            if(doc.Error())
-                return false;
-
-            TiXmlHandle hCommit(&doc);
-            hCommit = hCommit.FirstChildElement("info").FirstChildElement("entry").FirstChildElement("commit");
-            if(const TiXmlElement* e = hCommit.ToElement())
+            revision = e->Attribute("revision") ? e->Attribute("revision") : "";
+            const TiXmlElement* d = e->FirstChildElement("date");
+            if(d && d->GetText())
             {
-                revision = e->Attribute("revision") ? e->Attribute("revision") : "";
-                const TiXmlElement* d = e->FirstChildElement("date");
-                if(d && d->GetText())
-                {
-                    date = d->GetText();
-                    string::size_type pos = date.find('T');
-                    if (pos != string::npos)
-                    {
-                        date[pos] = ' ';
-                    }
-                    pos = date.rfind('.');
-                    if (pos != string::npos)
-                    {
-                        date = date.substr(0, pos);            }
-                    }
-                    return true;
+                date = d->GetText();
             }
-            return false;
+            return 1;
         }
     }
-
-    // Search git history for the last svn commit.
-    if (hasGit)
-    {
-        // ensure we have an english environment, needed
-        // to correctly parse output of localized (git) svn info
-#ifndef __MINGW32__
-        setenv("LC_ALL", "C", 1);
-#else
-        setlocale(LC_ALL, "C");
-#endif
-        bool hasRev = false, hasDate = false;
-        string output;
-        if (getProcessOutput(output, "git log --grep=\"git-svn-id\" --max-count=1" + workingDir))
-        {
-            string::size_type lineStart = output.find("git-svn-id");
-            if (lineStart != string::npos)
-            {
-                string::size_type revStart = output.find("@", lineStart);
-                if (revStart != string::npos)
-                {
-                    revStart++;
-                    string::size_type revEnd = output.find(" ", revStart);
-                    revision = output.substr(revStart, revEnd - revStart);
-                    hasRev = true;
-                }
-            }
-        }
-
-        if (getProcessOutput(output, "git log --date=iso --max-count=1 " + workingDir))
-        {
-            string::size_type lineStart = output.find("Date:");
-            if (lineStart != string::npos)
-            {
-                lineStart += 5;
-                while (lineStart < output.length() && output[lineStart] == ' ')
-                    lineStart++;
-                string::size_type lineEnd = lineStart;
-                while (lineEnd < output.length() && output[lineEnd] != ' ')
-                    lineEnd++;
-                lineEnd++;
-                while (lineEnd < output.length() && output[lineEnd] != ' ')
-                    lineEnd++;
-                date = output.substr(lineStart, lineEnd - lineStart);
-                hasDate = true;
-            }
-        }
-
-        return hasRev && hasDate;
-    }
-    // if we are here, we could not read the info
-    return true;
+    return 0;
 }
 
 
 
 bool WriteOutput(const string& outputFile, string& revision, string& date)
 {
+    string old;
     string comment("/*");
     comment.append(revision);
     comment.append("*/");
@@ -251,18 +142,16 @@ bool WriteOutput(const string& outputFile, string& revision, string& date)
         ifstream in(outputFile.c_str());
         if (!in.bad() && !in.eof())
         {
-            string old;
-            getline(in, old);
-            size_t l_old = old.length();
-            size_t l_comment = comment.length();
-            if(l_old > l_comment || ((l_old == l_comment) && old >= comment))
+            in >> old;
+            if(old >= comment)
             {
                 if(be_verbose)
-                    printf("Revision unchanged or older (%s). Skipping.", old.c_str());
+                    printf("Revision unchanged (%s). Skipping.", revision.c_str());
                 in.close();
                 return false;
             }
         }
+        in.close();
     }
 
 
@@ -311,10 +200,11 @@ bool WriteOutput(const string& outputFile, string& revision, string& date)
         fprintf(header, "\tconst wxString svnDate(%s);\n", date.c_str());
 
     if(do_int || do_std || do_wx)
-        fprintf(header, "}");
+        fprintf(header, "}\n\n");
 
     fprintf(header, "\n\n#endif\n");
     fclose(header);
 
     return true;
 }
+

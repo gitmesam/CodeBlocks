@@ -90,11 +90,11 @@ byoCBTris::byoCBTris(wxWindow* parent,const wxString& Name):
     m_TotalRemovedLines(0),
     m_Guidelines(false)
 {
-    m_Font = wxSystemSettings::GetFont(wxSYS_OEM_FIXED_FONT);
-    LeftRightTimer.Start(100);
-    UpTimer.Start(1000);
-    DownTimer.Start(20);
-    SetSpeed();
+	m_Font = wxSystemSettings::GetFont(wxSYS_OEM_FIXED_FONT);
+	LeftRightTimer.Start(100);
+	UpTimer.Start(1000);
+	DownTimer.Start(20);
+	SetSpeed();
 
     memset(m_Content,0,sizeof(m_Content));
     memset(m_CurrentChunk,0,sizeof(m_CurrentChunk));
@@ -106,7 +106,7 @@ byoCBTris::byoCBTris(wxWindow* parent,const wxString& Name):
     RecalculateSizeHints(bricksHoriz+2*bricksMargin,bricksVert+1);
 }
 
-void byoCBTris::OnPaint(wxPaintEvent& /*event*/)
+void byoCBTris::OnPaint(wxPaintEvent& event)
 {
     wxSize size = GetClientSize();
     wxBitmap buffer(wxImage(size.GetWidth(),size.GetHeight()));
@@ -152,7 +152,9 @@ void byoCBTris::OnKeyDown(wxKeyEvent& event)
     }
 
     if ( event.GetKeyCode() == 'g' || event.GetKeyCode() == 'G' )
+    {
         m_Guidelines = !m_Guidelines;
+    }
 }
 
 void byoCBTris::OnKeyUp(wxKeyEvent& event)
@@ -163,7 +165,7 @@ void byoCBTris::OnKeyUp(wxKeyEvent& event)
     if ( event.GetKeyCode() == WXK_DOWN  ) m_IsDown = false;
 }
 
-void byoCBTris::OnLeftRightTimer(wxTimerEvent& /*event*/)
+void byoCBTris::OnLeftRightTimer(wxTimerEvent& event)
 {
     if ( IsPaused() ) return;
     LOCK_START();
@@ -172,7 +174,7 @@ void byoCBTris::OnLeftRightTimer(wxTimerEvent& /*event*/)
     LOCK_END();
 }
 
-void byoCBTris::OnUpTimer(wxTimerEvent& /*event*/)
+void byoCBTris::OnUpTimer(wxTimerEvent& event)
 {
     if ( IsPaused() ) return;
     LOCK_START();
@@ -181,7 +183,7 @@ void byoCBTris::OnUpTimer(wxTimerEvent& /*event*/)
     LOCK_END();
 }
 
-void byoCBTris::OnDownTimer(wxTimerEvent& /*event*/)
+void byoCBTris::OnDownTimer(wxTimerEvent& event)
 {
     if ( IsPaused() ) return;
     LOCK_START();
@@ -190,7 +192,7 @@ void byoCBTris::OnDownTimer(wxTimerEvent& /*event*/)
     LOCK_END();
 }
 
-void byoCBTris::OnSpeedTimer(wxTimerEvent& /*event*/)
+void byoCBTris::OnSpeedTimer(wxTimerEvent& event)
 {
     if ( IsPaused() ) return;
     LOCK_START();
@@ -198,13 +200,15 @@ void byoCBTris::OnSpeedTimer(wxTimerEvent& /*event*/)
     {
         RemoveFullLines();
         if ( !GenerateNewChunk() )
+        {
             GameOver();
+        }
     }
     Refresh();
     LOCK_END();
 }
 
-void byoCBTris::OnEraseBack(wxEraseEvent& /*event*/)
+void byoCBTris::OnEraseBack(wxEraseEvent& event)
 {
 }
 
@@ -213,20 +217,20 @@ void byoCBTris::DrawBrickField(wxDC* DC)
     static const wxColour Border(0x40,0x40,0x40);
 
     for ( int x=0; x<bricksHoriz; x++ )
-    {
         for ( int y=0; y<bricksVert; y++ )
-        {
             if ( m_Content[x][y] )
+            {
                 DrawBrick(DC,bricksMargin+x,y,GetColour(m_Content[x][y]));
-        }
-    }
+            }
     for ( int y=0; y<bricksVert; y++ )
     {
         DrawBrick(DC,bricksMargin-1,y,Border);
         DrawBrick(DC,bricksMargin+bricksHoriz,y,Border);
     }
     for ( int x=bricksMargin-1; x<=bricksMargin+bricksHoriz; x++ )
+    {
         DrawBrick(DC,x,bricksVert,Border);
+    }
 
     static const wxColour Guideline(0x70,0x70,0x70);
     if(m_Guidelines) DrawGuidelines(DC,bricksMargin,bricksHoriz,bricksVert,Guideline);
@@ -236,28 +240,30 @@ void byoCBTris::DrawCurrentChunk(wxDC* DC)
 {
     int* Ptr = m_CurrentChunk;
     for ( int y=0; y<4; y++ )
-    {
         for ( int x=0; x<4; x++ )
         {
             if ( *Ptr )
-                DrawBrick(DC, x+m_ChunkPosX+bricksMargin, y+m_ChunkPosY, GetColour(*Ptr));
+                DrawBrick(DC,
+                    x+m_ChunkPosX+bricksMargin,
+                    y+m_ChunkPosY,
+                    GetColour(*Ptr));
             Ptr++;
         }
-    }
 }
 
 void byoCBTris::DrawNextChunk(wxDC* DC)
 {
     int* Ptr = m_NextChunk;
     for ( int y=0; y<4; y++ )
-    {
         for ( int x=0; x<4; x++ )
         {
             if ( *Ptr )
-                DrawBrick(DC, bricksMargin-5+x, bricksVert-5+y, GetColour(*Ptr));
+                DrawBrick(DC,
+                    bricksMargin-5+x,
+                    bricksVert-5+y,
+                    GetColour(*Ptr));
             Ptr++;
         }
-    }
 }
 
 void byoCBTris::RandomizeChunk(ChunkConfig& chunk,int color)
@@ -285,10 +291,8 @@ void byoCBTris::RandomizeChunk(ChunkConfig& chunk,int color)
 void byoCBTris::RotateChunkLeft(const ChunkConfig& chunk,ChunkConfig& newChunk)
 {
     for ( int y=0; y<4; y++ )
-    {
         for ( int x=0; x<4; x++ )
             newChunk[x+4*y] = chunk[(3-x)*4+y];
-    }
 
     AlignChunk(newChunk);
 }
@@ -296,10 +300,8 @@ void byoCBTris::RotateChunkLeft(const ChunkConfig& chunk,ChunkConfig& newChunk)
 void byoCBTris::RotateChunkRight(const ChunkConfig& chunk,ChunkConfig& newChunk)
 {
     for ( int y=0; y<4; y++ )
-    {
         for ( int x=0; x<4; x++ )
             newChunk[x+4*y] = chunk[x*4+3-y];
-    }
 
     AlignChunk(newChunk);
 }
@@ -312,13 +314,11 @@ void byoCBTris::AlignChunk(ChunkConfig& chunk)
     {
         bool isEmpty = true;
         for ( int x=0; x<4; x++ )
-        {
             if ( chunk[rowsShift*4+x] != 0 )
             {
                 isEmpty = false;
                 break;
             }
-        }
         if ( !isEmpty ) break;
         rowsShift++;
     }
@@ -329,13 +329,11 @@ void byoCBTris::AlignChunk(ChunkConfig& chunk)
     {
         bool isEmpty = true;
         for ( int y=0; y<4; y++ )
-        {
             if ( chunk[colsShift+y*4] != 0 )
             {
                 isEmpty = false;
                 break;
             }
-        }
         if ( !isEmpty ) break;
         colsShift++;
     }
@@ -345,19 +343,15 @@ void byoCBTris::AlignChunk(ChunkConfig& chunk)
     ChunkConfig newChunk;
     memset(newChunk,0,sizeof(newChunk));
     for ( int y=rowsShift,y2=0; y<4; y++,y2++ )
-    {
         for ( int x=colsShift,x2=0; x<4; x++,x2++ )
             newChunk[x2+y2*4] = chunk[x+y*4];
-    }
     memcpy(chunk,newChunk,sizeof(chunk));
 }
 
 bool byoCBTris::CheckChunkColision(const ChunkConfig& chunk,int posX,int posY)
 {
     for ( int y=0; y<4; y++ )
-    {
         for ( int x=0; x<4; x++ )
-        {
             if ( chunk[x+4*y] )
             {
                 int curX = posX + x;
@@ -368,17 +362,19 @@ bool byoCBTris::CheckChunkColision(const ChunkConfig& chunk,int posX,int posY)
                 if ( curY >= bricksVert ) return true;
                 if ( m_Content[curX][curY] ) return true;
             }
-        }
-    }
     return false;
 }
 
 void byoCBTris::SetSpeed()
 {
     if ( m_Level < 10 )
+    {
         SpeedTimer.Start((10-m_Level)*100);
+    }
     else
+    {
         SpeedTimer.Start(100);
+    }
 }
 
 bool byoCBTris::ChunkDown()
@@ -412,7 +408,9 @@ void byoCBTris::RemoveFullLines()
             if ( !m_Content[x][checkY] ) isFull = false;
 
         if ( isFull )
+        {
             count++;
+        }
         else
         {
             if ( checkY != copyToY )
@@ -454,7 +452,7 @@ void byoCBTris::GameOver()
     DownTimer.Stop();
     UpTimer.Stop();
     SetPause(true);
-    wxMessageBox(_("Game over."));
+    wxMessageBox(_("Game over"));
 }
 
 void byoCBTris::UpdateChunkPosLeftRight()
@@ -499,8 +497,10 @@ void byoCBTris::UpdateChunkPosDown()
     if ( m_IsDown )
     {
         if ( CheckChunkColision(m_CurrentChunk,m_ChunkPosX,m_ChunkPosY+1) )
+        {
             // Raising speed timer little bit faster
             StartTimerNow(SpeedTimer);
+        }
         else
         {
             m_ChunkPosY++;
@@ -523,7 +523,9 @@ void byoCBTris::DrawStats(wxDC* DC)
     DC->DrawText(Line2,5,5+2*ys);
     DC->DrawText(Line3,5,5+6*ys);
     if ( IsPaused() )
+    {
         DC->DrawText(_("Paused"),5,5+4*ys);
+    }
 }
 
 void byoCBTris::AddRemovedLines(int removed)

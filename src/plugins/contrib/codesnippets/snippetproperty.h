@@ -17,7 +17,7 @@
 
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
-	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+	Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 // ----------------------------------------------------------------------------
 //  SnippetProperty.h                                           //(pecan 2006/9/12)
@@ -27,8 +27,6 @@
 
 #include <wx/treectrl.h>
 #include "snippetpropertyform.h"
-
-class wxScintilla;
 
 #include "snippetitemdata.h"
 
@@ -42,33 +40,30 @@ class SnippetProperty : public SnippetPropertyForm
         SnippetProperty(wxTreeCtrl* pTree, wxTreeItemId itemId, wxSemaphore* pWaitSem);
         virtual ~SnippetProperty();
 
-        int     GetReturnCode(){return m_retCode;}
-
     protected:
         wxPoint pos;
         void OnOk(wxCommandEvent& event);
         void OnCancel(wxCommandEvent& event);
         void OnSnippetButton(wxCommandEvent& event);
         void OnFileSelectButton(wxCommandEvent& event);
-        //-void OnLeaveWindow(wxMouseEvent& event);
+        void OnLeaveWindow(wxMouseEvent& event);
+        void OnEditEvent (wxCommandEvent &event);
+        void OnKeyDownEvent (wxKeyEvent& event);
 
         void InvokeEditOnSnippetText();
         void InvokeEditOnSnippetFile();
 
-        wxScintilla* GetSnippetEditCtrl(){return m_SnippetEditCtrl;}
-        wxTreeCtrl*  GetSnippetsTreeCtrl(){return m_pTreeCtrl;}
-        wxString     GetSnippetString(){return m_pSnippetDataItem->GetSnippetString();}
-        bool         IsSnippetFile(){return m_pSnippetDataItem->IsSnippetFile();}
+        Edit*       GetSnippetEditCtrl(){return m_SnippetEditCtrl;}
+        wxTreeCtrl* GetSnippetsTreeCtrl(){return m_pTreeCtrl;}
+        wxString    GetSnippet(){return m_pSnippetDataItem->GetSnippet();}
+        bool        IsSnippetFile(){return m_pSnippetDataItem->IsSnippetFile();}
 
-    private:
-        void InitSnippetProperty(wxTreeCtrl* pTree, wxTreeItemId itemId, wxSemaphore* pWaitSem);
-
+        private:
         wxTreeItemId        m_TreeItemId;
-        SnippetTreeItemData*    m_pSnippetDataItem;
+        SnippetItemData*    m_pSnippetDataItem;
         wxTreeCtrl*         m_pTreeCtrl;
         int                 m_nScrollWidthMax;
         wxSemaphore*        m_pWaitingSemaphore;
-        int                 m_retCode; //(pecan 2018/03/22)
 
     DECLARE_EVENT_TABLE()
 };

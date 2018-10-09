@@ -1,13 +1,13 @@
 #ifndef UPDATEDLG_H
 #define UPDATEDLG_H
 
+#include <wx/dialog.h>
 #include <wx/listctrl.h>
 #include <wx/treectrl.h>
-#include "scrollingdialog.h"
 #include "cbnetwork.h"
 #include "conf.h"
 
-class UpdateDlg : public wxScrollingDialog
+class UpdateDlg : public wxDialog
 {
 	public:
 		UpdateDlg(wxWindow* parent);
@@ -49,7 +49,6 @@ class UpdateDlg : public wxScrollingDialog
         UpdateRec* GetRecFromListView();
         void CreateListColumns();
         void AddRecordToList(UpdateRec* rec);
-        wxString GetListColumnText(int idx, int col);
         void SetListColumnText(int idx, int col, const wxString& text);
 
         wxString GetConfFilename();

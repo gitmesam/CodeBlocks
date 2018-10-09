@@ -26,8 +26,6 @@
 #include "wxsparent.h"
 #include "wxsflags.h"
 
-#include <prep.h>
-
 using namespace wxsFlags;
 
 /** \brief Structure containing additional parameters for each widget insidee sizer */
@@ -37,7 +35,7 @@ class wxsSizerExtra: public wxsPropertyContainer
         long Proportion;                ///< \brief Proportion param (see wxW documentation for details)
         long Flags;                     ///< \brief Sizer item flags
         wxsDimensionData Border;        ///< \brief Size of additional border
-        wxsSizeData MinSize;            ///< \brief Minimal size
+//        wxSizeData MinSize;             ///< \brief Minimal size
 //        wxSizeData Ratio;               ///< \brief Ratio
 
         wxsSizerExtra():
@@ -87,7 +85,7 @@ class wxsSizer: public wxsParent
          */
         virtual wxSizer* OnBuildSizerPreview(wxWindow* Parent) = 0;
 
-        /** \brief Function building code generating sizer
+        /** \brief Function building code genearating sizer
          *
          * This function must append code generating sizer to the end of Code
          * param. Adding items into sizer is handled automatically.
@@ -108,7 +106,7 @@ class wxsSizer: public wxsParent
          * to Quick Props panel. This should be used to properties
          * that are used in one sizer type only.
          */
-        virtual void OnAddSizerQPP(cb_unused wxsAdvQPP* QPP) {}
+        virtual void OnAddSizerQPP(wxsAdvQPP* QPP) {}
 
     private:
 
@@ -144,7 +142,7 @@ class wxsSizer: public wxsParent
          */
          wxObject* OnBuildPreview(wxWindow* Parent,long Flags);
 
-        /** \brief Function creating additional data
+        /** \brief Funciton creating additional data
          *
          * There's additional data configuring widget inside sizer - it does
          * define placement, borders and some other flags.
@@ -166,7 +164,7 @@ class wxsSizer: public wxsParent
         /** \brief Function enumerating properties for sizers*/
         virtual void OnEnumItemProperties(long Flags);
 
-        /** \brief Adding generic sizer properties to QPP */
+        /** \brief Adding generic sizer proeprties to QPP */
         virtual void OnAddItemQPP(wxsAdvQPP* QPP);
 
 };

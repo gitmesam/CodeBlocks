@@ -57,8 +57,7 @@ bool MSVCWorkspaceLoader::Open(const wxString& filename, wxString& Title)
         case wxID_NO:
             askForCompiler = true;
             break;
-        case wxID_CANCEL: // fall-through
-        default:
+        case wxID_CANCEL:
             return false;
     }
     switch (cbMessageBox(_("Do you want to import all configurations (e.g. Debug/Release) from the "
@@ -70,8 +69,7 @@ bool MSVCWorkspaceLoader::Open(const wxString& filename, wxString& Title)
             askForTargets = false; break;
         case wxID_NO:
             askForTargets = true; break;
-        case wxID_CANCEL: // fall-through
-        default:
+        case wxID_CANCEL:
             return false;
     }
 
@@ -88,7 +86,7 @@ bool MSVCWorkspaceLoader::Open(const wxString& filename, wxString& Title)
         wxString line = input.ReadLine();
         if (line.IsEmpty())
         {
-            Manager::Get()->GetLogManager()->DebugLog(_T("Workspace file has unsupported format."));
+            Manager::Get()->GetLogManager()->DebugLog(_T("Unsupported format."));
             return false;
         }
         comps = GetArrayFromString(line, _T(","));
@@ -97,15 +95,14 @@ bool MSVCWorkspaceLoader::Open(const wxString& filename, wxString& Title)
         line.Trim(false);
         if (line != _T("Microsoft Developer Studio Workspace File"))
         {
-            Manager::Get()->GetLogManager()->DebugLog(_T("Workspace file has unsupported format."));
+            Manager::Get()->GetLogManager()->DebugLog(_T("Unsupported format."));
             return false;
         }
         line = comps.GetCount() > 1 ? comps[1] : wxString(wxEmptyString);
         line.Trim(true);
         line.Trim(false);
-
         if (line != _T("Format Version 6.00"))
-            Manager::Get()->GetLogManager()->DebugLog(_T("Workspace format not recognized. Will try to parse though..."));
+            Manager::Get()->GetLogManager()->DebugLog(_T("Format not recognized. Will try to parse though..."));
     }
 
     ImportersGlobals::UseDefaultCompiler = !askForCompiler;
@@ -121,7 +118,6 @@ bool MSVCWorkspaceLoader::Open(const wxString& filename, wxString& Title)
     wxFileName wfname = filename;
     wfname.Normalize();
     Manager::Get()->GetLogManager()->DebugLog(_T("Workspace dir: ") + wfname.GetPath(wxPATH_GET_VOLUME | wxPATH_GET_SEPARATOR));
-
     while (!file.Eof())
     {
         wxString line = input.ReadLine();
@@ -141,20 +137,14 @@ bool MSVCWorkspaceLoader::Open(const wxString& filename, wxString& Title)
             int minus = line.Find(_T('-'), true); // search from end
 
             if (equal == -1 || minus == -1)
-            {
-                Manager::Get()->GetLogManager()->DebugLog(_T("Skipping invalid project (unrecognised format) in workspace file."));
                 continue;
-            }
 
             // read project title and trim quotes
             wxString prjTitle = line.Left(equal);
             prjTitle.Trim(true);
             prjTitle.Trim(false);
             if (prjTitle.IsEmpty())
-            {
-                Manager::Get()->GetLogManager()->DebugLog(_T("Skipping invalid project (empty name) in workspace file."));
                 continue;
-            }
             if (prjTitle.GetChar(0) == _T('\"'))
             {
                 prjTitle.Truncate(prjTitle.Length() - 1);
@@ -166,45 +156,26 @@ bool MSVCWorkspaceLoader::Open(const wxString& filename, wxString& Title)
             wxString prjFile = line.Mid(equal, minus - equal);
             prjFile.Trim(true);
             prjFile.Trim(false);
-
             if (prjFile.IsEmpty())
-            {
-                Manager::Get()->GetLogManager()->DebugLog(_T("Skipping invalid project (empty file) in workspace file."));
                 continue;
-            }
-
             if (prjFile.GetChar(0) == _T('\"'))
             {
                 prjFile.Truncate(prjFile.Length() - 1);
                 prjFile.Remove(0, 1);
             }
 
+            ++count;
             wxFileName fname(UnixFilename(prjFile));
             fname.Normalize(wxPATH_NORM_ALL, wfname.GetPath(wxPATH_GET_VOLUME | wxPATH_GET_SEPARATOR), wxPATH_NATIVE);
-            if (!fname.FileExists())
-            {
-                Manager::Get()->GetLogManager()->DebugLog(F(_T("Project '%s' from '%s' not found."), prjTitle.wx_str(), fname.GetFullPath().wx_str()));
-                continue;
-            }
-            Manager::Get()->GetLogManager()->DebugLog(F(_T("Found project '%s' in '%s'"), prjTitle.wx_str(), fname.GetFullPath().wx_str()));
+            Manager::Get()->GetLogManager()->DebugLog(F(_T("Found project '%s' in '%s'"), prjTitle.c_str(), fname.GetFullPath().c_str()));
 
             int percentage = ((int)file.TellI())*100 / (int)(file.GetLength());
-            // While updating the progrerss dialog check for cancellation - probably interrupt.
             if (!progress.Update(percentage, _("Importing project: ") + prjTitle))
                 break;
 
             project = Manager::Get()->GetProjectManager()->LoadProject(fname.GetFullPath(), false);
-            if (!firstproject)
-                firstproject = project;
-
-            if (!project)
-                Manager::Get()->GetLogManager()->Log(F(_("Warning: Unable to load project '%s' from '%s'"), prjTitle.wx_str(), fname.GetFullPath().wx_str()));
-            else
-            {
-                Manager::Get()->GetLogManager()->Log(F(_("Registering project '%s' from '%s'"), prjTitle.wx_str(), fname.GetFullPath().wx_str()));
-                registerProject(project->GetTitle(), project);
-                ++count;
-            }
+            if (!firstproject) firstproject = project;
+            if (project) registerProject(project->GetTitle(), project);
         }
         /*
          * example wanted line:
@@ -222,7 +193,6 @@ bool MSVCWorkspaceLoader::Open(const wxString& filename, wxString& Title)
 
     if (firstproject)
         Manager::Get()->GetProjectManager()->SetProject(firstproject);
-
     updateProjects();
     ImportersGlobals::ResetDefaults();
 
@@ -230,7 +200,7 @@ bool MSVCWorkspaceLoader::Open(const wxString& filename, wxString& Title)
     return count != 0;
 }
 
-bool MSVCWorkspaceLoader::Save(cb_unused const wxString& title, cb_unused const wxString& filename)
+bool MSVCWorkspaceLoader::Save(const wxString& /*title*/, const wxString& /*filename*/)
 {
     // no support for saving workspace files (.dsw)
     return false;

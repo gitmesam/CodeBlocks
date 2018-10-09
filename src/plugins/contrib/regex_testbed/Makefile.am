@@ -1,21 +1,22 @@
-AM_CPPFLAGS = $(WX_CXXFLAGS) \
+INCLUDES = $(WX_CXXFLAGS) \
 		-I$(top_srcdir)/src/include \
-		-I$(top_srcdir)/src/sdk/wxscintilla/include
+		-I$(top_srcdir)/src/include/wxscintilla/include
 
-pluginlibdir = $(pkglibdir)/plugins
+libdir = $(pkgdatadir)/plugins
 pkgdata_DATA = RegExTestbed.zip
 
-pluginlib_LTLIBRARIES = libRegExTestbed.la
+lib_LTLIBRARIES = libRegExTestbed.la
 
-libRegExTestbed_la_LDFLAGS = @MODULE_SHARED_LDFLAGS@ -version-info 0:1:0 -no-undefined -avoid-version
+libRegExTestbed_la_LDFLAGS = -module -version-info 0:1:0 -shared -no-undefined -avoid-version
 
-libRegExTestbed_la_LIBADD = ../../../sdk/libcodeblocks.la $(WX_LIBS)
+libRegExTestbed_la_LIBADD = $(PLUGIN_WX_LIBS) ../../../sdk/libcodeblocks.la
 
 libRegExTestbed_la_SOURCES = regexdlg.cpp RegExTestbed.cpp
 
 noinst_HEADERS = regexdlg.h RegExTestbed.h
 
-EXTRA_DIST = $(srcdir)/*.cbp \
+EXTRA_DIST = $(srcdir)/RegExTestbed.cbp \
+	$(srcdir)/RegExTestbed-unix.cbp \
 	$(srcdir)/regexdlg.xrc \
 	$(srcdir)/manifest.xml \
 	$(srcdir)/wxsmith/RegExDlg.wxs

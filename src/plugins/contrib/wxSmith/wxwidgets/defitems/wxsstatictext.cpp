@@ -24,7 +24,7 @@
 
 namespace
 {
-    wxsRegisterItem<wxsStaticText> Reg(_T("StaticText"),wxsTWidget,_T("Standard"),50);
+    wxsRegisterItem<wxsStaticText> Reg(_T("StaticText"),wxsTWidget,_T("Standard"),80);
 
     WXS_ST_BEGIN(wxsStaticTextStyles,_T(""))
         WXS_ST_CATEGORY("wxStaticText")
@@ -58,12 +58,11 @@ void wxsStaticText::OnBuildCreatingCode()
         case wxsCPP:
         {
             AddHeader(_T("<wx/stattext.h>"),GetInfo().ClassName,hfInPCH);
-            Codef(_T("%C(%W, %I, %t, %P, %S, %T, %N);\n"),Label.wx_str());
+            Codef(_T("%C(%W, %I, %t, %P, %S, %T, %N);\n"),Label.c_str());
             BuildSetupWindowCode();
             return;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsStaticText::OnBuildCreatingCode"),GetLanguage());
@@ -79,7 +78,7 @@ wxObject* wxsStaticText::OnBuildPreview(wxWindow* Parent,long Flags)
 }
 
 
-void wxsStaticText::OnEnumWidgetProperties(cb_unused long Flags)
+void wxsStaticText::OnEnumWidgetProperties(long Flags)
 {
     WXS_STRING(wxsStaticText,Label,_("Label"),_T("label"),_T(""),true)
 }

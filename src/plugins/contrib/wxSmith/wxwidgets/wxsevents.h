@@ -24,7 +24,7 @@
 #define WXSEVENTS_H
 
 #include <wx/arrstr.h>
-#include <tinyxml.h>
+#include <tinyxml/tinyxml.h>
 #include <wx/arrstr.h>
 
 #include "wxscodercontext.h"
@@ -75,22 +75,20 @@ struct wxsEventDesc
 #define WXS_EV_END()                                                \
     { wxsEventDesc::EndOfList, _T(""), _T(""), _T(""), _T("") } };
 
-/** \brief Adding all default paint events */
-#define WXS_EV_PAINT()                                                                  \
+/** \brief Adding all default events */
+#define WXS_EV_DEFAULTS()                                                               \
+                                                                                        \
     WXS_EV_CATEGORY(_("Paint events"))                                                  \
     WXS_EV(EVT_PAINT,wxEVT_PAINT,wxPaintEvent,Paint)                                    \
     WXS_EV(EVT_ERASE_BACKGROUND,wxEVT_ERASE_BACKGROUND,wxEraseEvent,EraseBackground)    \
-
-/** \brief Adding all keyboard events */
-#define WXS_EV_KEYBOARD()                                                               \
+                                                                                        \
     WXS_EV_CATEGORY(_("Keyboard events"))                                               \
     WXS_EV(EVT_KEY_DOWN,wxEVT_KEY_DOWN,wxKeyEvent,KeyDown)                              \
     WXS_EV(EVT_KEY_UP,wxEVT_KEY_UP,wxKeyEvent,KeyUp)                                    \
     WXS_EV(EVT_CHAR,wxEVT_CHAR,wxKeyEvent,Char)                                         \
     WXS_EV(EVT_SET_FOCUS,wxEVT_SET_FOCUS,wxFocusEvent,SetFocus)                         \
-    WXS_EV(EVT_KILL_FOCUS,wxEVT_KILL_FOCUS,wxFocusEvent,KillFocus)
-
-#define WXS_EV_MOUSE()                                                                  \
+    WXS_EV(EVT_KILL_FOCUS,wxEVT_KILL_FOCUS,wxFocusEvent,KillFocus)                      \
+                                                                                        \
     WXS_EV_CATEGORY(_T("Mouse events"))                                                 \
     WXS_EV(EVT_LEFT_DOWN,wxEVT_LEFT_DOWN,wxMouseEvent,LeftDown)                         \
     WXS_EV(EVT_LEFT_UP,wxEVT_LEFT_UP,wxMouseEvent,LeftUp)                               \
@@ -108,51 +106,39 @@ struct wxsEventDesc
     WXS_EV(EVT_SET_CURSOR,wxEVT_SET_CURSOR,wxSetCursorEvent,SetCursor)                  \
 
 
-/** \brief Adding all size-related events */
-#define WXS_EV_SIZE()                                                                   \
-    WXS_EV(EVT_SIZE,wxEVT_SIZE,wxSizeEvent,Resize)
-
-
-/** \brief Adding all default events */
-#define WXS_EV_DEFAULTS()                                                               \
-    WXS_EV_PAINT()                                                                      \
-    WXS_EV_KEYBOARD()                                                                   \
-    WXS_EV_MOUSE()                                                                      \
-    WXS_EV_SIZE()
-
 /** \brief Class managing events used by item
  *
  * This class manages event used by widget (but it's not responsible for editing
  * them).
  *
  * After building new wxsEvents class, SetEventArray() should be called to
- * connect class with specified set of events
+ * connect clas with specified set of events
  *
  */
 class wxsEvents
 {
-    public:
+	public:
 
         /** \brief Ctor */
-        wxsEvents(const wxsEventDesc* Events,wxsItem* Item);
+		wxsEvents(const wxsEventDesc* Events,wxsItem* Item);
 
-        /** \brief Getting number of events */
-        inline int GetCount() { return m_Count; }
+		/** \brief Getting number of events */
+		inline int GetCount() { return m_Count; }
 
-        /** \brief Getting event description */
-        inline const wxsEventDesc* GetDesc(int Index) { return &m_EventArray[Index]; }
+		/** \brief Getting event description */
+		inline const wxsEventDesc* GetDesc(int Index) { return &m_EventArray[Index]; }
 
-        /** \brief Getting event handler name */
-        inline const wxString& GetHandler(int Index) { return m_Functions[Index]; }
+		/** \brief Getting event handler name */
+		inline const wxString& GetHandler(int Index) { return m_Functions[Index]; }
 
-        /** \brief Setting event handler name */
-        inline void SetHandler(int Index,const wxString& Name) { m_Functions[Index] = Name; }
+		/** \brief Setting event handler name */
+		inline void SetHandler(int Index,const wxString& Name) { m_Functions[Index] = Name; }
 
-        /** \brief Function generating code which binds events with main resource class
-         *
-         * Connecting events is done through wxsEvtHandler::Connect function.
-         * Event table is not used because not all events could be processed.
-         */
+		/** \brief Function genrating code which binds events with main resource class
+		 *
+		 * Connecting events is done through wxsEvtHandler::Connect function.
+		 * Event table is not used because not all events could be processed.
+		 */
         void GenerateBindingCode(wxsCoderContext* Context,const wxString& IdString,const wxString& VarNameString);
 
         /** \brief Function loading associated function names from Xml node. */
@@ -161,7 +147,15 @@ class wxsEvents
         /** \brief Function adding handlers to given Xml element */
         void XmlSaveFunctions(TiXmlElement* Element);
 
-    private:
+        /** \brief Function checking if this item must have variable declared
+         *
+         * Some event handlers are added child item, not to root one. These
+         * widgets MUST be accessed through at least local variable (which is
+         * not always done when loading resources from XRC file).
+         */
+//        bool ForceVariable();
+
+	private:
 
         wxsItem* m_Item;                      ///< Item whose events are managed
         const wxsEventDesc* m_EventArray;     ///< Array of events fetched from item

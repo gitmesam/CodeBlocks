@@ -24,18 +24,17 @@
 
 namespace
 {
-    wxsRegisterItem<wxsTextCtrl> Reg(_T("TextCtrl"),wxsTWidget,_T("Standard"),40);
+    wxsRegisterItem<wxsTextCtrl> Reg(_T("TextCtrl"),wxsTWidget,_T("Standard"),75);
 
     WXS_ST_BEGIN(wxsTextCtrlStyles,_T(""))
         WXS_ST(wxTE_NO_VSCROLL)
-#if !wxCHECK_VERSION(3, 0, 0)
         WXS_ST(wxTE_AUTO_SCROLL)
-#endif
         WXS_ST(wxTE_PROCESS_ENTER)
         WXS_ST(wxTE_PROCESS_TAB)
         WXS_ST(wxTE_MULTILINE)
         WXS_ST(wxTE_PASSWORD)
         WXS_ST(wxTE_READONLY)
+        WXS_ST(wxHSCROLL)
         WXS_ST(wxTE_RICH)
         WXS_ST(wxTE_RICH2)
         WXS_ST(wxTE_AUTO_URL)
@@ -48,6 +47,8 @@ namespace
         WXS_ST(wxTE_WORDWRAP)
         WXS_ST_DEFAULTS()
     WXS_ST_END()
+
+
 
     WXS_EV_BEGIN(wxsTextCtrlEvents)
         WXS_EVI(EVT_TEXT,wxEVT_COMMAND_TEXT_UPDATED,wxCommandEvent,Text)
@@ -68,6 +69,7 @@ wxsTextCtrl::wxsTextCtrl(wxsItemResData* Data):
     MaxLength(0)
 {}
 
+
 void wxsTextCtrl::OnBuildCreatingCode()
 {
     switch ( GetLanguage() )
@@ -75,13 +77,12 @@ void wxsTextCtrl::OnBuildCreatingCode()
         case wxsCPP:
         {
             AddHeader(_T("<wx/textctrl.h>"),GetInfo().ClassName,hfInPCH);
-            Codef(_T("%C(%W, %I, %t, %P, %S, %T, %V, %N);\n"),Text.wx_str());
+            Codef(_T("%C(%W, %I, %t, %P, %S, %T, %V, %N);\n"),Text.c_str());
             if ( MaxLength > 0 ) Codef(_T("%ASetMaxLength(%d);\n"),MaxLength);
             BuildSetupWindowCode();
             return;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsTextCtrl::OnBuildCreatingCode"),GetLanguage());
@@ -89,13 +90,15 @@ void wxsTextCtrl::OnBuildCreatingCode()
     }
 }
 
+
 wxObject* wxsTextCtrl::OnBuildPreview(wxWindow* Parent,long Flags)
 {
     wxTextCtrl* Preview = new wxTextCtrl(Parent,GetId(),Text,Pos(Parent),Size(Parent),Style());
     return SetupWindow(Preview,Flags);
 }
 
-void wxsTextCtrl::OnEnumWidgetProperties(cb_unused long Flags)
+
+void wxsTextCtrl::OnEnumWidgetProperties(long Flags)
 {
     WXS_STRING(wxsTextCtrl,Text,_("Text"),_T("value"),_T(""),false)
     WXS_LONG(wxsTextCtrl,MaxLength,_("Max Length"),_T("maxlength"),0)

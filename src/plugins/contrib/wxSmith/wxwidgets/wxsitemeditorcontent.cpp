@@ -79,7 +79,7 @@ void wxsItemEditorContent::PaintExtra(wxDC* DC)
         }
         int PosX = DPD->PosX - m_DragBoxSize/2;
         int PosY = DPD->PosY - m_DragBoxSize/2;
-        DC->DrawRectangle(PosX , PosY, m_DragBoxSize, m_DragBoxSize );
+    	DC->DrawRectangle(PosX , PosY, m_DragBoxSize, m_DragBoxSize );
     }
 
     if ( m_MouseState==msTargetSearch && m_TargetInfo )
@@ -320,7 +320,6 @@ void wxsItemEditorContent::OnMouse(wxMouseEvent& event)
         case msDraggingItem:      OnMouseDraggingItem      (event); break;
         case msTargetSearch:      OnMouseTargetSearch      (event); break;
         case msWaitForIdle:                                         break;
-        case msIdle: // fall-through
         default:                  OnMouseIdle              (event); break;
     }
 
@@ -432,8 +431,8 @@ void wxsItemEditorContent::OnMouseIdle(wxMouseEvent& event)
 
         if ( DPD )
         {
-            switch ( DPD->Type )
-            {
+    		switch ( DPD->Type )
+    		{
                 case LeftTop:
                 case RightBtm:
                     SetCur(wxCURSOR_SIZENWSE);
@@ -454,10 +453,9 @@ void wxsItemEditorContent::OnMouseIdle(wxMouseEvent& event)
                     SetCur(wxCURSOR_SIZEWE);
                     break;
 
-                case DragBoxTypeCnt: // fall-through
                 default:
                     SetCur(wxCURSOR_ARROW);
-            }
+    		}
         }
         else
         {
@@ -628,9 +626,7 @@ void wxsItemEditorContent::OnMouseDraggingPoint(wxMouseEvent& event)
             GridFixupForGlobalCoordinates(rightBtm->PosX,rightBtm->PosY,m_CurDragItem);
             break;
 
-        case DragBoxTypeCnt: // fall-through
-        default:
-            break;
+        default:;
     }
 
     int LX = leftTop->PosX;
@@ -1112,10 +1108,6 @@ bool wxsItemEditorContent::IsContinousInsert()
 
 void wxsItemEditorContent::OnKeyDown(wxKeyEvent& event)
 {
-    #if wxCHECK_VERSION(3, 0, 0)
-    GetParent()->GetEventHandler()->ProcessEvent(event);
-    #else
     GetParent()->ProcessEvent(event);
-    #endif
 }
 

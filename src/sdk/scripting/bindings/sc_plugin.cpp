@@ -75,22 +75,14 @@ wxArrayInt CreateMenu(const wxString& name)
         for (size_t i = 0; i < arr.GetCount(); ++i)
         {
             int id = wxNewId();
-            id = mi.CreateFromString(arr[i], id);
+            mi.CreateFromString(arr[i], id);
 
             ret.Add(id);
 
             MenuCallback callback;
             callback.object = it->second;
             callback.menuIndex = i;
-
-            ModuleMenuCallbacks::iterator mmcIt = s_MenuCallbacks.find(id);
-            if (mmcIt == s_MenuCallbacks.end())
-                s_MenuCallbacks.insert(s_MenuCallbacks.end(), std::make_pair(id, callback));
-            else
-            {
-                s_MenuCallbacks.erase(mmcIt);
-                s_MenuCallbacks.insert(s_MenuCallbacks.end(), std::make_pair(id, callback));
-            }
+            s_MenuCallbacks.insert(s_MenuCallbacks.end(), std::make_pair(id, callback));
         }
     }
 

@@ -21,9 +21,7 @@
 */
 
 #include "wxslongproperty.h"
-
 #include <globals.h>
-#include <prep.h>
 
 // Helper macro for fetching variable
 #define VALUE   wxsVARIABLE(Object,Offset,long)
@@ -37,18 +35,16 @@ wxsLongProperty::wxsLongProperty(const wxString& PGName, const wxString& DataNam
 
 void wxsLongProperty::PGCreate(wxsPropertyContainer* Object,wxPropertyGridManager* Grid,wxPGId Parent)
 {
-    PGRegister(Object,Grid,Grid->AppendIn(Parent,NEW_IN_WXPG14X wxIntProperty(GetPGName(),wxPG_LABEL,VALUE)));
+    PGRegister(Object,Grid,Grid->AppendIn(Parent,wxIntProperty(GetPGName(),wxPG_LABEL,VALUE)));
 }
 
-bool wxsLongProperty::PGRead(wxsPropertyContainer* Object, wxPropertyGridManager* Grid,
-                             wxPGId Id, cb_unused long Index)
+bool wxsLongProperty::PGRead(wxsPropertyContainer* Object,wxPropertyGridManager* Grid,wxPGId Id,long Index)
 {
     VALUE = Grid->GetPropertyValue(Id).GetLong();
     return true;
 }
 
-bool wxsLongProperty::PGWrite(wxsPropertyContainer* Object, wxPropertyGridManager* Grid,
-                              wxPGId Id, cb_unused long Index)
+bool wxsLongProperty::PGWrite(wxsPropertyContainer* Object,wxPropertyGridManager* Grid,wxPGId Id,long Index)
 {
     Grid->SetPropertyValue(Id,VALUE);
     return true;
@@ -75,7 +71,7 @@ bool wxsLongProperty::XmlWrite(wxsPropertyContainer* Object,TiXmlElement* Elemen
 {
     if ( VALUE != Default )
     {
-        Element->InsertEndChild(TiXmlText(cbU2C(wxString::Format(_T("%ld"),VALUE))));
+        Element->InsertEndChild(TiXmlText(cbU2C(wxString::Format(_T("%d"),VALUE))));
         return true;
     }
     return false;

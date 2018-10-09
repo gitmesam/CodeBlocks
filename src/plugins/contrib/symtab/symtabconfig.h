@@ -6,18 +6,18 @@
 #ifndef SYMTABCONFIG_H
 #define SYMTABCONFIG_H
 
-#include "scrollingdialog.h"
+#include <wx/dialog.h>
 
 class wxCommandEvent;
 class wxWindow;
 
-class SymTabConfigDlg : public wxScrollingDialog
+class SymTabConfigDlg : public wxDialog
 {
 /* ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- */
 public:
 /* ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- */
-           SymTabConfigDlg(wxWindow* parent_in) :
-             parent(parent_in), SymTabConfigDlgLoaded(false) {}
+           SymTabConfigDlg(wxWindow* parent) :
+             parent(parent), SymTabConfigDlgLoaded(false) {}
   virtual ~SymTabConfigDlg();
 
   int      Execute();

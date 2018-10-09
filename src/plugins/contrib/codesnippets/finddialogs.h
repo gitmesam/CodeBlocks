@@ -3,7 +3,7 @@
 // Purpose:     Find/Replace, Goto dialogs
 // Maintainer:  Otto Wyss
 // Created:     2003-01-20
-// RCS-ID:      $Id$
+// RCS-ID:      $Id: finddialogs.h 58 2007-04-22 04:40:57Z Pecan $
 // Copyright:   (c) 2005 wyoGuide
 // Licence:     wxWindows
 //////////////////////////////////////////////////////////////////////////////
@@ -25,7 +25,7 @@
 	along with this program; if not, write to the Free Software
 	Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
-// RCS-ID: $Id$
+// RCS-ID: $Id: finddialogs.h 58 2007-04-22 04:40:57Z Pecan $
 
 #ifndef _DIALOGS_H_
 #define _DIALOGS_H_
@@ -39,7 +39,6 @@
 // headers
 //----------------------------------------------------------------------------
 
-#include "scrollingdialog.h"     // Dialogs
 
 //============================================================================
 // declarations
@@ -70,7 +69,7 @@ enum myFindReplaceDialogStyles {
 
 //----------------------------------------------------------------------------
 //! myFindReplaceDlg
-class myFindReplaceDlg: public wxScrollingDialog
+class myFindReplaceDlg: public wxDialog
 {
 public:
 
@@ -152,7 +151,7 @@ private:
 
 //----------------------------------------------------------------------------
 //! myGotoDlg
-class myGotoDlg: public wxScrollingDialog
+class myGotoDlg: public wxDialog
 {
 public:
 

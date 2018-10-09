@@ -16,7 +16,6 @@
 #include <wx/timer.h> // wxMilliSleep
 #include "wx/thread.h"
 #include "manager.h"
-#include "blockallocated.h"
 
 /*
 * BackgroundThread is a lightweight single background worker thread implementation for situations in which
@@ -101,11 +100,11 @@ public:
         Run();
     };
 
-    ~BackgroundThread() override
+    ~BackgroundThread()
     {
-        if (ownsSemaphore)
+        if(ownsSemaphore)
             ::Delete(semaphore);
-        if (ownsQueue)
+        if(ownsQueue)
             ::Delete(queue);
     };
 
@@ -129,24 +128,38 @@ public:
         die = true;
     };
 
+    /*
+    * This function is inherently unsafe!
+    * Also, if used on a thread belonging to a pool, it will not do what you think it does!
+    * Do not use this function unless you are sure you really know what you are doing.
+    */
+    void MurderDeathKill()
+    {
+        Die();
+        wxMilliSleep(0);
+        wxMilliSleep(0);
 
-    ExitCode Entry() override
+        if(this && IsRunning())
+            Kill();
+    };
+
+    ExitCode Entry()
     {
         AbstractJob* job;
-        for (;;)
+        for(;;)
         {
             semaphore->Wait();
-            if (die)
+            if(die)
                 break;
 
             job = queue->Pop();
             if ( job )
                 (*job)();
 
-            if (ownsJobs)
+            if(ownsJobs)
                 delete job;
         }
-        return nullptr;
+        return 0;
     };
 };
 
@@ -168,7 +181,7 @@ class BackgroundThreadPool
 public:
     BackgroundThreadPool(size_t num_threads = 4)
     {
-        for (unsigned int i = 0; i < num_threads; ++i)
+        for(unsigned int i = 0; i < num_threads; ++i)
             AddThread(new BackgroundThread(&queue, &semaphore));
     };
 

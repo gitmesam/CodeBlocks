@@ -16,9 +16,9 @@
 * along with wxSmith; if not, write to the Free Software
 * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
 *
-* $Revision$
-* $Id$
-* $HeadURL$
+* $Revision: 4504 $
+* $Id: wxsmithpluginregistrants.cpp 4504 2007-10-02 21:52:30Z byo $
+* $HeadURL: svn+ssh://byo@svn.berlios.de/svnroot/repos/codeblocks/trunk/src/plugins/contrib/wxSmith/plugin/wxsmithpluginregistrants.cpp $
 */
 
 #ifndef PROJECTCONFIGURATIONPANEL_H
@@ -27,15 +27,15 @@
 //(*Headers(ProjectConfigurationPanel)
 #include <wx/panel.h>
 #include <wx/timer.h>
-class wxTextCtrl;
-class wxStaticBoxSizer;
-class wxListBox;
-class wxButton;
-class wxTreeEvent;
-class wxBoxSizer;
-class wxStaticText;
-class wxTreeCtrl;
 class wxCheckBox;
+class wxTextCtrl;
+class wxTreeCtrl;
+class wxTreeEvent;
+class wxListBox;
+class wxStaticText;
+class wxBoxSizer;
+class wxButton;
+class wxStaticBoxSizer;
 //*)
 
 #include <configurationpanel.h>
@@ -79,26 +79,23 @@ class ProjectConfigurationPanel: public cbConfigurationPanel
         bool m_IsPkgConfig;
 
 		//(*Declarations(ProjectConfigurationPanel)
-		wxStaticText* m_EventText;
-		wxButton* Button1;
-		wxButton* Button2;
-		wxStaticText* StaticText1;
-		wxButton* m_Remove;
-		wxTimer Timer1;
-		wxTreeCtrl* m_KnownLibrariesTree;
 		wxButton* m_AddUnknown;
+		wxCheckBox* m_Tree;
+		wxStaticText* StaticText1;
+		wxTreeCtrl* m_KnownLibrariesTree;
+		wxTextCtrl* m_UnknownLibrary;
 		wxTextCtrl* m_Filter;
 		wxButton* m_AddScript;
 		wxButton* m_Add;
-		wxCheckBox* m_Tree;
-		wxTextCtrl* m_UnknownLibrary;
 		wxCheckBox* m_NoAuto;
 		wxListBox* m_UsedLibraries;
+		wxStaticText* m_EventText;
+		wxTimer Timer1;
+		wxButton* m_Remove;
 		//*)
 
 		//(*Identifiers(ProjectConfigurationPanel)
 		static const long ID_LISTBOX1;
-		static const long ID_BUTTON6;
 		static const long ID_CHECKBOX2;
 		static const long ID_BUTTON4;
 		static const long ID_BUTTON1;
@@ -107,7 +104,6 @@ class ProjectConfigurationPanel: public cbConfigurationPanel
 		static const long ID_STATICTEXT1;
 		static const long ID_TEXTCTRL2;
 		static const long ID_CHECKBOX1;
-		static const long ID_BUTTON5;
 		static const long ID_TEXTCTRL1;
 		static const long ID_BUTTON3;
 		static const long ID_STATICTEXT2;
@@ -126,11 +122,9 @@ class ProjectConfigurationPanel: public cbConfigurationPanel
 		void Onm_UnknownLibraryText(wxCommandEvent& event);
 		void Onm_AddUnknownClick(wxCommandEvent& event);
 		void Onm_AddScriptClick(wxCommandEvent& event);
-		void OnButton2Click(wxCommandEvent& event);
 		//*)
 
 		wxString GetUserListName(const wxString &VarName);
-		void DetectNewLibs( const wxString& IncludeName, ResultArray& known, wxArrayString& LibsList );
 
 		DECLARE_EVENT_TABLE()
 };

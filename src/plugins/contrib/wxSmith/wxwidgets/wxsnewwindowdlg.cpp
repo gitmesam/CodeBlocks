@@ -23,7 +23,6 @@
 #include "wxsnewwindowdlg.h"
 #include "wxwidgetsres.h"
 #include "wxsdialogres.h"
-#include "wxsscrollingdialogres.h"
 #include "wxsframeres.h"
 #include "wxspanelres.h"
 #include "wxwidgetsgui.h"
@@ -49,8 +48,12 @@ namespace
     {
         for ( size_t i=FileName.Length(); i-->0; )
         {
-            if ( FileName[i] == _T('/') || FileName[i] == _T('\\') )
-                return FileName.Mid(0,i+1);
+            switch ( FileName[i] )
+            {
+                case _T('/'):
+                case _T('\\'):
+                    return FileName.Mid(0,i+1);
+            }
         }
 
         return wxEmptyString;
@@ -60,19 +63,26 @@ namespace
     {
         for ( size_t i=FileName.Length(); i-->0; )
         {
-            if ( FileName[i] == _T('/') || FileName[i] == _T('\\') )
-                return FileName;
+            switch ( FileName[i] )
+            {
+                case _T('/'):
+                case _T('\\'):
+                    return FileName;
 
-            if ( FileName[i] == _T('.') )
-                return FileName.Mid(0,i);
+                case _T('.'):
+                    return FileName.Mid(0,i);
+            }
         }
         return FileName;
     }
 }
 
 //(*IdInit(wxsNewWindowDlg)
+const long wxsNewWindowDlg::ID_STATICTEXT1 = wxNewId();
 const long wxsNewWindowDlg::ID_TEXTCTRL1 = wxNewId();
+const long wxsNewWindowDlg::ID_STATICTEXT2 = wxNewId();
 const long wxsNewWindowDlg::ID_TEXTCTRL2 = wxNewId();
+const long wxsNewWindowDlg::ID_STATICTEXT3 = wxNewId();
 const long wxsNewWindowDlg::ID_TEXTCTRL3 = wxNewId();
 const long wxsNewWindowDlg::ID_CHECKBOX1 = wxNewId();
 const long wxsNewWindowDlg::ID_TEXTCTRL4 = wxNewId();
@@ -80,13 +90,20 @@ const long wxsNewWindowDlg::ID_CHECKBOX3 = wxNewId();
 const long wxsNewWindowDlg::ID_BUTTON1 = wxNewId();
 const long wxsNewWindowDlg::ID_CHECKBOX2 = wxNewId();
 const long wxsNewWindowDlg::ID_COMBOBOX1 = wxNewId();
+const long wxsNewWindowDlg::ID_STATICTEXT11 = wxNewId();
 const long wxsNewWindowDlg::ID_TEXTCTRL8 = wxNewId();
 const long wxsNewWindowDlg::ID_CHECKBOX4 = wxNewId();
 const long wxsNewWindowDlg::ID_TEXTCTRL5 = wxNewId();
+const long wxsNewWindowDlg::ID_STATICTEXT4 = wxNewId();
 const long wxsNewWindowDlg::ID_TEXTCTRL6 = wxNewId();
+const long wxsNewWindowDlg::ID_STATICTEXT7 = wxNewId();
+const long wxsNewWindowDlg::ID_STATICTEXT8 = wxNewId();
+const long wxsNewWindowDlg::ID_STATICTEXT9 = wxNewId();
+const long wxsNewWindowDlg::ID_STATICTEXT10 = wxNewId();
 const long wxsNewWindowDlg::ID_BUTTON2 = wxNewId();
 const long wxsNewWindowDlg::ID_BUTTON3 = wxNewId();
 const long wxsNewWindowDlg::ID_BUTTON4 = wxNewId();
+const long wxsNewWindowDlg::ID_STATICTEXT5 = wxNewId();
 const long wxsNewWindowDlg::ID_CHECKBOX5 = wxNewId();
 const long wxsNewWindowDlg::ID_CHECKBOX9 = wxNewId();
 const long wxsNewWindowDlg::ID_CHECKBOX6 = wxNewId();
@@ -95,13 +112,13 @@ const long wxsNewWindowDlg::ID_CHECKBOX7 = wxNewId();
 const long wxsNewWindowDlg::ID_CHECKBOX11 = wxNewId();
 const long wxsNewWindowDlg::ID_CHECKBOX8 = wxNewId();
 const long wxsNewWindowDlg::ID_CHECKBOX12 = wxNewId();
+const long wxsNewWindowDlg::ID_STATICTEXT6 = wxNewId();
 const long wxsNewWindowDlg::ID_TEXTCTRL7 = wxNewId();
 const long wxsNewWindowDlg::ID_CHECKBOX14 = wxNewId();
-const long wxsNewWindowDlg::ID_CHECKBOX15 = wxNewId();
 const long wxsNewWindowDlg::ID_CHECKBOX13 = wxNewId();
 //*)
 
-BEGIN_EVENT_TABLE(wxsNewWindowDlg,wxScrollingDialog)
+BEGIN_EVENT_TABLE(wxsNewWindowDlg,wxDialog)
     //(*EventTable(wxsNewWindowDlg)
     //*)
     EVT_BUTTON(wxID_OK,wxsNewWindowDlg::OnCreate)
@@ -118,175 +135,157 @@ wxsNewWindowDlg::wxsNewWindowDlg(wxWindow* parent,const wxString& ResType,wxsPro
     m_Project(Project)
 {
     //(*Initialize(wxsNewWindowDlg)
-    wxStaticText* StaticText10;
-    wxStaticText* StaticText9;
-    wxFlexGridSizer* FlexGridSizer4;
     wxStaticText* StaticText2;
-    wxFlexGridSizer* FlexGridSizer3;
-    wxStaticText* StaticText6;
-    wxStaticText* StaticText8;
-    wxStaticText* StaticText11;
-    wxFlexGridSizer* FlexGridSizer2;
     wxStaticText* StaticText1;
     wxStaticText* StaticText3;
-    wxStaticBoxSizer* StaticBoxSizer3;
-    wxStaticText* StaticText5;
-    wxStaticText* StaticText7;
-    wxFlexGridSizer* FlexGridSizer1;
-    wxStaticText* StaticText4;
-    wxStdDialogButtonSizer* StdDialogButtonSizer1;
 
     Create(parent, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE, _T("wxID_ANY"));
     m_RootSizer = new wxBoxSizer(wxVERTICAL);
     StaticBoxSizer3 = new wxStaticBoxSizer(wxHORIZONTAL, this, _("Options"));
     FlexGridSizer1 = new wxFlexGridSizer(0, 2, 5, 5);
     FlexGridSizer1->AddGrowableCol(1);
-    StaticText1 = new wxStaticText(this, wxID_ANY, _("Class Name:"), wxDefaultPosition, wxDefaultSize, 0, _T("wxID_ANY"));
-    FlexGridSizer1->Add(StaticText1, 0, wxALIGN_CENTER_VERTICAL, 5);
+    StaticText1 = new wxStaticText(this, ID_STATICTEXT1, _("Class Name:"), wxDefaultPosition, wxDefaultSize, 0, _T("ID_STATICTEXT1"));
+    FlexGridSizer1->Add(StaticText1, 0, wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL, 5);
     m_Class = new wxTextCtrl(this, ID_TEXTCTRL1, wxEmptyString, wxDefaultPosition, wxSize(80,-1), 0, wxDefaultValidator, _T("ID_TEXTCTRL1"));
-    FlexGridSizer1->Add(m_Class, 0, wxEXPAND, 5);
-    StaticText2 = new wxStaticText(this, wxID_ANY, _("Header file:"), wxDefaultPosition, wxDefaultSize, 0, _T("wxID_ANY"));
-    FlexGridSizer1->Add(StaticText2, 0, wxALIGN_CENTER_VERTICAL, 5);
+    FlexGridSizer1->Add(m_Class, 0, wxEXPAND|wxALIGN_LEFT|wxALIGN_TOP, 5);
+    StaticText2 = new wxStaticText(this, ID_STATICTEXT2, _("Header file:"), wxDefaultPosition, wxDefaultSize, 0, _T("ID_STATICTEXT2"));
+    FlexGridSizer1->Add(StaticText2, 0, wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL, 5);
     m_Header = new wxTextCtrl(this, ID_TEXTCTRL2, wxEmptyString, wxDefaultPosition, wxSize(80,-1), 0, wxDefaultValidator, _T("ID_TEXTCTRL2"));
-    FlexGridSizer1->Add(m_Header, 0, wxEXPAND, 5);
-    StaticText3 = new wxStaticText(this, wxID_ANY, _("Source file:"), wxDefaultPosition, wxDefaultSize, 0, _T("wxID_ANY"));
-    FlexGridSizer1->Add(StaticText3, 0, wxALIGN_CENTER_VERTICAL, 5);
+    FlexGridSizer1->Add(m_Header, 0, wxEXPAND|wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL, 5);
+    StaticText3 = new wxStaticText(this, ID_STATICTEXT3, _("Source file:"), wxDefaultPosition, wxDefaultSize, 0, _T("ID_STATICTEXT3"));
+    FlexGridSizer1->Add(StaticText3, 0, wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL, 5);
     m_Source = new wxTextCtrl(this, ID_TEXTCTRL3, wxEmptyString, wxDefaultPosition, wxSize(80,-1), 0, wxDefaultValidator, _T("ID_TEXTCTRL3"));
-    FlexGridSizer1->Add(m_Source, 0, wxEXPAND, 5);
+    FlexGridSizer1->Add(m_Source, 0, wxEXPAND|wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL, 5);
     m_UseXrc = new wxCheckBox(this, ID_CHECKBOX1, _("Xrc File:"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, _T("ID_CHECKBOX1"));
     m_UseXrc->SetValue(false);
-    FlexGridSizer1->Add(m_UseXrc, 0, wxALIGN_CENTER_VERTICAL, 5);
+    FlexGridSizer1->Add(m_UseXrc, 0, wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL, 5);
     m_Xrc = new wxTextCtrl(this, ID_TEXTCTRL4, wxEmptyString, wxDefaultPosition, wxSize(80,-1), 0, wxDefaultValidator, _T("ID_TEXTCTRL4"));
-    FlexGridSizer1->Add(m_Xrc, 0, wxEXPAND, 5);
-    FlexGridSizer1->Add(10,6,1, wxEXPAND, 5);
+    FlexGridSizer1->Add(m_Xrc, 0, wxEXPAND|wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL, 5);
+    FlexGridSizer1->Add(10,6,1, wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
     m_XRCAutoload = new wxCheckBox(this, ID_CHECKBOX3, _("Add XRC file to autoload list"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, _T("ID_CHECKBOX3"));
     m_XRCAutoload->SetValue(false);
     m_XRCAutoload->Disable();
-    FlexGridSizer1->Add(m_XRCAutoload, 1, wxEXPAND, 5);
-    StaticBoxSizer3->Add(FlexGridSizer1, 1, wxALL|wxEXPAND, 0);
-    m_RootSizer->Add(StaticBoxSizer3, 0, wxALL|wxEXPAND, 0);
+    FlexGridSizer1->Add(m_XRCAutoload, 1, wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
+    StaticBoxSizer3->Add(FlexGridSizer1, 1, wxALL|wxEXPAND|wxALIGN_LEFT|wxALIGN_TOP, 0);
+    m_RootSizer->Add(StaticBoxSizer3, 0, wxALL|wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 0);
     m_AdvOps = new wxButton(this, ID_BUTTON1, _("+ Advanced options"), wxDefaultPosition, wxDefaultSize, wxBU_LEFT|wxNO_BORDER, wxDefaultValidator, _T("ID_BUTTON1"));
-    m_RootSizer->Add(m_AdvOps, 0, wxLEFT|wxRIGHT|wxEXPAND, 0);
+    m_RootSizer->Add(m_AdvOps, 0, wxLEFT|wxRIGHT|wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 0);
     m_AdvancedOptionsSizer = new wxStaticBoxSizer(wxVERTICAL, this, wxEmptyString);
     FlexGridSizer2 = new wxFlexGridSizer(0, 2, 5, 5);
     FlexGridSizer2->AddGrowableCol(1);
     m_UsePCH = new wxCheckBox(this, ID_CHECKBOX2, _("Use PCH:"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, _T("ID_CHECKBOX2"));
     m_UsePCH->SetValue(false);
-    FlexGridSizer2->Add(m_UsePCH, 1, wxALIGN_CENTER_VERTICAL, 5);
+    FlexGridSizer2->Add(m_UsePCH, 1, wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL, 5);
     m_Pch = new wxComboBox(this, ID_COMBOBOX1, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, 0, 0, wxDefaultValidator, _T("ID_COMBOBOX1"));
-    FlexGridSizer2->Add(m_Pch, 1, wxEXPAND, 5);
+    FlexGridSizer2->Add(m_Pch, 1, wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
     BoxSizer1 = new wxBoxSizer(wxHORIZONTAL);
-    BoxSizer1->Add(21,16,0, wxALL|wxALIGN_CENTER_VERTICAL, 0);
-    StaticText11 = new wxStaticText(this, wxID_ANY, _("PCH guard define:"), wxDefaultPosition, wxDefaultSize, 0, _T("wxID_ANY"));
-    BoxSizer1->Add(StaticText11, 1, wxALIGN_CENTER_VERTICAL, 0);
-    FlexGridSizer2->Add(BoxSizer1, 0, wxALL|wxEXPAND, 0);
+    BoxSizer1->Add(21,16,0, wxALL|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 0);
+    StaticText11 = new wxStaticText(this, ID_STATICTEXT11, _("PCH guard define:"), wxDefaultPosition, wxDefaultSize, 0, _T("ID_STATICTEXT11"));
+    BoxSizer1->Add(StaticText11, 1, wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL, 0);
+    FlexGridSizer2->Add(BoxSizer1, 0, wxALL|wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 0);
     m_PchGuard = new wxTextCtrl(this, ID_TEXTCTRL8, _("WX_PRECOMP"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, _T("ID_TEXTCTRL8"));
-    FlexGridSizer2->Add(m_PchGuard, 0, wxEXPAND, 0);
+    FlexGridSizer2->Add(m_PchGuard, 0, wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 0);
     m_UseInitFunc = new wxCheckBox(this, ID_CHECKBOX4, _("Init code in function:"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, _T("ID_CHECKBOX4"));
     m_UseInitFunc->SetValue(false);
-    FlexGridSizer2->Add(m_UseInitFunc, 1, wxALIGN_CENTER_VERTICAL, 5);
+    FlexGridSizer2->Add(m_UseInitFunc, 1, wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL, 5);
     m_InitFunc = new wxTextCtrl(this, ID_TEXTCTRL5, _("BuildContent"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, _T("ID_TEXTCTRL5"));
     m_InitFunc->Disable();
-    FlexGridSizer2->Add(m_InitFunc, 1, wxEXPAND, 5);
-    StaticText4 = new wxStaticText(this, wxID_ANY, _("Base class name:"), wxDefaultPosition, wxDefaultSize, 0, _T("wxID_ANY"));
-    FlexGridSizer2->Add(StaticText4, 1, wxALIGN_CENTER_VERTICAL, 5);
+    FlexGridSizer2->Add(m_InitFunc, 1, wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
+    StaticText4 = new wxStaticText(this, ID_STATICTEXT4, _("Base class name:"), wxDefaultPosition, wxDefaultSize, 0, _T("ID_STATICTEXT4"));
+    FlexGridSizer2->Add(StaticText4, 1, wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL, 5);
     m_BaseClass = new wxTextCtrl(this, ID_TEXTCTRL6, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, _T("ID_TEXTCTRL6"));
-    FlexGridSizer2->Add(m_BaseClass, 1, wxEXPAND, 5);
-    StaticText7 = new wxStaticText(this, wxID_ANY, _("Scopes:"), wxDefaultPosition, wxDefaultSize, 0, _T("wxID_ANY"));
-    FlexGridSizer2->Add(StaticText7, 0, wxALIGN_CENTER_VERTICAL, 0);
+    FlexGridSizer2->Add(m_BaseClass, 1, wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
+    StaticText7 = new wxStaticText(this, ID_STATICTEXT7, _("Scopes:"), wxDefaultPosition, wxDefaultSize, 0, _T("ID_STATICTEXT7"));
+    FlexGridSizer2->Add(StaticText7, 0, wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL, 0);
     FlexGridSizer4 = new wxFlexGridSizer(0, 3, 0, 5);
     FlexGridSizer4->AddGrowableCol(0);
     FlexGridSizer4->AddGrowableCol(1);
     FlexGridSizer4->AddGrowableCol(2);
-    StaticText8 = new wxStaticText(this, wxID_ANY, _("IDs:"), wxDefaultPosition, wxDefaultSize, 0, _T("wxID_ANY"));
-    FlexGridSizer4->Add(StaticText8, 1, wxALIGN_CENTER_VERTICAL, 5);
-    StaticText9 = new wxStaticText(this, wxID_ANY, _("Members:"), wxDefaultPosition, wxDefaultSize, 0, _T("wxID_ANY"));
-    FlexGridSizer4->Add(StaticText9, 1, wxALIGN_CENTER_VERTICAL, 5);
-    StaticText10 = new wxStaticText(this, wxID_ANY, _("Handlers:"), wxDefaultPosition, wxDefaultSize, 0, _T("wxID_ANY"));
-    FlexGridSizer4->Add(StaticText10, 1, wxALIGN_CENTER_VERTICAL, 5);
+    StaticText8 = new wxStaticText(this, ID_STATICTEXT8, _("IDs:"), wxDefaultPosition, wxDefaultSize, 0, _T("ID_STATICTEXT8"));
+    FlexGridSizer4->Add(StaticText8, 1, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
+    StaticText9 = new wxStaticText(this, ID_STATICTEXT9, _("Members:"), wxDefaultPosition, wxDefaultSize, 0, _T("ID_STATICTEXT9"));
+    FlexGridSizer4->Add(StaticText9, 1, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
+    StaticText10 = new wxStaticText(this, ID_STATICTEXT10, _("Handlers:"), wxDefaultPosition, wxDefaultSize, 0, _T("ID_STATICTEXT10"));
+    FlexGridSizer4->Add(StaticText10, 1, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
     m_ScopeIds = new wxButton(this, ID_BUTTON2, _("Public"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, _T("ID_BUTTON2"));
-    FlexGridSizer4->Add(m_ScopeIds, 1, wxALIGN_CENTER_VERTICAL, 5);
+    FlexGridSizer4->Add(m_ScopeIds, 1, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
     m_ScopeMembers = new wxButton(this, ID_BUTTON3, _("Public"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, _T("ID_BUTTON3"));
-    FlexGridSizer4->Add(m_ScopeMembers, 1, wxALIGN_CENTER_VERTICAL, 5);
+    FlexGridSizer4->Add(m_ScopeMembers, 1, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
     m_ScopeHandlers = new wxButton(this, ID_BUTTON4, _("Public"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, _T("ID_BUTTON4"));
-    FlexGridSizer4->Add(m_ScopeHandlers, 1, wxALIGN_CENTER_VERTICAL, 5);
-    FlexGridSizer2->Add(FlexGridSizer4, 0, wxEXPAND, 0);
-    StaticText5 = new wxStaticText(this, wxID_ANY, _("Constructor arguments:"), wxDefaultPosition, wxDefaultSize, 0, _T("wxID_ANY"));
-    FlexGridSizer2->Add(StaticText5, 1, wxALIGN_CENTER_VERTICAL, 5);
+    FlexGridSizer4->Add(m_ScopeHandlers, 1, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
+    FlexGridSizer2->Add(FlexGridSizer4, 0, wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 0);
+    StaticText5 = new wxStaticText(this, ID_STATICTEXT5, _("Constructor arguments:"), wxDefaultPosition, wxDefaultSize, 0, _T("ID_STATICTEXT5"));
+    FlexGridSizer2->Add(StaticText5, 1, wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL, 5);
     FlexGridSizer3 = new wxFlexGridSizer(0, 2, 0, 10);
     FlexGridSizer3->AddGrowableCol(0);
-    FlexGridSizer3->AddGrowableCol(1);
     m_CtorParent = new wxCheckBox(this, ID_CHECKBOX5, _("Parent"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, _T("ID_CHECKBOX5"));
     m_CtorParent->SetValue(true);
-    FlexGridSizer3->Add(m_CtorParent, 1, wxEXPAND, 5);
+    FlexGridSizer3->Add(m_CtorParent, 0, wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
     m_CtorParentDef = new wxCheckBox(this, ID_CHECKBOX9, _("Def. value"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, _T("ID_CHECKBOX9"));
     m_CtorParentDef->SetValue(false);
-    FlexGridSizer3->Add(m_CtorParentDef, 1, wxEXPAND, 5);
+    FlexGridSizer3->Add(m_CtorParentDef, 1, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
     m_CtorId = new wxCheckBox(this, ID_CHECKBOX6, _("Id"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, _T("ID_CHECKBOX6"));
     m_CtorId->SetValue(true);
-    FlexGridSizer3->Add(m_CtorId, 1, wxEXPAND, 5);
+    FlexGridSizer3->Add(m_CtorId, 0, wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
     m_CtorIdDef = new wxCheckBox(this, ID_CHECKBOX10, _("Def. value"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, _T("ID_CHECKBOX10"));
     m_CtorIdDef->SetValue(true);
-    FlexGridSizer3->Add(m_CtorIdDef, 1, wxEXPAND, 5);
+    FlexGridSizer3->Add(m_CtorIdDef, 1, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
     m_CtorPos = new wxCheckBox(this, ID_CHECKBOX7, _("Position"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, _T("ID_CHECKBOX7"));
     m_CtorPos->SetValue(false);
-    FlexGridSizer3->Add(m_CtorPos, 1, wxEXPAND, 5);
+    FlexGridSizer3->Add(m_CtorPos, 1, wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
     m_CtorPosDef = new wxCheckBox(this, ID_CHECKBOX11, _("Def. value"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, _T("ID_CHECKBOX11"));
     m_CtorPosDef->SetValue(true);
     m_CtorPosDef->Disable();
-    FlexGridSizer3->Add(m_CtorPosDef, 1, wxEXPAND, 5);
+    FlexGridSizer3->Add(m_CtorPosDef, 1, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
     m_CtorSize = new wxCheckBox(this, ID_CHECKBOX8, _("Size"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, _T("ID_CHECKBOX8"));
     m_CtorSize->SetValue(false);
-    FlexGridSizer3->Add(m_CtorSize, 1, wxEXPAND, 5);
+    FlexGridSizer3->Add(m_CtorSize, 1, wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
     m_CtorSizeDef = new wxCheckBox(this, ID_CHECKBOX12, _("Def. value"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, _T("ID_CHECKBOX12"));
     m_CtorSizeDef->SetValue(true);
     m_CtorSizeDef->Disable();
-    FlexGridSizer3->Add(m_CtorSizeDef, 1, wxEXPAND, 5);
-    FlexGridSizer2->Add(FlexGridSizer3, 1, wxEXPAND, 5);
-    StaticText6 = new wxStaticText(this, wxID_ANY, _("Custom arguments:"), wxDefaultPosition, wxDefaultSize, 0, _T("wxID_ANY"));
-    FlexGridSizer2->Add(StaticText6, 1, wxALIGN_CENTER_VERTICAL, 5);
+    FlexGridSizer3->Add(m_CtorSizeDef, 1, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
+    FlexGridSizer2->Add(FlexGridSizer3, 1, wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
+    StaticText6 = new wxStaticText(this, ID_STATICTEXT6, _("Custom arguments:"), wxDefaultPosition, wxDefaultSize, 0, _T("ID_STATICTEXT6"));
+    FlexGridSizer2->Add(StaticText6, 1, wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL, 5);
     m_CtorCustom = new wxTextCtrl(this, ID_TEXTCTRL7, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, _T("ID_TEXTCTRL7"));
-    FlexGridSizer2->Add(m_CtorCustom, 1, wxEXPAND, 5);
-    m_AdvancedOptionsSizer->Add(FlexGridSizer2, 1, wxEXPAND, 5);
+    FlexGridSizer2->Add(m_CtorCustom, 1, wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
+    m_AdvancedOptionsSizer->Add(FlexGridSizer2, 1, wxALL|wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
     m_UseFwdDecl = new wxCheckBox(this, ID_CHECKBOX14, _("Use forward declarations"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, _T("ID_CHECKBOX14"));
     m_UseFwdDecl->SetValue(false);
-    m_AdvancedOptionsSizer->Add(m_UseFwdDecl, 0, wxTOP|wxEXPAND, 5);
-    m_UseI18n = new wxCheckBox(this, ID_CHECKBOX15, _("Use internationalisation (translatable applications)"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, _T("ID_CHECKBOX15"));
-    m_UseI18n->SetValue(true);
-    m_AdvancedOptionsSizer->Add(m_UseI18n, 0, wxTOP|wxEXPAND, 5);
+    m_AdvancedOptionsSizer->Add(m_UseFwdDecl, 0, wxLEFT|wxRIGHT|wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
     m_AddWxs = new wxCheckBox(this, ID_CHECKBOX13, _("Add wxs file to project"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator, _T("ID_CHECKBOX13"));
-    m_AddWxs->SetValue(true);
-    m_AdvancedOptionsSizer->Add(m_AddWxs, 0, wxTOP|wxEXPAND, 5);
-    m_RootSizer->Add(m_AdvancedOptionsSizer, 0, wxLEFT|wxRIGHT|wxEXPAND, 5);
+    m_AddWxs->SetValue(false);
+    m_AdvancedOptionsSizer->Add(m_AddWxs, 0, wxBOTTOM|wxLEFT|wxRIGHT|wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
+    m_RootSizer->Add(m_AdvancedOptionsSizer, 0, wxLEFT|wxRIGHT|wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
+    m_RootSizer->Add(300,5,0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
     StdDialogButtonSizer1 = new wxStdDialogButtonSizer();
     StdDialogButtonSizer1->AddButton(new wxButton(this, wxID_OK, wxEmptyString));
     StdDialogButtonSizer1->AddButton(new wxButton(this, wxID_CANCEL, wxEmptyString));
     StdDialogButtonSizer1->Realize();
-    m_RootSizer->Add(StdDialogButtonSizer1, 0, wxTOP|wxALIGN_CENTER_HORIZONTAL, 5);
+    m_RootSizer->Add(StdDialogButtonSizer1, 0, wxBOTTOM|wxLEFT|wxRIGHT|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
     SetSizer(m_RootSizer);
     m_RootSizer->Fit(this);
     m_RootSizer->SetSizeHints(this);
-    Center();
 
-    Connect(ID_TEXTCTRL1,wxEVT_COMMAND_TEXT_UPDATED,wxCommandEventHandler(wxsNewWindowDlg::OnClassChanged));
-    Connect(ID_TEXTCTRL2,wxEVT_COMMAND_TEXT_UPDATED,wxCommandEventHandler(wxsNewWindowDlg::OnHeaderChanged));
-    Connect(ID_TEXTCTRL3,wxEVT_COMMAND_TEXT_UPDATED,wxCommandEventHandler(wxsNewWindowDlg::OnSourceChanged));
-    Connect(ID_CHECKBOX1,wxEVT_COMMAND_CHECKBOX_CLICKED,wxCommandEventHandler(wxsNewWindowDlg::OnUseXrcChange));
-    Connect(ID_TEXTCTRL4,wxEVT_COMMAND_TEXT_UPDATED,wxCommandEventHandler(wxsNewWindowDlg::OnXrcChanged));
-    Connect(ID_BUTTON1,wxEVT_COMMAND_BUTTON_CLICKED,wxCommandEventHandler(wxsNewWindowDlg::OnAdvOpsClick));
-    Connect(ID_CHECKBOX2,wxEVT_COMMAND_CHECKBOX_CLICKED,wxCommandEventHandler(wxsNewWindowDlg::OnUsePCHClick));
-    Connect(ID_CHECKBOX4,wxEVT_COMMAND_CHECKBOX_CLICKED,wxCommandEventHandler(wxsNewWindowDlg::OnUseInitFuncClick));
-    Connect(ID_BUTTON2,wxEVT_COMMAND_BUTTON_CLICKED,wxCommandEventHandler(wxsNewWindowDlg::OnScopeIdsClick));
-    Connect(ID_BUTTON3,wxEVT_COMMAND_BUTTON_CLICKED,wxCommandEventHandler(wxsNewWindowDlg::OnScopeMembersClick));
-    Connect(ID_BUTTON4,wxEVT_COMMAND_BUTTON_CLICKED,wxCommandEventHandler(wxsNewWindowDlg::OnScopeHandlersClick));
-    Connect(ID_CHECKBOX5,wxEVT_COMMAND_CHECKBOX_CLICKED,wxCommandEventHandler(wxsNewWindowDlg::OnCtorParentClick));
-    Connect(ID_CHECKBOX9,wxEVT_COMMAND_CHECKBOX_CLICKED,wxCommandEventHandler(wxsNewWindowDlg::OnCtorParentDefClick));
-    Connect(ID_CHECKBOX6,wxEVT_COMMAND_CHECKBOX_CLICKED,wxCommandEventHandler(wxsNewWindowDlg::OnCtorIdClick));
-    Connect(ID_CHECKBOX10,wxEVT_COMMAND_CHECKBOX_CLICKED,wxCommandEventHandler(wxsNewWindowDlg::OnCtorIdDefClick));
-    Connect(ID_CHECKBOX7,wxEVT_COMMAND_CHECKBOX_CLICKED,wxCommandEventHandler(wxsNewWindowDlg::OnCtorPosClick));
-    Connect(ID_CHECKBOX11,wxEVT_COMMAND_CHECKBOX_CLICKED,wxCommandEventHandler(wxsNewWindowDlg::OnCtorPosDefClick));
-    Connect(ID_CHECKBOX8,wxEVT_COMMAND_CHECKBOX_CLICKED,wxCommandEventHandler(wxsNewWindowDlg::OnCtorSizeClick));
-    Connect(ID_CHECKBOX12,wxEVT_COMMAND_CHECKBOX_CLICKED,wxCommandEventHandler(wxsNewWindowDlg::OnCtorSizeDefClick));
+    Connect(ID_TEXTCTRL1,wxEVT_COMMAND_TEXT_UPDATED,(wxObjectEventFunction)&wxsNewWindowDlg::OnClassChanged);
+    Connect(ID_TEXTCTRL2,wxEVT_COMMAND_TEXT_UPDATED,(wxObjectEventFunction)&wxsNewWindowDlg::OnHeaderChanged);
+    Connect(ID_TEXTCTRL3,wxEVT_COMMAND_TEXT_UPDATED,(wxObjectEventFunction)&wxsNewWindowDlg::OnSourceChanged);
+    Connect(ID_CHECKBOX1,wxEVT_COMMAND_CHECKBOX_CLICKED,(wxObjectEventFunction)&wxsNewWindowDlg::OnUseXrcChange);
+    Connect(ID_TEXTCTRL4,wxEVT_COMMAND_TEXT_UPDATED,(wxObjectEventFunction)&wxsNewWindowDlg::OnXrcChanged);
+    Connect(ID_BUTTON1,wxEVT_COMMAND_BUTTON_CLICKED,(wxObjectEventFunction)&wxsNewWindowDlg::OnAdvOpsClick);
+    Connect(ID_CHECKBOX2,wxEVT_COMMAND_CHECKBOX_CLICKED,(wxObjectEventFunction)&wxsNewWindowDlg::OnUsePCHClick);
+    Connect(ID_CHECKBOX4,wxEVT_COMMAND_CHECKBOX_CLICKED,(wxObjectEventFunction)&wxsNewWindowDlg::OnUseInitFuncClick);
+    Connect(ID_BUTTON2,wxEVT_COMMAND_BUTTON_CLICKED,(wxObjectEventFunction)&wxsNewWindowDlg::OnScopeIdsClick);
+    Connect(ID_BUTTON3,wxEVT_COMMAND_BUTTON_CLICKED,(wxObjectEventFunction)&wxsNewWindowDlg::OnScopeMembersClick);
+    Connect(ID_BUTTON4,wxEVT_COMMAND_BUTTON_CLICKED,(wxObjectEventFunction)&wxsNewWindowDlg::OnScopeHandlersClick);
+    Connect(ID_CHECKBOX5,wxEVT_COMMAND_CHECKBOX_CLICKED,(wxObjectEventFunction)&wxsNewWindowDlg::OnCtorParentClick);
+    Connect(ID_CHECKBOX9,wxEVT_COMMAND_CHECKBOX_CLICKED,(wxObjectEventFunction)&wxsNewWindowDlg::OnCtorParentDefClick);
+    Connect(ID_CHECKBOX6,wxEVT_COMMAND_CHECKBOX_CLICKED,(wxObjectEventFunction)&wxsNewWindowDlg::OnCtorIdClick);
+    Connect(ID_CHECKBOX10,wxEVT_COMMAND_CHECKBOX_CLICKED,(wxObjectEventFunction)&wxsNewWindowDlg::OnCtorIdDefClick);
+    Connect(ID_CHECKBOX7,wxEVT_COMMAND_CHECKBOX_CLICKED,(wxObjectEventFunction)&wxsNewWindowDlg::OnCtorPosClick);
+    Connect(ID_CHECKBOX11,wxEVT_COMMAND_CHECKBOX_CLICKED,(wxObjectEventFunction)&wxsNewWindowDlg::OnCtorPosDefClick);
+    Connect(ID_CHECKBOX8,wxEVT_COMMAND_CHECKBOX_CLICKED,(wxObjectEventFunction)&wxsNewWindowDlg::OnCtorSizeClick);
+    Connect(ID_CHECKBOX12,wxEVT_COMMAND_CHECKBOX_CLICKED,(wxObjectEventFunction)&wxsNewWindowDlg::OnCtorSizeDefClick);
     //*)
 
     ConfigManager* Cfg = Manager::Get()->GetConfigManager(_T("wxsmith"));
@@ -336,7 +335,6 @@ wxsNewWindowDlg::wxsNewWindowDlg(wxWindow* parent,const wxString& ResType,wxsPro
     m_ScopeMembersVal = (wxsItemRes::NewResourceParams::Scope)Cfg->ReadInt(_T("/newresource/scopemembers"),(int)wxsItemRes::NewResourceParams::Public);
     m_ScopeHandlersVal = (wxsItemRes::NewResourceParams::Scope)Cfg->ReadInt(_T("/newresource/scopehandlers"),(int)wxsItemRes::NewResourceParams::Private);
     m_UseFwdDecl->SetValue(Cfg->ReadBool(_T("/newresource/usefwddecl"),m_UseFwdDecl->GetValue()));
-    m_UseI18n->SetValue(Cfg->ReadBool(_T("/newresource/usei18n"),m_UseI18n->GetValue()));
     m_PchGuard->SetValue(Cfg->Read(_T("/newresource/pchguard"),m_PchGuard->GetValue()));
     UpdateScopeButtons();
     OnUseXrcChange(event);
@@ -351,14 +349,14 @@ wxsNewWindowDlg::~wxsNewWindowDlg()
     //*)
 }
 
-void wxsNewWindowDlg::OnCancel(cb_unused wxCommandEvent& event)
+void wxsNewWindowDlg::OnCancel(wxCommandEvent& event)
 {
     EndModal(wxID_CANCEL);
 }
 
-void wxsNewWindowDlg::OnCreate(cb_unused wxCommandEvent& event)
+void wxsNewWindowDlg::OnCreate(wxCommandEvent& event)
 {
-    bool CreateXrc = m_UseXrc->GetValue();
+	bool CreateXrc = m_UseXrc->GetValue();
     cbProject* cbProj = m_Project->GetCBProject();
 
     wxsItemRes::NewResourceParams Params;
@@ -385,7 +383,6 @@ void wxsNewWindowDlg::OnCreate(cb_unused wxCommandEvent& event)
     Params.ScopeMembers   = m_ScopeMembersVal;
     Params.ScopeHandlers  = m_ScopeHandlersVal;
     Params.UseFwdDecl     = m_UseFwdDecl->GetValue();
-    Params.UseI18n        = m_UseI18n->GetValue();
     Params.PchGuard       = m_PchGuard->GetValue();
 
     // Need to do some checks
@@ -437,7 +434,6 @@ void wxsNewWindowDlg::OnCreate(cb_unused wxCommandEvent& event)
         {
             case wxCANCEL: return;
             case wxNO: Params.GenHdr = false; break;
-            default: return; // Should never come here
         }
     }
 
@@ -450,7 +446,6 @@ void wxsNewWindowDlg::OnCreate(cb_unused wxCommandEvent& event)
         {
             case wxCANCEL: return;
             case wxNO: Params.GenSrc = false; break;
-            default: return; // Should never come here
         }
     }
 
@@ -474,10 +469,6 @@ void wxsNewWindowDlg::OnCreate(cb_unused wxCommandEvent& event)
     if ( m_Type == _T("wxDialog") )
     {
         NewResource = new wxsDialogRes(m_Project);
-    }
-    else if ( m_Type == _T("wxScrollingDialog") )
-    {
-        NewResource = new wxsScrollingDialogRes(m_Project);
     }
     else if ( m_Type == _T("wxFrame") )
     {
@@ -558,7 +549,7 @@ void wxsNewWindowDlg::OnCreate(cb_unused wxCommandEvent& event)
             Manager::Get()->GetProjectManager()->AddFileToProject(Params.Wxs,cbProj,Targets);
         }
     }
-    Manager::Get()->GetProjectManager()->GetUI().RebuildTree();
+    Manager::Get()->GetProjectManager()->RebuildTree();
 
     // Opening editor for this resource
     NewResource->EditOpen();
@@ -584,13 +575,12 @@ void wxsNewWindowDlg::OnCreate(cb_unused wxCommandEvent& event)
     Cfg->Write(_T("/newresource/scopehandlers"),(int)m_ScopeHandlersVal);
     Cfg->Write(_T("/newresource/sourcedirectory"),m_SourceDirectory);
     Cfg->Write(_T("/newresource/usefwddecl"),m_UseFwdDecl->GetValue());
-    Cfg->Write(_T("/newresource/usei18n"),m_UseI18n->GetValue());
     Cfg->Write(_T("/newresource/pchguard"),m_PchGuard->GetValue());
 
     EndModal(wxID_OK);
 }
 
-void wxsNewWindowDlg::OnClassChanged(cb_unused wxCommandEvent& event)
+void wxsNewWindowDlg::OnClassChanged(wxCommandEvent& event)
 {
     if ( m_BlockText ) return;
     m_BlockText = true;
@@ -600,7 +590,7 @@ void wxsNewWindowDlg::OnClassChanged(cb_unused wxCommandEvent& event)
     m_BlockText = false;
 }
 
-void wxsNewWindowDlg::OnSourceChanged(cb_unused wxCommandEvent& event)
+void wxsNewWindowDlg::OnSourceChanged(wxCommandEvent& event)
 {
     if ( m_BlockText ) return;
     m_BlockText = true;
@@ -608,7 +598,7 @@ void wxsNewWindowDlg::OnSourceChanged(cb_unused wxCommandEvent& event)
     m_BlockText = false;
 }
 
-void wxsNewWindowDlg::OnHeaderChanged(cb_unused wxCommandEvent& event)
+void wxsNewWindowDlg::OnHeaderChanged(wxCommandEvent& event)
 {
     if ( m_BlockText ) return;
     m_BlockText = true;
@@ -626,7 +616,7 @@ void wxsNewWindowDlg::OnHeaderChanged(cb_unused wxCommandEvent& event)
     m_BlockText = false;
 }
 
-void wxsNewWindowDlg::OnUseXrcChange(cb_unused wxCommandEvent& event)
+void wxsNewWindowDlg::OnUseXrcChange(wxCommandEvent& event)
 {
     m_Xrc->Enable(m_UseXrc->GetValue());
     m_XRCAutoload->Enable(m_UseXrc->GetValue() && m_AppManaged);
@@ -655,7 +645,7 @@ void wxsNewWindowDlg::OnUseXrcChange(cb_unused wxCommandEvent& event)
     }
 }
 
-void wxsNewWindowDlg::OnXrcChanged(cb_unused wxCommandEvent& event)
+void wxsNewWindowDlg::OnXrcChanged(wxCommandEvent& event)
 {
     if ( m_BlockText ) return;
     m_BlockText = true;
@@ -667,9 +657,9 @@ wxString wxsNewWindowDlg::DetectPchFile()
 {
     // Searching for files that are good candidates for pch files
     cbProject* Proj = m_Project->GetCBProject();
-    for (FilesList::iterator it = Proj->GetFilesList().begin(); it != Proj->GetFilesList().end(); ++it)
+    for ( int i=0; i<Proj->GetFilesCount(); i++ )
     {
-        ProjectFile* File = *it;
+        ProjectFile* File = Proj->GetFile(i);
         if ( File && File->file.GetExt()==_T("h") && File->compile )
         {
             int Index = m_Pch->Append(File->relativeFilename);
@@ -700,33 +690,33 @@ wxString wxsNewWindowDlg::DetectPchFile()
     return m_Pch->GetStringSelection();
 }
 
-void wxsNewWindowDlg::OnUsePCHClick(cb_unused wxCommandEvent& event)
+void wxsNewWindowDlg::OnUsePCHClick(wxCommandEvent& event)
 {
     m_Pch->Enable(m_UsePCH->GetValue());
     m_PchGuard->Enable(m_UsePCH->GetValue());
 }
 
-void wxsNewWindowDlg::OnCtorParentClick(cb_unused wxCommandEvent& event)
+void wxsNewWindowDlg::OnCtorParentClick(wxCommandEvent& event)
 {
     m_CtorParentDef->Enable(m_CtorParent->GetValue());
 }
 
-void wxsNewWindowDlg::OnCtorIdClick(cb_unused wxCommandEvent& event)
+void wxsNewWindowDlg::OnCtorIdClick(wxCommandEvent& event)
 {
     m_CtorIdDef->Enable(m_CtorId->GetValue());
 }
 
-void wxsNewWindowDlg::OnCtorPosClick(cb_unused wxCommandEvent& event)
+void wxsNewWindowDlg::OnCtorPosClick(wxCommandEvent& event)
 {
     m_CtorPosDef->Enable(m_CtorPos->GetValue());
 }
 
-void wxsNewWindowDlg::OnCtorSizeClick(cb_unused wxCommandEvent& event)
+void wxsNewWindowDlg::OnCtorSizeClick(wxCommandEvent& event)
 {
     m_CtorSizeDef->Enable(m_CtorSize->GetValue());
 }
 
-void wxsNewWindowDlg::OnCtorParentDefClick(cb_unused wxCommandEvent& event)
+void wxsNewWindowDlg::OnCtorParentDefClick(wxCommandEvent& event)
 {
     if ( m_CtorParentDef->GetValue() )
     {
@@ -739,7 +729,7 @@ void wxsNewWindowDlg::OnCtorParentDefClick(cb_unused wxCommandEvent& event)
     }
 }
 
-void wxsNewWindowDlg::OnCtorIdDefClick(cb_unused wxCommandEvent& event)
+void wxsNewWindowDlg::OnCtorIdDefClick(wxCommandEvent& event)
 {
     if ( m_CtorIdDef->GetValue() )
     {
@@ -752,7 +742,7 @@ void wxsNewWindowDlg::OnCtorIdDefClick(cb_unused wxCommandEvent& event)
     }
 }
 
-void wxsNewWindowDlg::OnCtorPosDefClick(cb_unused wxCommandEvent& event)
+void wxsNewWindowDlg::OnCtorPosDefClick(wxCommandEvent& event)
 {
     if ( m_CtorPosDef->GetValue() )
     {
@@ -765,7 +755,7 @@ void wxsNewWindowDlg::OnCtorPosDefClick(cb_unused wxCommandEvent& event)
     }
 }
 
-void wxsNewWindowDlg::OnCtorSizeDefClick(cb_unused wxCommandEvent& event)
+void wxsNewWindowDlg::OnCtorSizeDefClick(wxCommandEvent& event)
 {
     if ( m_CtorSizeDef->GetValue() )
     {
@@ -778,12 +768,12 @@ void wxsNewWindowDlg::OnCtorSizeDefClick(cb_unused wxCommandEvent& event)
     }
 }
 
-void wxsNewWindowDlg::OnUseInitFuncClick(cb_unused wxCommandEvent& event)
+void wxsNewWindowDlg::OnUseInitFuncClick(wxCommandEvent& event)
 {
     m_InitFunc->Enable(m_UseInitFunc->GetValue());
 }
 
-void wxsNewWindowDlg::OnAdvOpsClick(cb_unused wxCommandEvent& event)
+void wxsNewWindowDlg::OnAdvOpsClick(wxCommandEvent& event)
 {
     Freeze();
     m_AdvOpsShown = !m_AdvOpsShown;
@@ -806,7 +796,7 @@ void wxsNewWindowDlg::OnAdvOpsClick(cb_unused wxCommandEvent& event)
     Thaw();
 }
 
-bool wxsNewWindowDlg::PrepareResource(cb_unused wxsItemRes* Res,wxsItemResData* Data)
+bool wxsNewWindowDlg::PrepareResource(wxsItemRes* Res,wxsItemResData* Data)
 {
     wxsBaseProperties* Props = Data->GetRootItem()->GetBaseProps();
 
@@ -818,37 +808,34 @@ bool wxsNewWindowDlg::PrepareResource(cb_unused wxsItemRes* Res,wxsItemResData* 
     return true;
 }
 
-void wxsNewWindowDlg::OnScopeIdsClick(cb_unused wxCommandEvent& event)
+void wxsNewWindowDlg::OnScopeIdsClick(wxCommandEvent& event)
 {
     switch ( m_ScopeIdsVal )
     {
         case wxsItemRes::NewResourceParams::Public:    m_ScopeIdsVal = wxsItemRes::NewResourceParams::Protected; break;
         case wxsItemRes::NewResourceParams::Protected: m_ScopeIdsVal = wxsItemRes::NewResourceParams::Private; break;
-        case wxsItemRes::NewResourceParams::Private: // fall-through
         default:                                       m_ScopeIdsVal = wxsItemRes::NewResourceParams::Public; break;
     }
     UpdateScopeButtons();
 }
 
-void wxsNewWindowDlg::OnScopeMembersClick(cb_unused wxCommandEvent& event)
+void wxsNewWindowDlg::OnScopeMembersClick(wxCommandEvent& event)
 {
     switch ( m_ScopeMembersVal )
     {
         case wxsItemRes::NewResourceParams::Public:    m_ScopeMembersVal = wxsItemRes::NewResourceParams::Protected; break;
         case wxsItemRes::NewResourceParams::Protected: m_ScopeMembersVal = wxsItemRes::NewResourceParams::Private; break;
-        case wxsItemRes::NewResourceParams::Private: // fall-through
         default:                                       m_ScopeMembersVal = wxsItemRes::NewResourceParams::Public; break;
     }
     UpdateScopeButtons();
 }
 
-void wxsNewWindowDlg::OnScopeHandlersClick(cb_unused wxCommandEvent& event)
+void wxsNewWindowDlg::OnScopeHandlersClick(wxCommandEvent& event)
 {
     switch ( m_ScopeHandlersVal )
     {
         case wxsItemRes::NewResourceParams::Public:    m_ScopeHandlersVal = wxsItemRes::NewResourceParams::Protected; break;
         case wxsItemRes::NewResourceParams::Protected: m_ScopeHandlersVal = wxsItemRes::NewResourceParams::Private; break;
-        case wxsItemRes::NewResourceParams::Private: // fall-through
         default:                                       m_ScopeHandlersVal = wxsItemRes::NewResourceParams::Public; break;
     }
     UpdateScopeButtons();
@@ -860,21 +847,18 @@ void wxsNewWindowDlg::UpdateScopeButtons()
     {
         case wxsItemRes::NewResourceParams::Public:    m_ScopeIds->SetLabel(_T("Public")); break;
         case wxsItemRes::NewResourceParams::Protected: m_ScopeIds->SetLabel(_T("Protected")); break;
-        case wxsItemRes::NewResourceParams::Private: // fall-through
         default:                                       m_ScopeIds->SetLabel(_T("Private")); break;
     }
     switch ( m_ScopeMembersVal )
     {
         case wxsItemRes::NewResourceParams::Public:    m_ScopeMembers->SetLabel(_T("Public")); break;
         case wxsItemRes::NewResourceParams::Protected: m_ScopeMembers->SetLabel(_T("Protected")); break;
-        case wxsItemRes::NewResourceParams::Private: // fall-through
         default:                                       m_ScopeMembers->SetLabel(_T("Private")); break;
     }
     switch ( m_ScopeHandlersVal )
     {
         case wxsItemRes::NewResourceParams::Public:    m_ScopeHandlers->SetLabel(_T("Public")); break;
         case wxsItemRes::NewResourceParams::Protected: m_ScopeHandlers->SetLabel(_T("Protected")); break;
-        case wxsItemRes::NewResourceParams::Private: // fall-through
         default:                                       m_ScopeHandlers->SetLabel(_T("Private")); break;
     }
 }

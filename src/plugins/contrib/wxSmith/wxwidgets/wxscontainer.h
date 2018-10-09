@@ -28,8 +28,6 @@
 #include "wxsbaseproperties.h"
 #include "wxsflags.h"
 
-#include <prep.h>
-
 using namespace wxsFlags;
 
 /** \brief Container is a class which represents widget that can
@@ -39,13 +37,16 @@ class wxsContainer: public wxsParent
 {
     public:
 
+        /** \brief Default properties flags used by widgets */
+        static const long flContainer = flVariable|flId|flPosition|flSize|flEnabled|flFocused|flHidden|flColours|flToolTip|flFont|flHelpText|flSubclass|flMinMaxSize|flExtraCode;
+
         /** \brief Ctor
-         *  \param Data data management object handling this item
+         *  \param Data data managment object handling this item
          *  \param Info pointer to static widget info
          *  \param EventArray pointer to static set of events
          *  \param StyleSet set of used styles, if 0, this widget won't
          *         provide styles by default
-         *  \param PropertiesFlags flags filtering set base properties
+         *  \param PropertiesFlags flags filtering sed base properties
          *         (see wxsBaseProperties for details)
          */
         wxsContainer(
@@ -76,13 +77,13 @@ class wxsContainer: public wxsParent
          * All QPPChild panels will be added before additional panels
          * added by widget.
          */
-        virtual void OnAddContainerQPP(cb_unused wxsAdvQPP* QPP) { }
+        virtual void OnAddContainerQPP(wxsAdvQPP* QPP) { }
 
         /** \brief Checking if can add child item
          *
-         * This function is by default implemented inside wxsContainer.
+         * This function is by fedault implemented inside wxsContainer.
          * In case of some limitations made for children (like inside
-         * wxSplitterWindow), this function should be overridden
+         * wxSplitterWindow), this functino should be overridden
          * to avoid invalidating item.
          *
          * Default implementation matches few rules:

@@ -112,8 +112,7 @@ static SQInteger _blob__typeof(HSQUIRRELVM v)
 	return 1;
 }
 
-// C::B patch: Make the compiler happy by commenting unused variables
-static SQInteger _blob_releasehook(SQUserPointer p, SQInteger /*size*/)
+static SQInteger _blob_releasehook(SQUserPointer p, SQInteger size)
 {
 	SQBlob *self = (SQBlob*)p;
 	delete self;
@@ -237,6 +236,7 @@ SQUserPointer sqstd_createblob(HSQUIRRELVM v, SQInteger size)
 		SQBlob *blob = NULL;
 		if(SQ_SUCCEEDED(sq_call(v,2,SQTrue,SQFalse))
 			&& SQ_SUCCEEDED(sq_getinstanceup(v,-1,(SQUserPointer *)&blob,(SQUserPointer)SQSTD_BLOB_TYPE_TAG))) {
+			sq_remove(v,-2);
 			sq_remove(v,-2);
 			return blob->GetBuf();
 		}

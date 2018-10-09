@@ -10,21 +10,17 @@
 #include "sdk_precomp.h"
 #include "scriptsecuritywarningdlg.h"
 
-#ifndef CB_PRECOMP
-    #include <wx/button.h>
-    #include <wx/combobox.h>
-    #include <wx/intl.h>
-    #include <wx/settings.h>
-    #include <wx/stattext.h>
-    #include <wx/textctrl.h>
-    #include <wx/xrc/xmlres.h>
-#endif // CB_PRECOMP
+#include <wx/xrc/xmlres.h>
+#include <wx/intl.h>
+#include <wx/settings.h>
+#include <wx/stattext.h>
+#include <wx/textctrl.h>
+#include <wx/combobox.h>
 
 ScriptSecurityWarningDlg::ScriptSecurityWarningDlg(wxWindow* parent, const wxString& operation, const wxString& command)
 {
     //ctor
-    wxXmlResource::Get()->LoadObject(this, parent, _T("ScriptingSecurityDlg"),_T("wxScrollingDialog"));
-    XRCCTRL(*this, "wxID_OK", wxButton)->SetDefault();
+    wxXmlResource::Get()->LoadDialog(this, parent, _T("ScriptingSecurityDlg"));
 
     wxColour c = wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE);
     XRCCTRL(*this, "txtCommand", wxTextCtrl)->SetBackgroundColour(c);
@@ -45,5 +41,5 @@ ScriptSecurityResponse ScriptSecurityWarningDlg::GetResponse()
 
 void ScriptSecurityWarningDlg::EndModal(int retCode)
 {
-    wxScrollingDialog::EndModal(retCode);
+    wxDialog::EndModal(retCode);
 }

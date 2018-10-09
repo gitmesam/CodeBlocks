@@ -6,20 +6,23 @@
 #ifndef XTRA_RES_H
 #define XTRA_RES_H
 
+#include <wx/wxprec.h>
 #include <wx/xrc/xmlres.h>
-#include <wx/xrc/xh_dlg.h>
 #include <wx/toolbar.h>
 
-#include "settings.h" // DLLIMPORT
+#ifdef __BORLANDC__
+    #pragma hdrstop
+#endif
+
 
 class wxXmlResourceHandler;
 
-class DLLIMPORT wxToolBarAddOnXmlHandler : public wxXmlResourceHandler
+class wxToolBarAddOnXmlHandler : public wxXmlResourceHandler
 {
     public:
         wxToolBarAddOnXmlHandler();
-        wxObject *DoCreateResource() override;
-        bool CanHandle(wxXmlNode *node) override;
+        virtual wxObject *DoCreateResource();
+        virtual bool CanHandle(wxXmlNode *node);
 
     protected:
         bool m_isInside;
@@ -29,16 +32,6 @@ class DLLIMPORT wxToolBarAddOnXmlHandler : public wxXmlResourceHandler
         wxBitmap GetCenteredBitmap(const wxString& param = wxT("bitmap"),
             const wxArtClient& defaultArtClient = wxART_OTHER,
             wxSize size = wxDefaultSize);
-};
-
-class DLLIMPORT wxScrollingDialogXmlHandler : public wxDialogXmlHandler
-{
-    DECLARE_DYNAMIC_CLASS(wxScrollingDialogXmlHandler)
-
-public:
-    wxScrollingDialogXmlHandler();
-    wxObject *DoCreateResource() override;
-    bool CanHandle(wxXmlNode *node) override;
 };
 
 #endif

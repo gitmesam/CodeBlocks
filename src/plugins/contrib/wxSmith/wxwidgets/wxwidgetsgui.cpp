@@ -83,9 +83,7 @@ void wxWidgetsGUI::OnRebuildApplicationCode()
     {
         case wxsCPP: NewCode = _T("\nbool wxsOK = true;\n")
                                _T("wxInitAllImageHandlers();\n"); break;
-        case wxsUnknownLanguage: // fall-through
-        default:
-            break;
+        default:;
     }
 
     bool InitAllXRCHandlers = m_CallInitAll && ( IsAnyXRC || !m_CallInitAllNecessary );
@@ -94,9 +92,7 @@ void wxWidgetsGUI::OnRebuildApplicationCode()
         switch ( m_AppLanguage )
         {
             case wxsCPP: NewCode.Append(_T("wxXmlResource::Get()->InitAllHandlers();\n")); break;
-            case wxsUnknownLanguage: // fall-through
-            default:
-                break;
+            default:;
         }
     }
 
@@ -109,9 +105,7 @@ void wxWidgetsGUI::OnRebuildApplicationCode()
                 NewCode.Append(m_LoadedResources[i]);
                 NewCode.Append(_T("\"));\n"));
                 break;
-            case wxsUnknownLanguage: // fall-through
-            default:
-                break;
+            default:;
         }
     }
 
@@ -124,9 +118,7 @@ void wxWidgetsGUI::OnRebuildApplicationCode()
                 NewCode << MainResPtr->GetAppBuildingCode();
                 NewCode << _T("}\n");
                 break;
-            case wxsUnknownLanguage: // fall-through
-            default:
-                break;
+            default:;
         }
     }
 
@@ -157,9 +149,7 @@ void wxWidgetsGUI::OnRebuildApplicationCode()
                 NewCode << _T("#include \"") << IncludeFile << _T("\"\n");
                 break;
             }
-            case wxsUnknownLanguage: // fall-through
-            default:
-                break;
+            default:;
         }
     }
     if ( InitAllXRCHandlers || m_LoadedResources.Count() )
@@ -167,18 +157,14 @@ void wxWidgetsGUI::OnRebuildApplicationCode()
         switch ( m_AppLanguage )
         {
             case wxsCPP: NewCode.Append(_T("#include <wx/xrc/xmlres.h>\n")); break;
-            case wxsUnknownLanguage: // fall-through
-            default:
-                break;
+            default:;
         }
     }
 
     switch ( m_AppLanguage )
     {
         case wxsCPP: NewCode.Append(_T("#include <wx/image.h>\n")); break;
-        case wxsUnknownLanguage: // fall-through
-        default:
-            break;
+        default:;
     }
 
     wxsCoder::Get()->AddCode(
@@ -316,9 +302,7 @@ bool wxWidgetsGUI::ScanForApp(ProjectFile* File)
             // TODO: Do extra checks of this OnInit
             return true;
         }
-        case wxsUnknownLanguage: // fall-through
-        default:
-            break;
+        default:;
     }
     return false;
 }
@@ -406,9 +390,7 @@ bool wxWidgetsGUI::AddSmithToApp(const wxString& RelativeFileName,wxsCodingLang 
                 wxsCoder::Get()->PutFullCode(FullPath,Source,Encoding,UseBOM);
                 break;
             }
-            case wxsUnknownLanguage: // fall-through
-            default:
-                break;
+            default:;
         }
     }
 
@@ -451,9 +433,7 @@ wxString wxWidgetsGUI::GetAppClassName(const wxString& Source,wxsCodingLang Lang
             if ( Source[Pos] != _T(')') ) return wxEmptyString;
             return ClassName;
         }
-        case wxsUnknownLanguage: // fall-through
-        default:
-            break;
+        default:;
     }
     return wxEmptyString;
 }
@@ -491,8 +471,8 @@ bool wxWidgetsGUI::CreateNewApp(const wxString& FileName)
                 _T("\n")
                 _T("class MyApp : public wxApp\n")
                 _T("{\n")
-                _T("    public:\n")
-                _T("        virtual bool OnInit();\n")
+                _T("	public:\n")
+                _T("		virtual bool OnInit();\n")
                 _T("};\n")
                 _T("\n")
                 _T("IMPLEMENT_APP(MyApp);\n")
@@ -506,9 +486,7 @@ bool wxWidgetsGUI::CreateNewApp(const wxString& FileName)
                 _T("\n"));
             break;
         }
-        case wxsUnknownLanguage: // fall-through
-        default:
-            break;
+        default:;
     }
 
     // Applying default configuration

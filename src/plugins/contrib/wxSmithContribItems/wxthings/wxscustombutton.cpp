@@ -38,7 +38,7 @@ namespace
         _T("jlabenski@gmail.com"),
         _T("http://wxcode.sourceforge.net/showcomp.php?name=wxThings"),
         _T("Contrib"),
-        90,
+        50,
         _T("Button"),
         wxsCPP,
         1, 0,
@@ -123,7 +123,7 @@ void wxsCustomButton::OnBuildCreatingCode()
                 Style = _T("0");
             }
 
-            Codef(_T("%C(%W,%I,%t,%i,%P,%S,%s,%V,%N);\n"),m_Label.wx_str(),&m_Bitmap,wxART_OTHER,Style.wx_str());
+            Codef(_T("%C(%W,%I,%t,%i,%P,%S,%s,%V,%N);\n"),m_Label.c_str(),&m_Bitmap,wxART_OTHER,Style.c_str());
 
             if ( !m_BitmapSelected.IsEmpty() )
             {
@@ -163,13 +163,12 @@ void wxsCustomButton::OnBuildCreatingCode()
             break;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
             wxsCodeMarks::Unknown(_T("wxsCustomButton::OnBuildCreatingCode"),GetLanguage());
     }
 }
 
-wxObject* wxsCustomButton::OnBuildPreview(wxWindow* Parent,cb_unused long Flags)
+wxObject* wxsCustomButton::OnBuildPreview(wxWindow* Parent,long Flags)
 {
     wxCustomButton* Button = new wxCustomButton(
         Parent,
@@ -217,7 +216,7 @@ wxObject* wxsCustomButton::OnBuildPreview(wxWindow* Parent,cb_unused long Flags)
     return Button;
 }
 
-void wxsCustomButton::OnEnumWidgetProperties(cb_unused long Flags)
+void wxsCustomButton::OnEnumWidgetProperties(long Flags)
 {
     WXS_ENUM(wxsCustomButton,m_Type,_("Type"),_T("type"),TypeValues,TypeNames,wxCUSTBUT_BUTTON);
     WXS_BOOL(wxsCustomButton,m_Flat,_("Flat"),_T("flat"),false);

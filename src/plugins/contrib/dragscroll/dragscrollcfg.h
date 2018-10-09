@@ -10,14 +10,14 @@
 #include <wx/button.h>
 #include <wx/checkbox.h>
 #include <wx/choice.h>
+#include <wx/dialog.h>
 #include <wx/intl.h>
 #include <wx/radiobox.h>
 #include <wx/sizer.h>
 #include <wx/slider.h>
 #include <wx/stattext.h>
-#include "scrollingdialog.h"
-//*)
 
+//*)
 #include "configurationpanel.h"
 #include <wx/settings.h>
 
@@ -68,9 +68,8 @@ class cbDragScrollCfg: public cbConfigurationPanel
         int  GetMouseDragKey()           { return MouseKeyChoice->GetSelection(); }
         int  GetMouseDragSensitivity()   { return Sensitivity->GetValue(); }
         int  GetMouseToLineRatio()       { return MouseToLineRatio->GetValue(); }
+        //-int  GetMouseRightKeyCtrl()      { return MouseRightKeyCtrl->GetValue(); } removed
         int  GetMouseContextDelay()      { return MouseContextDelay->GetValue(); }
-        bool GetMouseWheelZoom()         { return MouseWheelZoom->GetValue(); }
-        bool IsLogZoomSizePropagated()   { return PropagateLogZoomSize->GetValue(); }
 
         void SetMouseDragScrollEnabled(bool value)
                 { ScrollEnabled->SetValue(value); }
@@ -86,12 +85,10 @@ class cbDragScrollCfg: public cbConfigurationPanel
                 { Sensitivity->SetValue(value); }
         void SetMouseToLineRatio(int value)
                 { MouseToLineRatio->SetValue(value); }
+        //-void SetMouseRightKeyCtrl(int value)
+        //-        { MouseRightKeyCtrl->SetValue(value); }
         void SetMouseContextDelay(int value)
                 { MouseContextDelay->SetValue(value); }
-        void SetMouseWheelZoom(bool value)
-                { MouseWheelZoom->SetValue(value); }
-        void SetPropagateLogZoomSize(bool value)
-                { PropagateLogZoomSize->SetValue(value); }
 
 	protected:
 
@@ -103,8 +100,7 @@ class cbDragScrollCfg: public cbConfigurationPanel
 		wxCheckBox* ScrollEnabled;
 		wxCheckBox* EditorFocusEnabled;
 		wxCheckBox* MouseFocusEnabled;
-		wxCheckBox* MouseWheelZoom;
-		wxCheckBox* PropagateLogZoomSize;
+        //-wxCheckBox* MouseRightKeyCtrl; removed
 		wxRadioBox* ScrollDirection;
 		wxStaticText* StaticText2;
 		wxChoice* MouseKeyChoice;

@@ -7,9 +7,9 @@
 #define EDITPAIRDLG_H
 
 #include <wx/intl.h>
-#include "scrollingdialog.h"
+#include <wx/dialog.h>
 
-class DLLIMPORT EditPairDlg : public wxScrollingDialog
+class EditPairDlg : public wxDialog
 {
     public:
         enum BrowseMode
@@ -20,9 +20,9 @@ class DLLIMPORT EditPairDlg : public wxScrollingDialog
         };
 
         EditPairDlg(wxWindow* parent, wxString& key, wxString& value, const wxString& title = _("Edit pair"), BrowseMode allowBrowse = bmDisable);
-        ~EditPairDlg() override;
+        virtual ~EditPairDlg();
 		EditPairDlg& operator=(const EditPairDlg&){ return *this; } // just to satisfy script bindings (never used)
-		void EndModal(int retCode) override;
+		virtual void EndModal(int retCode);
     protected:
         void OnUpdateUI(wxUpdateUIEvent& event);
         void OnBrowse(wxCommandEvent& event);

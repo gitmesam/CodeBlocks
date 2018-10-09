@@ -8,14 +8,9 @@
 
 #include "ibaseloader.h"
 
-#include <wx/string.h>
-
 // forward decls
 class cbProject;
 class ProjectFile;
-class TiXmlElement;
-
-class wxArrayString;
 
 class MSVC7Loader : public IBaseLoader
 {

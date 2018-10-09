@@ -30,10 +30,6 @@ if BUILD_OPENFILESLIST
 MAYBE_OPENFILESLIST=openfileslist
 endif
 
-if BUILD_OCCURRENCESHIGHLIGHTING
-MAYBE_OCCURRENCESHIGHLIGHTING=occurrenceshighlighting
-endif
-
 if BUILD_PROJECTSIMPORTER
 MAYBE_PROJECTSIMPORTER=projectsimporter
 endif
@@ -44,10 +40,6 @@ endif
 
 if BUILD_TODO
 MAYBE_TODO=todo
-endif
-
-if BUILD_ABBREVIATIONS
-MAYBE_ABBREVIATIONS=abbreviations
 endif
 
 if BUILD_MANIFEST
@@ -64,15 +56,12 @@ SUBDIRS=$(MAYBE_ASTYLE) \
 		$(MAYBE_SCRIPTEDWIZARD) \
 		$(MAYBE_PROJECTSIMPORTER) \
 		$(MAYBE_OPENFILESLIST) \
-		$(MAYBE_OCCURRENCESHIGHLIGHTING) \
 		$(MAYBE_TODO) \
-		$(MAYBE_ABBREVIATIONS) \
 		$(MAYBE_MANIFEST) \
 		contrib
 # the 'contrib' subdir contains its own filtering
 
-DIST_SUBDIRS = abbreviations \
-		astyle \
+DIST_SUBDIRS = astyle \
 		autosave \
 		classwizard \
 		codecompletion \
@@ -80,14 +69,8 @@ DIST_SUBDIRS = abbreviations \
 		debuggergdb \
 		defaultmimehandler \
 		openfileslist \
-		occurrenceshighlighting \
 		projectsimporter \
 		scriptedwizard \
 		todo \
 		xpmanifest \
 		contrib
-
-EXTRA_DIST = headerguard \
-		loghacker \
-		modpoller \
-		tidycmt

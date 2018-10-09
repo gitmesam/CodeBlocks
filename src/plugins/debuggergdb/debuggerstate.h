@@ -19,46 +19,50 @@ class DebuggerState
         DebuggerState(DebuggerGDB* plugin);
         ~DebuggerState();
 
-        BreakpointsList const & GetBreakpoints() const { return m_Breakpoints; }
+        BreakpointsList& GetBreakpoints(){ return m_Breakpoints; }
 
         bool StartDriver(ProjectBuildTarget* target);
         void StopDriver();
 
-        /// Check so see if Driver exists before getting it
-        bool HasDriver() const;
-
-        /// Will always return a driver, or throw a code assertion error
-        // (to fix multiple bugs in use of GetDriver without checking return value)
+		/// Check so see if Driver exists before getting it
+		bool HasDriver();
+		
+		/// Will always return a driver, or throw a code assertion error
+		// (to fix multiple bugs in use of GetDriver without checking return value)
         DebuggerDriver* GetDriver();
-        const DebuggerDriver* GetDriver() const;
 
         void CleanUp();
 
-        int AddBreakpoint(cb::shared_ptr<DebuggerBreakpoint> bp); // returns -1 if not found
-        cb::shared_ptr<DebuggerBreakpoint> AddBreakpoint(const wxString& file, int line, bool temp = false,
-                                                         const wxString& lineText = wxEmptyString);
-        cb::shared_ptr<DebuggerBreakpoint> AddBreakpoint(const wxString& dataAddr, bool onRead = false,
-                                                         bool onWrite = true);
-        void RemoveBreakpoint(int idx, bool removeFromDriver = true);
-        void RemoveBreakpoint(cb::shared_ptr<DebuggerBreakpoint> bp, bool removeFromDriver = true);
-        void RemoveAllBreakpoints();
+        int AddBreakpoint(DebuggerBreakpoint* bp); // returns -1 if not found
+        int AddBreakpoint(const wxString& file, int line, bool temp = false, const wxString& lineText = wxEmptyString); // returns -1 if not found
+        int AddBreakpoint(const wxString& dataAddr, bool onRead = false, bool onWrite = true); // returns -1 if not found
+        DebuggerBreakpoint* RemoveBreakpoint(const wxString& file, int line, bool deleteit = true);
+        DebuggerBreakpoint* RemoveBreakpoint(int idx, bool deleteit = true);
+        DebuggerBreakpoint* RemoveBreakpoint(DebuggerBreakpoint* bp, bool deleteit = true);
+        void RemoveAllBreakpoints(const wxString& file, bool deleteit = true);
         void RemoveAllProjectBreakpoints(cbProject* prj);
 
         // helpers to keep in sync with the editors
-        void ShiftBreakpoint(cb::shared_ptr<DebuggerBreakpoint> bp, int nroflines);
+        int RemoveBreakpointsRange(const wxString& file, int startline, int endline);
+        void ShiftBreakpoints(const wxString& file, int startline, int nroflines);
 
-        int HasBreakpoint(const wxString& file, int line, bool temp); // returns -1 if not found
-        cb::shared_ptr<DebuggerBreakpoint> GetBreakpoint(int idx);
-        cb::shared_ptr<DebuggerBreakpoint> GetBreakpointByNumber(int num);
-        const cb::shared_ptr<DebuggerBreakpoint> GetBreakpointByNumber(int num) const;
-        void ResetBreakpoint(cb::shared_ptr<DebuggerBreakpoint> bp);
+        int HasBreakpoint(const wxString& file, int line); // returns -1 if not found
+		int HasBreakpoint(const wxString& dataAddr);
+        DebuggerBreakpoint* GetBreakpoint(int idx);
+        DebuggerBreakpoint* GetBreakpointByNumber(int num);
+        void ResetBreakpoint(int idx);
+        void ResetBreakpoint(DebuggerBreakpoint* bp);
         void ApplyBreakpoints();
     protected:
+        void SetupBreakpointIndices();
         wxString ConvertToValidFilename(const wxString& filename);
+        cbProject* FindProjectForFile(const wxString& file);
 
         DebuggerGDB* m_pPlugin;
         DebuggerDriver* m_pDriver;
+        WatchesArray m_Watches;
         BreakpointsList m_Breakpoints;
+        size_t m_BpAutoIndex;
 };
 
 #endif // DEBUGGERSTATE_H

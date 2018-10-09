@@ -156,16 +156,5 @@
                             value=""/>
                 </Keywords>
                 <SampleCode value="lexer_nsis.sample"/>
-                <LanguageAttributes
-                    LineComment=";"
-                    StreamCommentStart="/*"
-                    StreamCommentEnd="*/"
-                    BoxCommentStart="/* "
-                    BoxCommentMid=" * "
-                    BoxCommentEnd=" */"
-                    LexerCommentStyles="1,18"
-                    LexerCharacterStyles=""
-                    LexerStringStyles="2,3,4"
-                    LexerPreprocessorStyles=""/>
 		</Lexer>
 </CodeBlocks_lexer_properties>

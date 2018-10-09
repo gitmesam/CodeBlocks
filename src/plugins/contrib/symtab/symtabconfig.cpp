@@ -36,7 +36,7 @@
 
 /* ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- */
 
-BEGIN_EVENT_TABLE(SymTabConfigDlg, wxScrollingDialog)
+BEGIN_EVENT_TABLE(SymTabConfigDlg, wxDialog)
   EVT_BUTTON(XRCID("btnSearch"),      SymTabConfigDlg::OnSearch)
   EVT_BUTTON(XRCID("btnClose"),       SymTabConfigDlg::OnClose)
   EVT_CHOICE(XRCID("choWhatToDo"),    SymTabConfigDlg::OnWhatToDo)
@@ -65,11 +65,11 @@ int SymTabConfigDlg::Execute()
   {
     // Instantiate and initialise dialog
     SymTabConfigDlgLoaded =
-      wxXmlResource::Get()->LoadObject(this, parent, _T("dlgSymTabConfig"),_T("wxScrollingDialog"));
+      wxXmlResource::Get()->LoadDialog(this, parent, _T("dlgSymTabConfig"));
   }
 
   LoadSettings();
-  return wxScrollingDialog::ShowModal();
+  return wxDialog::ShowModal();
 }// Execute
 
 /* ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- */
@@ -82,7 +82,7 @@ void SymTabConfigDlg::EndModal(int retCode)
 	Manager::Get()->GetLogManager()->DebugLog(F(_T("SymTabConfigDlg::EndModal")));
 #endif
 
-  wxScrollingDialog::EndModal(retCode);
+  wxDialog::EndModal(retCode);
 }// EndModal
 
 /* ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- */
@@ -126,7 +126,6 @@ void SymTabConfigDlg::OnSearch(wxCommandEvent& WXUNUSED(event))
            || cfg->ReadBool(_T("/include_lib"), true)
            || cfg->ReadBool(_T("/include_o"),   false)
            || cfg->ReadBool(_T("/include_obj"), false)
-           || cfg->ReadBool(_T("/include_so"),  false)
            || cfg->ReadBool(_T("/include_dll"), false)) )
     {
       cbMessageBox(_("No file type (include) provided."), _("Error"), wxICON_ERROR | wxOK,
@@ -158,7 +157,7 @@ void SymTabConfigDlg::OnSearch(wxCommandEvent& WXUNUSED(event))
     }
   }
 
-  wxScrollingDialog::EndModal(wxID_OK);
+  wxDialog::EndModal(wxID_OK);
 }// OnSearch
 
 /* ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- */
@@ -169,7 +168,7 @@ void SymTabConfigDlg::OnClose(wxCommandEvent& WXUNUSED(event))
 	Manager::Get()->GetLogManager()->DebugLog(F(_T("SymTabConfigDlg::OnClose")));
 #endif
 
-  wxScrollingDialog::EndModal(wxID_CANCEL);
+  wxDialog::EndModal(wxID_CANCEL);
 }// OnClose
 
 /* ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- */
@@ -202,16 +201,15 @@ void SymTabConfigDlg::OnLibrary(wxCommandEvent& WXUNUSED(event))
                     << _T("Library files (*.lib)|*.lib|")
                     << _T("Object files (*.o)|*.o|")
                     << _T("Object files (*.obj)|*.obj|")
-                    << _T("Shared object files (*.so)|*.so|")
-                    << _T("Dynamic link library files (*.dll)|*.dll|")
 #ifdef __WXMSW__
+                    << _T("Object files (*.dll)|*.dll|")
                     << _T("All files (*.*)|*.*");
 #else
                     << _T("All files (*)|*");
 #endif
   wxString es       = wxEmptyString;
 
-  wxFileDialog fd(parent, caption, es, es, wildcard, wxFD_OPEN|compatibility::wxHideReadonly);
+  wxFileDialog fd(parent, caption, es, es, wildcard, wxOPEN|compatibility::wxHideReadonly);
   if (fd.ShowModal() == wxID_OK)
   {
     wxString path = fd.GetPath();
@@ -237,7 +235,7 @@ void SymTabConfigDlg::OnNM(wxCommandEvent& WXUNUSED(event))
 
   wxString es = wxEmptyString;
 
-  wxFileDialog fd(parent, caption, es, es, wildcard, wxFD_OPEN|compatibility::wxHideReadonly);
+  wxFileDialog fd(parent, caption, es, es, wildcard, wxOPEN|compatibility::wxHideReadonly);
   if (fd.ShowModal() == wxID_OK)
   {
     wxString path = fd.GetPath();
@@ -261,7 +259,6 @@ void SymTabConfigDlg::ToggleWidgets(int choice)
   XRCCTRL(*this, "chkIncludeLib",  wxCheckBox)->Enable(false);
   XRCCTRL(*this, "chkIncludeO",    wxCheckBox)->Enable(false);
   XRCCTRL(*this, "chkIncludeObj",  wxCheckBox)->Enable(false);
-  XRCCTRL(*this, "chkIncludeSo",   wxCheckBox)->Enable(false);
   XRCCTRL(*this, "chkIncludeDll",  wxCheckBox)->Enable(false);
 
   XRCCTRL(*this, "txtLibrary",     wxTextCtrl)->Enable(false);
@@ -276,7 +273,6 @@ void SymTabConfigDlg::ToggleWidgets(int choice)
     XRCCTRL(*this, "chkIncludeLib",  wxCheckBox)->Enable(true);
     XRCCTRL(*this, "chkIncludeO",    wxCheckBox)->Enable(true);
     XRCCTRL(*this, "chkIncludeObj",  wxCheckBox)->Enable(true);
-    XRCCTRL(*this, "chkIncludeSo",   wxCheckBox)->Enable(true);
     XRCCTRL(*this, "chkIncludeDll",  wxCheckBox)->Enable(true);
   }
   // Search for all symbols in a given library
@@ -312,8 +308,6 @@ void SymTabConfigDlg::LoadSettings()
     cfg->ReadBool(_T("/include_o"),   false));
   XRCCTRL(*this, "chkIncludeObj",     wxCheckBox)->SetValue(
     cfg->ReadBool(_T("/include_obj"), false));
-  XRCCTRL(*this, "chkIncludeSo",      wxCheckBox)->SetValue(
-    cfg->ReadBool(_T("/include_so"),  false));
   XRCCTRL(*this, "chkIncludeDll",     wxCheckBox)->SetValue(
     cfg->ReadBool(_T("/include_dll"), false));
 
@@ -367,8 +361,6 @@ void SymTabConfigDlg::SaveSettings()
     XRCCTRL(*this, "chkIncludeO",    wxCheckBox)->GetValue());
   cfg->Write(_T("/include_obj"),
     XRCCTRL(*this, "chkIncludeObj",  wxCheckBox)->GetValue());
-  cfg->Write(_T("/include_so"),
-    XRCCTRL(*this, "chkIncludeSo",   wxCheckBox)->GetValue());
   cfg->Write(_T("/include_dll"),
     XRCCTRL(*this, "chkIncludeDll",  wxCheckBox)->GetValue());
 

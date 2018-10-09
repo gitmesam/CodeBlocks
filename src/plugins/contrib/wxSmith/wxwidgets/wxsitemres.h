@@ -28,7 +28,7 @@
 class wxsItemEditor;
 class wxsItemResData;
 
-/** \brief Some abstract interface allowing wxsItemResData to access some resource-specific functions easily */
+/** \brief Some abstract interface allowing wxsItemResData to access some resource-specific functinos easily */
 class wxsItemResFunctions
 {
     public:
@@ -90,7 +90,6 @@ class wxsItemRes: public wxWidgetsRes, public wxsItemResFunctions
             bool CtorSize;
             bool CtorSizeDef;
             bool UseFwdDecl;
-            bool UseI18n;
             Scope ScopeIds;
             Scope ScopeMembers;
             Scope ScopeHandlers;
@@ -99,7 +98,7 @@ class wxsItemRes: public wxWidgetsRes, public wxsItemResFunctions
                 GenSrc(false), GenHdr(false), GenXrc(false), UsePch(false),
                 UseInitFunc(false), CtorParent(false), CtorParentDef(false),
                 CtorId(false), CtorIdDef(false), CtorPos(false), CtorPosDef(false),
-                CtorSize(false), CtorSizeDef(false), UseFwdDecl(false), UseI18n(true),
+                CtorSize(false), CtorSizeDef(false), UseFwdDecl(false),
                 ScopeIds(Protected), ScopeMembers(Public), ScopeHandlers(Private)
             {}
         };
@@ -152,7 +151,6 @@ class wxsItemRes: public wxWidgetsRes, public wxsItemResFunctions
         wxString m_HdrFileName;
         wxString m_XrcFileName;
         bool     m_UseForwardDeclarations;
-        bool     m_UseI18n;
         bool     m_CanBeMain;
 };
 

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////
-// Name:        src/stc/ScintillaWX.cpp
+// Name:        ScintillaWX.cxx
 // Purpose:     A wxWidgets implementation of Scintilla.  A class derived
 //              from ScintillaBase that uses the "wx platform" defined in
 //              PlatformWX.cxx  This class is one end of a bridge between
@@ -9,126 +9,78 @@
 // Author:      Robin Dunn
 //
 // Created:     13-Jan-2000
+// RCS-ID:      $Id$
 // Copyright:   (c) 2000 by Total Control Software
-// Licence:     wxWindows licence
+// Licence:     wxWindows license
 /////////////////////////////////////////////////////////////////////////////
 
-// For compilers that support precompilation, includes "wx.h".
-#include <wx/wxprec.h>
-
-#ifdef __BORLANDC__
-    #pragma hdrstop
-#endif
-
-#ifndef WX_PRECOMP
-    #include <wx/scrolbar.h>
-    #include <wx/math.h>
-    #include <wx/menu.h>
-    #include <wx/timer.h>
-#endif // WX_PRECOMP
-
-#include <wx/textbuf.h>
-#include <wx/dataobj.h>
-#include <wx/clipbrd.h>
-#include <wx/dnd.h>
-
-#include <memory>
-
-#include "wx/wxscintilla.h"
-
-#if !wxUSE_STD_CONTAINERS && !wxUSE_STD_IOSTREAM && !wxUSE_STD_STRING
-    #include "wx/beforestd.h"
-    #include <string>
-    #include "wx/afterstd.h"
-#endif
-
 #include "ScintillaWX.h"
-#include "ExternalLexer.h"
+//?#include "ExternalLexer.h"
 #include "PlatWX.h"
-
+#include "wx/wxscintilla.h"
+#include <wx/textbuf.h>
 #ifdef __WXMSW__
-    // GetHwndOf()
-    #include <wx/msw/private.h>
+#include <wx/msw/private.h> // GetHwndOf()
 #endif
 
-/* C::B begin */
-// Access gtk directly to manage the primary selection clipboard.
-#if defined(__WXGTK__) && !wxCHECK_VERSION(3, 0, 0)
-    #include "gtk/gtk.h"
-#endif
-/* C::B end */
-
+//----------------------------------------------------------------------
 // Helper classes
 
 class wxSCITimer : public wxTimer {
 public:
-    wxSCITimer(ScintillaWX* swx, ScintillaWX::TickReason reason) {
-        m_swx = swx;
-        m_reason = reason;
+    wxSCITimer(ScintillaWX* swx) {
+        this->swx = swx;
     }
 
-    void Notify() wxOVERRIDE {
-        m_swx->TickFor(m_reason);
+    void Notify() {
+        swx->DoTick();
     }
 
 private:
-    ScintillaWX* m_swx;
-    ScintillaWX::TickReason m_reason;
+    ScintillaWX* swx;
 };
 
 
 #if wxUSE_DRAG_AND_DROP
 bool wxSCIDropTarget::OnDropText(wxCoord x, wxCoord y, const wxString& data) {
-    return m_swx->DoDropText(x, y, data);
+    return swx->DoDropText(x, y, data);
 }
 
 wxDragResult  wxSCIDropTarget::OnEnter(wxCoord x, wxCoord y, wxDragResult def) {
-    return m_swx->DoDragEnter(x, y, def);
+    return swx->DoDragEnter(x, y, def);
 }
 
 wxDragResult  wxSCIDropTarget::OnDragOver(wxCoord x, wxCoord y, wxDragResult def) {
-    return m_swx->DoDragOver(x, y, def);
+    return swx->DoDragOver(x, y, def);
 }
 
 void  wxSCIDropTarget::OnLeave() {
-    m_swx->DoDragLeave();
+    swx->DoDragLeave();
 }
-#endif // wxUSE_DRAG_AND_DROP
-
-
-#if wxUSE_POPUPWIN
-#include "wx/popupwin.h"
-#define wxSCICallTipBase wxPopupWindow
-#else
-#include "wx/frame.h"
-#define wxSCICallTipBase wxFrame
 #endif
 
-#include "wx/dcbuffer.h"
+
+#if wxUSE_POPUPWIN && wxSCI_USE_POPUP
+#include <wx/popupwin.h>
+#define wxSCICallTipBase wxPopupWindow
+#define param2  wxBORDER_NONE  // popup's 2nd param is flags
+#else
+#define wxSCICallTipBase wxWindow
+#define param2 -1 // wxWindow's 2nd param is ID
+#endif
+
+#include <wx/dcbuffer.h>
 
 class wxSCICallTip : public wxSCICallTipBase {
 public:
-    wxSCICallTip(wxWindow* parent, CallTip* ct, ScintillaWX* swx) :
-#if wxUSE_POPUPWIN
-        wxSCICallTipBase(parent, wxBORDER_NONE),
-#else
-        wxSCICallTipBase(parent, -1, wxEmptyString, wxDefaultPosition, wxDefaultSize,
-                         wxFRAME_NO_TASKBAR
-                         | wxFRAME_FLOAT_ON_PARENT
-                         | wxBORDER_NONE
-#ifdef __WXMAC__
-                         | wxPOPUP_WINDOW
-#endif
-            ),
-#endif
-          m_ct(ct), m_swx(swx), m_cx(wxDefaultCoord), m_cy(wxDefaultCoord)
+    wxSCICallTip(wxWindow* parent, CallTip* ct, ScintillaWX* swx)
+        : wxSCICallTipBase(parent, param2),
+          m_ct(ct), m_swx(swx), m_cx(-1), m_cy(-1)
         {
-            SetBackgroundStyle(wxBG_STYLE_CUSTOM);
-            SetName(wxT("wxSTCCallTip"));
         }
 
     ~wxSCICallTip() {
-#if wxUSE_POPUPWIN && defined(__WXGTK__)
+#if wxUSE_POPUPWIN && wxSCI_USE_POPUP && defined(__WXGTK__)
         wxRect rect = GetRect();
         rect.x = m_cx;
         rect.y = m_cy;
@@ -136,68 +88,46 @@ public:
 #endif
     }
 
-    bool AcceptsFocus() const wxOVERRIDE { return false; }
+    bool AcceptsFocus() const { return false; }
 
-    void OnPaint(wxPaintEvent& WXUNUSED(evt))
-    {
-        wxAutoBufferedPaintDC dc(this);
-        Surface* surfaceWindow = Surface::Allocate(m_swx->technology);
+    void OnPaint(wxPaintEvent& WXUNUSED(evt)) {
+        wxBufferedPaintDC dc(this);
+        Surface* surfaceWindow = Surface::Allocate();
         surfaceWindow->Init(&dc, m_ct->wDraw.GetID());
         m_ct->PaintCT(surfaceWindow);
         surfaceWindow->Release();
         delete surfaceWindow;
     }
 
-    void OnFocus(wxFocusEvent& event)
-    {
+    void OnFocus(wxFocusEvent& event) {
         GetParent()->SetFocus();
         event.Skip();
     }
 
-    void OnLeftDown(wxMouseEvent& event)
-    {
+    void OnLeftDown(wxMouseEvent& event) {
         wxPoint pt = event.GetPosition();
         Point p(pt.x, pt.y);
         m_ct->MouseClick(p);
         m_swx->CallTipClick();
     }
 
+#if wxUSE_POPUPWIN && wxSCI_USE_POPUP
     virtual void DoSetSize(int x, int y,
                            int width, int height,
-                           int sizeFlags = wxSIZE_AUTO) wxOVERRIDE
-    {
-        // convert coords to screen coords since we're a top-level window
-        if (x != wxDefaultCoord) {
+                           int sizeFlags = wxSIZE_AUTO) {
+        if (x != -1) {
             m_cx = x;
             GetParent()->ClientToScreen(&x, NULL);
         }
-        if (y != wxDefaultCoord) {
+        if (y != -1) {
             m_cy = y;
             GetParent()->ClientToScreen(NULL, &y);
         }
         wxSCICallTipBase::DoSetSize(x, y, width, height, sizeFlags);
     }
-
-#if wxUSE_POPUPWIN
-#else
-    virtual bool Show( bool show = true )
-    {
-        // Although we're a frame, we always want the parent to be active, so
-        // raise it whenever we get shown.
-        bool rv = wxSCICallTipBase::Show(show);
-        if (rv && show)
-        {
-            wxTopLevelWindow *frame = wxDynamicCast(
-                wxGetTopLevelParent(GetParent()), wxTopLevelWindow);
-            if (frame)
-                frame->Raise();
-        }
-        return rv;
-    }
 #endif
 
-    wxPoint GetMyPosition()
-    {
+    wxPoint GetMyPosition() {
         return wxPoint(m_cx, m_cy);
     }
 
@@ -205,7 +135,7 @@ private:
     CallTip*      m_ct;
     ScintillaWX*  m_swx;
     int           m_cx, m_cy;
-    DECLARE_EVENT_TABLE();
+    DECLARE_EVENT_TABLE()
 };
 
 BEGIN_EVENT_TABLE(wxSCICallTip, wxSCICallTipBase)
@@ -243,7 +173,6 @@ static wxTextFileType wxConvertEOLMode(int scintillaMode)
 }
 #endif // wxUSE_DATAOBJ
 
-
 //----------------------------------------------------------------------
 // Constructor/Destructor
 
@@ -252,46 +181,20 @@ ScintillaWX::ScintillaWX(wxScintilla* win) {
     capturedMouse = false;
     focusEvent = false;
     wMain = win;
-    stc   = win;
-    wheelVRotation = 0;
-    wheelHRotation = 0;
+    sci   = win;
+    wheelRotation = 0;
     Initialise();
 #ifdef __WXMSW__
+#if wxCHECK_VERSION(2, 5, 0)
     sysCaretBitmap = 0;
     sysCaretWidth = 0;
     sysCaretHeight = 0;
 #endif
-
-#ifdef wxHAVE_SCI_RECT_FORMAT
-#if defined(__WXMSW__)
-    m_clipRectTextFormat = wxDataFormat(wxT("MSDEVColumnSelect"));
-#elif defined(__WXGTK__)
-    m_clipRectTextFormat = wxDataFormat(wxT("SECONDARY"));
-#else
-    #error "Must define rectangular text selection clipboard format."
 #endif
-#endif // wxHAVE_SCI_RECT_FORMAT
-
-    //A timer is needed for each member of TickReason enum except tickPlatform
-    timers[tickCaret] = new wxSCITimer(this,tickCaret);
-    timers[tickScroll] = new wxSCITimer(this,tickScroll);
-    timers[tickWiden] = new wxSCITimer(this,tickWiden);
-    timers[tickDwell] = new wxSCITimer(this,tickDwell);
-
-    m_surfaceData = NULL;
 }
 
 
 ScintillaWX::~ScintillaWX() {
-    for ( TimersHash::iterator i=timers.begin(); i!=timers.end(); ++i ) {
-        delete i->second;
-    }
-    timers.clear();
-
-    if ( m_surfaceData != NULL ) {
-        delete m_surfaceData;
-    }
-
     Finalise();
 }
 
@@ -304,33 +207,19 @@ void ScintillaWX::Initialise() {
 #if wxUSE_DRAG_AND_DROP
     dropTarget = new wxSCIDropTarget;
     dropTarget->SetScintilla(this);
-    stc->SetDropTarget(dropTarget);
-#endif // wxUSE_DRAG_AND_DROP
-    vs.extraFontFlag = true;   // UseAntiAliasing
-
-    // Set up default OS X key mappings. Remember that SCI_CTRL stands for
-    // "Cmd" key here, as elsewhere in wx API, while SCI_ALT is the "Option"
-    // key (and "Ctrl" key, if we ever need it, should be represented by
-    // SCI_META).
+    sci->SetDropTarget(dropTarget);
+#endif
 #ifdef __WXMAC__
-    kmap.AssignCmdKey(SCK_LEFT, SCI_CTRL, SCI_VCHOME);
-    kmap.AssignCmdKey(SCK_RIGHT, SCI_CTRL, SCI_LINEEND);
-    kmap.AssignCmdKey(SCK_LEFT, SCI_ALT, SCI_WORDLEFT);
-    kmap.AssignCmdKey(SCK_RIGHT, SCI_ALT, SCI_WORDRIGHT);
-    kmap.AssignCmdKey(SCK_LEFT, SCI_ALT | SCI_SHIFT, SCI_WORDLEFTEXTEND);
-    kmap.AssignCmdKey(SCK_RIGHT, SCI_ALT | SCI_SHIFT, SCI_WORDRIGHTEXTEND);
-    kmap.AssignCmdKey(SCK_LEFT, SCI_CTRL | SCI_SHIFT, SCI_VCHOMEEXTEND);
-    kmap.AssignCmdKey(SCK_RIGHT, SCI_CTRL | SCI_SHIFT, SCI_LINEENDEXTEND);
-    kmap.AssignCmdKey(SCK_UP, SCI_CTRL | SCI_SHIFT, SCI_DOCUMENTSTARTEXTEND);
-    kmap.AssignCmdKey(SCK_DOWN, SCI_CTRL | SCI_SHIFT, SCI_DOCUMENTENDEXTEND);
-    kmap.AssignCmdKey(SCK_UP, SCI_CTRL, SCI_DOCUMENTSTART);
-    kmap.AssignCmdKey(SCK_DOWN, SCI_CTRL, SCI_DOCUMENTEND);
-#endif // __WXMAC__
+    vs.extraFontFlag = false;  // UseAntiAliasing
+#else
+    vs.extraFontFlag = true;   // UseAntiAliasing
+#endif
 }
 
 
 void ScintillaWX::Finalise() {
     ScintillaBase::Finalise();
+    SetTicking(false);
     SetIdle(false);
     DestroySystemCaret();
 }
@@ -338,33 +227,32 @@ void ScintillaWX::Finalise() {
 
 void ScintillaWX::StartDrag() {
 #if wxUSE_DRAG_AND_DROP
-    wxString dragText = sci2wx(drag.Data(), drag.Length());
+    wxString dragText = sci2wx(drag.s, drag.len);
 
     // Send an event to allow the drag text to be changed
-    wxScintillaEvent evt(wxEVT_SCI_START_DRAG, stc->GetId());
-    evt.SetEventObject(stc);
-    evt.SetString(dragText);
-    evt.SetDragFlags(wxDrag_DefaultMove);
-    evt.SetPosition(wxMin(stc->GetSelectionStart(),
-                          stc->GetSelectionEnd()));
-    stc->GetEventHandler()->ProcessEvent(evt);
-    dragText = evt.GetString();
+    wxScintillaEvent evt(wxEVT_SCI_START_DRAG, sci->GetId());
+    evt.SetEventObject(sci);
+    evt.SetDragText(dragText);
+    evt.SetDragAllowMove(true);
+    evt.SetPosition(wxMin(sci->GetSelectionStart(),
+                          sci->GetSelectionEnd()));
+    sci->GetEventHandler()->ProcessEvent(evt);
+    dragText = evt.GetDragText();
 
-    if ( !dragText.empty() ) {
-        wxDropSource        source(stc);
+    if (dragText.Length()) {
+        wxDropSource        source(sci);
         wxTextDataObject    data(dragText);
         wxDragResult        result;
 
         source.SetData(data);
         dropWentOutside = true;
-        inDragDrop = ddDragging;
-        result = source.DoDragDrop(evt.GetDragFlags());
+        result = source.DoDragDrop(evt.GetDragAllowMove());
         if (result == wxDragMove && dropWentOutside)
             ClearSelection();
-        inDragDrop = ddNone;
-        SetDragPosition(SelectionPosition(Sci::invalidPosition));
+        inDragDrop = false;
+        SetDragPosition(invalidPosition);
     }
-#endif // wxUSE_DRAG_AND_DROP
+#endif
 }
 
 
@@ -372,21 +260,42 @@ bool ScintillaWX::SetIdle(bool on) {
     if (idler.state != on) {
         // connect or disconnect the EVT_IDLE handler
         if (on)
-            stc->Connect(wxID_ANY, wxEVT_IDLE, wxIdleEventHandler(wxScintilla::OnIdle));
+            sci->Connect(wxID_ANY, wxEVT_IDLE,
+                         (wxObjectEventFunction) (wxEventFunction) (wxIdleEventFunction) &wxScintilla::OnIdle);
         else
-            stc->Disconnect(wxID_ANY, wxEVT_IDLE, wxIdleEventHandler(wxScintilla::OnIdle));
+            sci->Disconnect(wxID_ANY, wxEVT_IDLE,
+                            (wxObjectEventFunction) (wxEventFunction) (wxIdleEventFunction) &wxScintilla::OnIdle);
         idler.state = on;
     }
     return idler.state;
 }
 
 
+void ScintillaWX::SetTicking(bool on) {
+    wxSCITimer* stiTimer;
+    if (timer.ticking != on) {
+        timer.ticking = on;
+        if (timer.ticking) {
+            stiTimer = new wxSCITimer(this);
+            stiTimer->Start(timer.tickSize);
+            timer.tickerID = stiTimer;
+        } else {
+            stiTimer = (wxSCITimer*)timer.tickerID;
+            stiTimer->Stop();
+            delete stiTimer;
+            timer.tickerID = 0;
+        }
+    }
+    timer.ticksToWait = caret.period;
+}
+
+
 void ScintillaWX::SetMouseCapture(bool on) {
     if (mouseDownCaptures) {
         if (on && !capturedMouse)
-            stc->CaptureMouse();
-        else if (!on && capturedMouse && stc->HasCapture())
-            stc->ReleaseMouse();
+            sci->CaptureMouse();
+        else if (!on && capturedMouse && sci->HasCapture())
+            sci->ReleaseMouse();
         capturedMouse = on;
     }
 }
@@ -399,24 +308,25 @@ bool ScintillaWX::HaveMouseCapture() {
 
 void ScintillaWX::ScrollText(int linesToMove) {
     int dy = vs.lineHeight * (linesToMove);
-    stc->ScrollWindow(0, dy);
+    sci->ScrollWindow(0, dy);
+    sci->Update();
 }
 
 void ScintillaWX::SetVerticalScrollPos() {
-    if (stc->m_vScrollBar == NULL) {  // Use built-in scrollbar
-        stc->SetScrollPos(wxVERTICAL, topLine);
+    if (sci->m_vScrollBar == NULL) {  // Use built-in scrollbar
+        sci->SetScrollPos(wxVERTICAL, topLine);
     }
     else { // otherwise use the one that's been given to us
-        stc->m_vScrollBar->SetThumbPosition(topLine);
+        sci->m_vScrollBar->SetThumbPosition(topLine);
     }
 }
 
 void ScintillaWX::SetHorizontalScrollPos() {
-    if (stc->m_hScrollBar == NULL) {  // Use built-in scrollbar
-        stc->SetScrollPos(wxHORIZONTAL, xOffset);
+    if (sci->m_hScrollBar == NULL) {  // Use built-in scrollbar
+        sci->SetScrollPos(wxHORIZONTAL, xOffset);
     }
     else { // otherwise use the one that's been given to us
-        stc->m_hScrollBar->SetThumbPosition(xOffset);
+        sci->m_hScrollBar->SetThumbPosition(xOffset);
     }
 }
 
@@ -426,26 +336,26 @@ const int H_SCROLL_STEP = 20;
 bool ScintillaWX::ModifyScrollBars(int nMax, int nPage) {
     bool modified = false;
 
-    int vertEnd = nMax+1;
+    int vertEnd = nMax;
     if (!verticalScrollBarVisible)
         vertEnd = 0;
 
     // Check the vertical scrollbar
-    if (stc->m_vScrollBar == NULL) {  // Use built-in scrollbar
-        int  sbMax    = stc->GetScrollRange(wxVERTICAL);
-        int  sbThumb  = stc->GetScrollThumb(wxVERTICAL);
-        int  sbPos    = stc->GetScrollPos(wxVERTICAL);
+    if (sci->m_vScrollBar == NULL) {  // Use built-in scrollbar
+        int  sbMax    = sci->GetScrollRange(wxVERTICAL);
+        int  sbThumb  = sci->GetScrollThumb(wxVERTICAL);
+        int  sbPos    = sci->GetScrollPos(wxVERTICAL);
         if (sbMax != vertEnd || sbThumb != nPage) {
-            stc->SetScrollbar(wxVERTICAL, sbPos, nPage, vertEnd);
+            sci->SetScrollbar(wxVERTICAL, sbPos, nPage, vertEnd+1);
             modified = true;
         }
     }
     else { // otherwise use the one that's been given to us
-        int  sbMax    = stc->m_vScrollBar->GetRange();
-        int  sbPage   = stc->m_vScrollBar->GetPageSize();
-        int  sbPos    = stc->m_vScrollBar->GetThumbPosition();
+        int  sbMax    = sci->m_vScrollBar->GetRange();
+        int  sbPage   = sci->m_vScrollBar->GetPageSize();
+        int  sbPos    = sci->m_vScrollBar->GetThumbPosition();
         if (sbMax != vertEnd || sbPage != nPage) {
-            stc->m_vScrollBar->SetScrollbar(sbPos, nPage, vertEnd, nPage);
+            sci->m_vScrollBar->SetScrollbar(sbPos, nPage, vertEnd+1, nPage);
             modified = true;
         }
     }
@@ -456,16 +366,16 @@ bool ScintillaWX::ModifyScrollBars(int nMax, int nPage) {
     int horizEnd = scrollWidth;
     if (horizEnd < 0)
         horizEnd = 0;
-    if (!horizontalScrollBarVisible || Wrapping())
+    if (!horizontalScrollBarVisible || (wrapState != eWrapNone))
         horizEnd = 0;
-    int pageWidth = wxRound(rcText.Width());
+    int pageWidth = rcText.Width();
 
-    if (stc->m_hScrollBar == NULL) {  // Use built-in scrollbar
-        int sbMax    = stc->GetScrollRange(wxHORIZONTAL);
-        int sbThumb  = stc->GetScrollThumb(wxHORIZONTAL);
-        int sbPos    = stc->GetScrollPos(wxHORIZONTAL);
+    if (sci->m_hScrollBar == NULL) {  // Use built-in scrollbar
+        int sbMax    = sci->GetScrollRange(wxHORIZONTAL);
+        int sbThumb  = sci->GetScrollThumb(wxHORIZONTAL);
+        int sbPos    = sci->GetScrollPos(wxHORIZONTAL);
         if ((sbMax != horizEnd) || (sbThumb != pageWidth) || (sbPos != 0)) {
-            stc->SetScrollbar(wxHORIZONTAL, sbPos, pageWidth, horizEnd);
+            sci->SetScrollbar(wxHORIZONTAL, sbPos, pageWidth, horizEnd);
             modified = true;
             if (scrollWidth < pageWidth) {
                 HorizontalScrollTo(0);
@@ -473,11 +383,11 @@ bool ScintillaWX::ModifyScrollBars(int nMax, int nPage) {
         }
     }
     else { // otherwise use the one that's been given to us
-        int sbMax    = stc->m_hScrollBar->GetRange();
-        int sbThumb  = stc->m_hScrollBar->GetPageSize();
-        int sbPos    = stc->m_hScrollBar->GetThumbPosition();
+        int sbMax    = sci->m_hScrollBar->GetRange();
+        int sbThumb  = sci->m_hScrollBar->GetPageSize();
+        int sbPos    = sci->m_hScrollBar->GetThumbPosition();
         if ((sbMax != horizEnd) || (sbThumb != pageWidth) || (sbPos != 0)) {
-            stc->m_hScrollBar->SetScrollbar(sbPos, pageWidth, horizEnd, pageWidth);
+            sci->m_hScrollBar->SetScrollbar(sbPos, pageWidth, horizEnd, pageWidth);
             modified = true;
             if (scrollWidth < pageWidth) {
                 HorizontalScrollTo(0);
@@ -490,12 +400,12 @@ bool ScintillaWX::ModifyScrollBars(int nMax, int nPage) {
 
 
 void ScintillaWX::NotifyChange() {
-    stc->NotifyChange();
+    sci->NotifyChange();
 }
 
 
 void ScintillaWX::NotifyParent(SCNotification scn) {
-    stc->NotifyParent(&scn);
+    sci->NotifyParent(&scn);
 }
 
 
@@ -504,17 +414,16 @@ void ScintillaWX::NotifyParent(SCNotification scn) {
 // a side effect that the AutoComp will also not be destroyed when switching
 // to another window, but I think that is okay.
 void ScintillaWX::CancelModes() {
-    if (! focusEvent) {
+    if (! focusEvent)
         AutoCompleteCancel();
-        ct.CallTipCancel();
-    }
+    ct.CallTipCancel();
     Editor::CancelModes();
 }
 
 
 
 void ScintillaWX::Copy() {
-    if (!sel.Empty()) {
+    if (currentPos != anchor) {
         SelectionText st;
         CopySelectionRange(&st);
         CopyToClipboard(st);
@@ -524,57 +433,24 @@ void ScintillaWX::Copy() {
 
 void ScintillaWX::Paste() {
     pdoc->BeginUndoAction();
-    ClearSelection(multiPasteMode == SC_MULTIPASTE_EACH);
+    ClearSelection();
 
 #if wxUSE_DATAOBJ
     wxTextDataObject data;
     bool gotData = false;
-    bool isRectangularClipboard = false;
 
-    wxTheClipboard->UsePrimarySelection(false);
     if (wxTheClipboard->Open()) {
-#ifdef wxHAVE_SCI_RECT_FORMAT
-        isRectangularClipboard = wxTheClipboard->IsSupported(m_clipRectTextFormat);
-#endif
+        wxTheClipboard->UsePrimarySelection(false);
         gotData = wxTheClipboard->GetData(data);
         wxTheClipboard->Close();
     }
     if (gotData) {
         wxString   text = wxTextBuffer::Translate(data.GetText(),
                                                   wxConvertEOLMode(pdoc->eolMode));
-
-        // Send an event to allow the pasted text to be changed
-        wxScintillaEvent evt(wxEVT_SCI_CLIPBOARD_PASTE, stc->GetId());
-        evt.SetEventObject(stc);
-        evt.SetPosition(sel.MainCaret());
-        evt.SetString(text);
-        stc->GetEventHandler()->ProcessEvent(evt);
-
-        const wxCharBuffer buf(wx2sci(evt.GetString()));
-
-#if wxUSE_UNICODE
-        // free up the old character buffer in case the text is real big
-        data.SetText(wxEmptyString);
-        text = wxEmptyString;
-#endif
-/* C::B begin */
-        const size_t len = strlen(buf);
-/* C::B end */
-        SelectionPosition selStart = sel.IsRectangular() ?
-            sel.Rectangular().Start() :
-            sel.Range(sel.Main()).Start();
-
-        // call the appropriate scintilla paste method if the
-        // depending on whether the text was copied FROM a rectangular selection
-        // or not.
-        if (isRectangularClipboard)
-        {
-            PasteRectangular(selStart, buf, len);
-        }
-        else
-        {
-            InsertPaste(buf, len);
-        }
+        wxWX2MBbuf buf = (wxWX2MBbuf)wx2sci(text);
+        int        len = strlen(buf);
+        pdoc->InsertString(currentPos, buf, len);
+        SetEmptySelection(currentPos + len);
     }
 #endif // wxUSE_DATAOBJ
 
@@ -586,33 +462,10 @@ void ScintillaWX::Paste() {
 
 void ScintillaWX::CopyToClipboard(const SelectionText& st) {
 #if wxUSE_CLIPBOARD
-    if ( !st.LengthWithTerminator() )
-        return;
-
-    // Send an event to allow the copied text to be changed
-    wxScintillaEvent evt(wxEVT_SCI_CLIPBOARD_COPY, stc->GetId());
-    evt.SetEventObject(stc);
-    evt.SetString(wxTextBuffer::Translate(sci2wx(st.Data(), st.Length())));
-    stc->GetEventHandler()->ProcessEvent(evt);
-
-    wxTheClipboard->UsePrimarySelection(false);
     if (wxTheClipboard->Open()) {
-        wxString text = evt.GetString();
-
-#ifdef wxHAVE_SCI_RECT_FORMAT
-        if (st.rectangular)
-        {
-            // when copying the text to the clipboard, add extra meta-data that
-            // tells the Paste() method that the user copied a rectangular
-            // block of text, as opposed to a stream of text.
-            wxDataObjectComposite* composite = new wxDataObjectComposite();
-            composite->Add(new wxTextDataObject(text), true);
-            composite->Add(new wxCustomDataObject(m_clipRectTextFormat));
-            wxTheClipboard->SetData(composite);
-        }
-        else
-#endif // wxHAVE_SCI_RECT_FORMAT
-            wxTheClipboard->SetData(new wxTextDataObject(text));
+        wxTheClipboard->UsePrimarySelection(false);
+        wxString text = wxTextBuffer::Translate(sci2wx(st.s, st.len-1));
+        wxTheClipboard->SetData(new wxTextDataObject(text));
         wxTheClipboard->Close();
     }
 #else
@@ -627,12 +480,12 @@ bool ScintillaWX::CanPaste() {
     bool didOpen;
 
     if (Editor::CanPaste()) {
-        wxTheClipboard->UsePrimarySelection(false);
         didOpen = !wxTheClipboard->IsOpened();
         if ( didOpen )
             wxTheClipboard->Open();
 
         if (wxTheClipboard->IsOpened()) {
+            wxTheClipboard->UsePrimarySelection(false);
             canPaste = wxTheClipboard->IsSupported(wxUSE_UNICODE ? wxDF_UNICODETEXT : wxDF_TEXT);
             if (didOpen)
                 wxTheClipboard->Close();
@@ -646,7 +499,7 @@ bool ScintillaWX::CanPaste() {
 
 void ScintillaWX::CreateCallTipWindow(PRectangle) {
     if (! ct.wCallTip.Created() ) {
-        ct.wCallTip = new wxSCICallTip(stc, &ct, this);
+        ct.wCallTip = new wxSCICallTip(sci, &ct, this);
         ct.wDraw = ct.wCallTip;
     }
 }
@@ -663,34 +516,27 @@ void ScintillaWX::AddToPopUp(const char *label, int cmd, bool enabled) {
 }
 
 
-// This is called by the Editor base class whenever something is selected.
-// For wxGTK we can put this text in the primary selection and then other apps
-// can paste with the middle button.
+// This is called by the Editor base class whenever something is selected
 void ScintillaWX::ClaimSelection() {
+#if 0
+    // Until wxGTK is able to support using both the primary selection and the
+    // clipboard at the same time I think it causes more problems than it is
+    // worth to implement this method.  Selecting text should not clear the
+    // clipboard.  --Robin
 #ifdef __WXGTK__
     // Put the selected text in the PRIMARY selection
-/* C::B begin */
-    if (!SelectionEmpty()) {
+    if (currentPos != anchor) {
         SelectionText st;
         CopySelectionRange(&st);
-#if wxCHECK_VERSION(3, 0, 0)
-        wxTheClipboard->UsePrimarySelection(true);
         if (wxTheClipboard->Open()) {
-            wxString text = sci2wx(st.Data(), st.Length());
+            wxTheClipboard->UsePrimarySelection(true);
+            wxString text = sci2wx(st.s, st.len);
             wxTheClipboard->SetData(new wxTextDataObject(text));
+            wxTheClipboard->UsePrimarySelection(false);
             wxTheClipboard->Close();
         }
-        wxTheClipboard->UsePrimarySelection(false);
-#else
-        GtkClipboard *clipboard = gtk_clipboard_get(GDK_SELECTION_PRIMARY);
-        if (clipboard)
-        {
-            const wxString &text = sci2wx(st.Data(), st.Length());
-            gtk_clipboard_set_text(clipboard, text.mb_str(wxConvUTF8), text.length());
-        }
-#endif // wxCHECK_VERSION
     }
-/* C::B end */
+#endif
 #endif
 }
 
@@ -702,8 +548,10 @@ void ScintillaWX::UpdateSystemCaret() {
             DestroySystemCaret();
             CreateSystemCaret();
         }
-        Point pos = PointMainCaret();
-        ::SetCaretPos(wxRound(pos.x), wxRound(pos.y));
+        Point pos = LocationFromPosition(currentPos);
+#if wxCHECK_VERSION(2, 5, 0)
+        ::SetCaretPos(pos.x, pos.y);
+#endif
     }
 #endif
 }
@@ -711,16 +559,23 @@ void ScintillaWX::UpdateSystemCaret() {
 
 bool ScintillaWX::HasCaretSizeChanged() {
 #ifdef __WXMSW__
-    if ( (vs.caretWidth && (sysCaretWidth != vs.caretWidth))
-        || (vs.lineHeight && (sysCaretHeight != vs.lineHeight)) ) {
+#if !wxCHECK_VERSION(2, 5, 0)
+    return false;
+#else
+    if (( (0 != vs.caretWidth) && (sysCaretWidth != vs.caretWidth) )
+        || (0 != vs.lineHeight) && (sysCaretHeight != vs.lineHeight)) {
         return true;
     }
+#endif
 #endif
     return false;
 }
 
 bool ScintillaWX::CreateSystemCaret() {
 #ifdef __WXMSW__
+#if !wxCHECK_VERSION(2, 5, 0)
+    return false;
+#else
     sysCaretWidth = vs.caretWidth;
     if (0 == sysCaretWidth) {
         sysCaretWidth = 1;
@@ -732,10 +587,11 @@ bool ScintillaWX::CreateSystemCaret() {
     sysCaretBitmap = ::CreateBitmap(sysCaretWidth, sysCaretHeight, 1,
                                     1, reinterpret_cast<BYTE *>(bits));
     delete [] bits;
-    BOOL retval = ::CreateCaret(GetHwndOf(stc), sysCaretBitmap,
+    BOOL retval = ::CreateCaret(GetHwndOf(sci), sysCaretBitmap,
                                 sysCaretWidth, sysCaretHeight);
-    ::ShowCaret(GetHwndOf(stc));
+    ::ShowCaret(GetHwndOf(sci));
     return retval != 0;
+#endif
 #else
     return false;
 #endif
@@ -743,65 +599,31 @@ bool ScintillaWX::CreateSystemCaret() {
 
 bool ScintillaWX::DestroySystemCaret() {
 #ifdef __WXMSW__
-    if (sysCaretBitmap)
-    {
-        ::HideCaret(GetHwndOf(stc));
-        BOOL retval = ::DestroyCaret();
-        if (sysCaretBitmap) {
-            ::DeleteObject(sysCaretBitmap);
-            sysCaretBitmap = 0;
-        }
-        return retval != 0;
+#if !wxCHECK_VERSION(2, 5, 0)
+    return false;
+#else
+    ::HideCaret(GetHwndOf(sci));
+    BOOL retval = ::DestroyCaret();
+    if (sysCaretBitmap) {
+        ::DeleteObject(sysCaretBitmap);
+        sysCaretBitmap = 0;
     }
-    else
-        return false;
+    return retval != 0;
+#endif
 #else
     return false;
 #endif
 }
 
-bool ScintillaWX::FineTickerAvailable() {
-    return true;
-}
-
-bool ScintillaWX::FineTickerRunning(TickReason reason) {
-    bool running = false;
-    TimersHash::iterator i = timers.find(reason);
-    wxASSERT_MSG( i != timers.end(), wxT("At least one TickReason is missing a timer."));
-    if ( i != timers.end() ) {
-        running = i->second->IsRunning();
-    }
-    return running;
-}
-
-void ScintillaWX::FineTickerStart(TickReason reason, int millis,
-                                  int WXUNUSED(tolerance)) {
-    TimersHash::iterator i = timers.find(reason);
-    wxASSERT_MSG( i != timers.end(), wxT("At least one TickReason is missing a timer." ));
-    if ( i != timers.end() ) {
-        i->second->Start(millis);
-    }
-}
-
-void ScintillaWX::FineTickerCancel(TickReason reason) {
-    TimersHash::iterator i = timers.find(reason);
-    wxASSERT_MSG( i != timers.end(), wxT("At least one TickReason is missing a timer." ));
-    if ( i != timers.end() ) {
-        i->second->Stop();
-    }
-}
 
 //----------------------------------------------------------------------
 
-
-sptr_t ScintillaWX::DefWndProc(unsigned int /*iMessage*/, uptr_t /*wParam*/, sptr_t /*lParam*/) {
+long ScintillaWX::DefWndProc(unsigned int /*iMessage*/, unsigned long /*wParam*/, long /*lParam*/) {
     return 0;
 }
 
-sptr_t ScintillaWX::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam) {
+long ScintillaWX::WndProc(unsigned int iMessage, unsigned long wParam, long lParam) {
       switch (iMessage) {
-#if 0  // TODO: check this
-          
       case SCI_CALLTIPSHOW: {
           // NOTE: This is copied here from scintilla/src/ScintillaBase.cxx
           // because of the little tweak that needs done below for wxGTK.
@@ -811,18 +633,12 @@ sptr_t ScintillaWX::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam)
           char* defn = reinterpret_cast<char *>(lParam);
           AutoCompleteCancel();
           pt.y += vs.lineHeight;
-          int ctStyle = ct.UseStyleCallTip() ? STYLE_CALLTIP : STYLE_DEFAULT;
-          if (ct.UseStyleCallTip())
-          {
-              ct.SetForeBack(vs.styles[STYLE_CALLTIP].fore, vs.styles[STYLE_CALLTIP].back);
-          }
-          int caretMain = sel.MainCaret();
-          PRectangle rc = ct.CallTipStart(caretMain, pt,
+          PRectangle rc = ct.CallTipStart(currentPos, pt,
                                           defn,
-                                          vs.styles[ctStyle].fontName,
-                                          vs.styles[ctStyle].sizeZoomed,
+                                          vs.styles[STYLE_DEFAULT].fontName,
+                                          vs.styles[STYLE_DEFAULT].sizeZoomed,
                                           CodePage(),
-                                          vs.styles[ctStyle].characterSet,
+                                          vs.styles[STYLE_DEFAULT].characterSet,
                                           wMain);
           // If the call-tip window would be out of the client
           // space, adjust so it displays above the text.
@@ -842,49 +658,12 @@ sptr_t ScintillaWX::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam)
           ct.wCallTip.Show();
           break;
       }
-#endif
-
-#if wxUSE_GRAPHICS_DIRECT2D
-        case SCI_SETTECHNOLOGY:
-            if ((wParam == SC_TECHNOLOGY_DEFAULT) || (wParam == SC_TECHNOLOGY_DIRECTWRITE)) {
-                if (technology != static_cast<int>(wParam)) {
-                    SurfaceDataD2D* newSurfaceData(NULL);
-
-                    if (static_cast<int>(wParam) > SC_TECHNOLOGY_DEFAULT) {
-                        newSurfaceData =  new SurfaceDataD2D(this);
-
-                        if (!newSurfaceData->Initialised()) {
-                            // Failed to load Direct2D or DirectWrite so no effect
-                            delete newSurfaceData;
-                            return 0;
-                        }
-                    }
-
-                    technology = static_cast<int>(wParam);
-                    if ( m_surfaceData ) {
-                        delete m_surfaceData;
-                    }
-                    m_surfaceData = newSurfaceData;
-
-                    // Invalidate all cached information including layout.
-                    DropGraphics(true);
-                    InvalidateStyleRedraw();
-                }
-            }
-            break;
-#endif
-
+/*? TODO
 #ifdef SCI_LEXER
       case SCI_LOADLEXERLIBRARY:
             LexerManager::GetInstance()->Load((const char*)lParam);
             break;
-#endif
-      case SCI_GETDIRECTFUNCTION:
-            return reinterpret_cast<sptr_t>(DirectFunction);
-
-      case SCI_GETDIRECTPOINTER:
-            return reinterpret_cast<sptr_t>(this);
-
+#endif ?*/
       default:
           return ScintillaBase::WndProc(iMessage, wParam, lParam);
       }
@@ -899,59 +678,31 @@ sptr_t ScintillaWX::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam)
 void ScintillaWX::DoPaint(wxDC* dc, wxRect rect) {
 
     paintState = painting;
-    AutoSurface surfaceWindow(dc, this);
-    if (surfaceWindow) {
-        rcPaint = PRectangleFromwxRect(rect);
-        PRectangle rcClient = GetClientRectangle();
-        paintingAllText = rcPaint.Contains(rcClient);
+    Surface* surfaceWindow = Surface::Allocate();
+    surfaceWindow->Init(dc, wMain.GetID());
+    rcPaint = PRectangleFromwxRect(rect);
+    PRectangle rcClient = GetClientRectangle();
+    paintingAllText = rcPaint.Contains(rcClient);
 
-        ClipChildren(*dc, rcPaint);
-        Paint(surfaceWindow, rcPaint);
-        surfaceWindow->Release();
-    }
+//    dc->BeginDrawing(); // Deprecated - it's an empty function anyway
+    ClipChildren(*dc, rcPaint);
+    Paint(surfaceWindow, rcPaint);
 
+    delete surfaceWindow;
     if (paintState == paintAbandoned) {
         // Painting area was insufficient to cover new styling or brace
-        // highlight positions.  So trigger a new paint event that will
-        // repaint the whole window.
-        stc->Refresh(false);
-        
-#if defined(__WXOSX__)
-        // On Mac we also need to finish the current paint to make sure that
-        // everything is on the screen that needs to be there between now and
-        // when the next paint event arrives.
-        FullPaintDC(dc);
-#endif
+        // highlight positions
+        FullPaint();
     }
     paintState = notPainting;
+//    dc->EndDrawing(); // Deprecated - it's an empty function anyway
 }
-
-
-// Force the whole window to be repainted
-void ScintillaWX::FullPaint() {
-    stc->Refresh(false);
-    stc->Update();
-}
-
-
-void ScintillaWX::FullPaintDC(wxDC* dc) {
-    paintState = painting;
-    rcPaint = GetClientRectangle();
-    paintingAllText = true;
-    AutoSurface surfaceWindow(dc, this);
-    if (surfaceWindow) {
-        Paint(surfaceWindow, rcPaint);
-        surfaceWindow->Release();
-    }
-    paintState = notPainting;
-}
-
 
 
 void ScintillaWX::DoHScroll(int type, int pos) {
     int xPos = xOffset;
     PRectangle rcText = GetTextRectangle();
-    int pageWidth = wxRound(rcText.Width() * 2 / 3);
+    int pageWidth = rcText.Width() * 2 / 3;
     if (type == wxEVT_SCROLLWIN_LINEUP || type == wxEVT_SCROLL_LINEUP)
         xPos -= H_SCROLL_STEP;
     else if (type == wxEVT_SCROLLWIN_LINEDOWN || type == wxEVT_SCROLL_LINEDOWN)
@@ -961,7 +712,7 @@ void ScintillaWX::DoHScroll(int type, int pos) {
     else if (type == wxEVT_SCROLLWIN_PAGEDOWN || type == wxEVT_SCROLL_PAGEDOWN) {
         xPos += pageWidth;
         if (xPos > scrollWidth - rcText.Width()) {
-            xPos = wxRound(scrollWidth - rcText.Width());
+            xPos = scrollWidth - rcText.Width();
         }
     }
     else if (type == wxEVT_SCROLLWIN_TOP || type == wxEVT_SCROLL_TOP)
@@ -994,29 +745,14 @@ void ScintillaWX::DoVScroll(int type, int pos) {
     ScrollTo(topLineNew);
 }
 
-void ScintillaWX::DoMouseWheel(wxMouseWheelAxis axis, int rotation, int delta,
-                               int linesPerAction, int columnsPerAction,
-                               bool ctrlDown, bool isPageScroll) {
+void ScintillaWX::DoMouseWheel(int rotation, int delta,
+                               int linesPerAction, int ctrlDown,
+                               bool isPageScroll ) {
     int topLineNew = topLine;
     int lines;
-    int xPos = xOffset;
-    int pixels;
 
-    if (axis == wxMOUSE_WHEEL_HORIZONTAL) {
-        wheelHRotation += wxRound(rotation * (columnsPerAction * vs.spaceWidth));
-        pixels = wheelHRotation / delta;
-        wheelHRotation -= pixels * delta;
-        if (pixels != 0) {
-            xPos += pixels;
-            PRectangle rcText = GetTextRectangle();
-            if (xPos > scrollWidth - rcText.Width()) {
-                xPos = wxRound(scrollWidth - rcText.Width());
-            }
-            HorizontalScrollTo(xPos);
-        }
-    }
-    else if (ctrlDown) {  // Zoom the fonts if Ctrl key down
-        if (rotation > 0) {
+    if (ctrlDown) {  // Zoom the fonts if Ctrl key down
+        if (rotation < 0) {
             KeyCommand(SCI_ZOOMIN);
         }
         else {
@@ -1026,9 +762,9 @@ void ScintillaWX::DoMouseWheel(wxMouseWheelAxis axis, int rotation, int delta,
     else { // otherwise just scroll the window
         if ( !delta )
             delta = 120;
-        wheelVRotation += rotation;
-        lines = wheelVRotation / delta;
-        wheelVRotation -= lines * delta;
+        wheelRotation += rotation;
+        lines = wheelRotation / delta;
+        wheelRotation -= lines * delta;
         if (lines != 0) {
             if (isPageScroll)
                 lines = lines * LinesOnScreen();  // lines is either +1 or -1
@@ -1068,15 +804,6 @@ void ScintillaWX::DoLeftButtonDown(Point pt, unsigned int curTime, bool shift, b
     ButtonDown(pt, curTime, shift, ctrl, alt);
 }
 
-void ScintillaWX::DoRightButtonDown(Point pt, unsigned int curTime, bool shift, bool ctrl, bool alt) {
-    if (!PointInSelection(pt)) {
-        CancelModes();
-        SetEmptySelection(PositionFromLocation(pt));
-    }
-
-    RightButtonDownWithModifiers(pt, curTime, ModifierFlags(shift, ctrl, alt));
-}
-
 void ScintillaWX::DoLeftButtonUp(Point pt, unsigned int curTime, bool ctrl) {
     ButtonUp(pt, curTime, ctrl);
 }
@@ -1090,27 +817,24 @@ void ScintillaWX::DoMiddleButtonUp(Point pt) {
     // Set the current position to the mouse click point and
     // then paste in the PRIMARY selection, if any.  wxGTK only.
     int newPos = PositionFromLocation(pt);
-    MovePositionTo(newPos, Selection::noSel, true);
+    MovePositionTo(newPos, noSel, true);
 
     pdoc->BeginUndoAction();
     wxTextDataObject data;
     bool gotData = false;
-    wxTheClipboard->UsePrimarySelection(true);
     if (wxTheClipboard->Open()) {
+        wxTheClipboard->UsePrimarySelection(true);
         gotData = wxTheClipboard->GetData(data);
+        wxTheClipboard->UsePrimarySelection(false);
         wxTheClipboard->Close();
     }
-    wxTheClipboard->UsePrimarySelection(false);
     if (gotData) {
         wxString   text = wxTextBuffer::Translate(data.GetText(),
                                                   wxConvertEOLMode(pdoc->eolMode));
-        const wxCharBuffer buf(wx2sci(text));
-/* C::B begin */
-        const size_t len = strlen(buf);
-/* C::B end */
-        int caretMain = sel.MainCaret();
-        pdoc->InsertString(caretMain, buf, len);
-        SetEmptySelection(caretMain + len);
+        wxWX2MBbuf buf = (wxWX2MBbuf)wx2sci(text);
+        int        len = strlen(buf);
+        pdoc->InsertString(currentPos, buf, len);
+        SetEmptySelection(currentPos + len);
     }
     pdoc->EndUndoAction();
     NotifyChange();
@@ -1130,10 +854,8 @@ void ScintillaWX::DoAddChar(int key) {
     wxChar wszChars[2];
     wszChars[0] = (wxChar)key;
     wszChars[1] = 0;
-    const wxCharBuffer buf(wx2sci(wszChars));
-/* C::B begin */
-    AddCharUTF(buf, strlen(buf));
-/* C::B end */
+    wxWX2MBbuf buf = (wxWX2MBbuf)wx2sci(wszChars);
+    AddCharUTF((char*)buf.data(), strlen(buf));
 #else
     AddChar((char)key);
 #endif
@@ -1143,80 +865,76 @@ void ScintillaWX::DoAddChar(int key) {
 int  ScintillaWX::DoKeyDown(const wxKeyEvent& evt, bool* consumed)
 {
     int key = evt.GetKeyCode();
-/* C::B begin */
-#if wxCHECK_VERSION(3, 0, 0)
-    if (key == WXK_NONE) {
-        // This is a Unicode character not representable in Latin-1 or some key
-        // without key code at all (e.g. dead key or VK_PROCESSKEY under MSW).
-        if ( consumed )
-            *consumed = false;
-        return 0;
-    }
-    const bool ctrl = evt.RawControlDown();
-#else
-    const bool ctrl = evt.ControlDown();
-#endif // wxCHECK_VERSION
-/* C::B end */
+    bool shift = evt.ShiftDown(),
+         ctrl  = evt.ControlDown(),
+         alt   = evt.AltDown();
+
     if (ctrl && key >= 1 && key <= 26 && key != WXK_BACK)
         key += 'A' - 1;
 
     switch (key) {
+    case WXK_NUMPAD_DOWN:       // fall through
     case WXK_DOWN:              key = SCK_DOWN;     break;
+    case WXK_NUMPAD_UP:         // fall through
     case WXK_UP:                key = SCK_UP;       break;
+    case WXK_NUMPAD_LEFT:       // fall through
     case WXK_LEFT:              key = SCK_LEFT;     break;
+    case WXK_NUMPAD_RIGHT:      // fall through
     case WXK_RIGHT:             key = SCK_RIGHT;    break;
+    case WXK_NUMPAD_HOME:       // fall through
     case WXK_HOME:              key = SCK_HOME;     break;
+    case WXK_NUMPAD_END:        // fall through
     case WXK_END:               key = SCK_END;      break;
-    case WXK_PAGEUP:            key = SCK_PRIOR;    break;
-    case WXK_PAGEDOWN:          key = SCK_NEXT;     break;
-    case WXK_NUMPAD_DOWN:       key = SCK_DOWN;     break;
-    case WXK_NUMPAD_UP:         key = SCK_UP;       break;
-    case WXK_NUMPAD_LEFT:       key = SCK_LEFT;     break;
-    case WXK_NUMPAD_RIGHT:      key = SCK_RIGHT;    break;
-    case WXK_NUMPAD_HOME:       key = SCK_HOME;     break;
-    case WXK_NUMPAD_END:        key = SCK_END;      break;
+#if !wxCHECK_VERSION(2, 8, 0)
+    case WXK_PRIOR:     		// fall through
+    case WXK_NUMPAD_PRIOR:      // fall through
+#endif
+    case WXK_PAGEUP:            // fall through
     case WXK_NUMPAD_PAGEUP:     key = SCK_PRIOR;    break;
+#if !wxCHECK_VERSION(2, 8, 0)
+    case WXK_NEXT:   			// fall through
+    case WXK_NUMPAD_NEXT:       // fall through
+#endif
+    case WXK_PAGEDOWN:          // fall through
     case WXK_NUMPAD_PAGEDOWN:   key = SCK_NEXT;     break;
-    case WXK_NUMPAD_DELETE:     key = SCK_DELETE;   break;
-    case WXK_NUMPAD_INSERT:     key = SCK_INSERT;   break;
+    case WXK_NUMPAD_DELETE:     // fall through
     case WXK_DELETE:            key = SCK_DELETE;   break;
+    case WXK_NUMPAD_INSERT:     // fall through
     case WXK_INSERT:            key = SCK_INSERT;   break;
     case WXK_ESCAPE:            key = SCK_ESCAPE;   break;
     case WXK_BACK:              key = SCK_BACK;     break;
     case WXK_TAB:               key = SCK_TAB;      break;
-    case WXK_NUMPAD_ENTER:      wxFALLTHROUGH;
+    case WXK_NUMPAD_ENTER:      // fall through
     case WXK_RETURN:            key = SCK_RETURN;   break;
-    case WXK_ADD:               wxFALLTHROUGH;
+    case WXK_ADD:               // fall through
     case WXK_NUMPAD_ADD:        key = SCK_ADD;      break;
-    case WXK_SUBTRACT:          wxFALLTHROUGH;
+    case WXK_SUBTRACT:          // fall through
     case WXK_NUMPAD_SUBTRACT:   key = SCK_SUBTRACT; break;
-    case WXK_DIVIDE:            wxFALLTHROUGH;
+    case WXK_DIVIDE:            // fall through
     case WXK_NUMPAD_DIVIDE:     key = SCK_DIVIDE;   break;
     case WXK_CONTROL:           key = 0; break;
     case WXK_ALT:               key = 0; break;
     case WXK_SHIFT:             key = 0; break;
-    case WXK_MENU:              key = SCK_MENU; break;
+    case WXK_MENU:              key = 0; break;
     }
 
-    int rv = KeyDownWithModifiers
-             (
-                key,
-                ModifierFlags
-                (
-                    evt.ShiftDown(),
-                    evt.ControlDown(),
-                    evt.AltDown(),
-                    // Under Mac, ControlDown() returns the status of Cmd key,
-                    // so we sneak the status of the real Ctrl key via SCI_META
-                    // but we shouldn't be doing this elsewhere.
 #ifdef __WXMAC__
-                    evt.RawControlDown()
-#else
-                    0
+    if ( evt.MetaDown() ) {
+        // check for a few common Mac Meta-key combos and remap them to Ctrl
+        // for Scintilla
+        switch ( key ) {
+        case 'Z':       // Undo
+        case 'X':       // Cut
+        case 'C':       // Copy
+        case 'V':       // Paste
+        case 'A':       // Select All
+            ctrl = true;
+            break;
+        }
+    }
 #endif
-                ),
-                consumed
-             );
+
+    int rv = KeyDown(key, shift, ctrl, alt, consumed);
 
     if (key)
         return rv;
@@ -1230,27 +948,13 @@ void ScintillaWX::DoCommand(int ID) {
 }
 
 
-bool ScintillaWX::DoContextMenu(Point pt) {
-    if (ShouldDisplayPopup(pt))
-    {
-        // To prevent generating EVT_MOUSE_CAPTURE_LOST.
-        if ( HaveMouseCapture() ) {
-            SetMouseCapture(false);
-        }
+void ScintillaWX::DoContextMenu(Point pt) {
+    if (displayPopupMenu)
         ContextMenu(pt);
-        return true;
-    }
-    return false;
 }
 
 void ScintillaWX::DoOnListBox() {
-    AutoCompleteCompleted(0, SC_AC_COMMAND);
-}
-
-
-void ScintillaWX::DoMouseCaptureLost()
-{
-    capturedMouse = false;
+    AutoCompleteCompleted();
 }
 
 
@@ -1266,25 +970,25 @@ void ScintillaWX::DoOnIdle(wxIdleEvent& evt) {
 
 #if wxUSE_DRAG_AND_DROP
 bool ScintillaWX::DoDropText(long x, long y, const wxString& data) {
-    SetDragPosition(SelectionPosition(Sci::invalidPosition));
+    SetDragPosition(invalidPosition);
 
     wxString text = wxTextBuffer::Translate(data,
                                             wxConvertEOLMode(pdoc->eolMode));
 
     // Send an event to allow the drag details to be changed
-    wxScintillaEvent evt(wxEVT_SCI_DO_DROP, stc->GetId());
-    evt.SetEventObject(stc);
+    wxScintillaEvent evt(wxEVT_SCI_DO_DROP, sci->GetId());
+    evt.SetEventObject(sci);
     evt.SetDragResult(dragResult);
     evt.SetX(x);
     evt.SetY(y);
     evt.SetPosition(PositionFromLocation(Point(x,y)));
-    evt.SetString(text);
-    stc->GetEventHandler()->ProcessEvent(evt);
+    evt.SetDragText(text);
+    sci->GetEventHandler()->ProcessEvent(evt);
 
     dragResult = evt.GetDragResult();
     if (dragResult == wxDragMove || dragResult == wxDragCopy) {
-        DropAt(SelectionPosition(evt.GetPosition()),
-               wx2sci(evt.GetString()),
+        DropAt(evt.GetPosition(),
+               wx2sci(evt.GetDragText()),
                dragResult == wxDragMove,
                false); // TODO: rectangular?
         return true;
@@ -1300,16 +1004,16 @@ wxDragResult ScintillaWX::DoDragEnter(wxCoord WXUNUSED(x), wxCoord WXUNUSED(y), 
 
 
 wxDragResult ScintillaWX::DoDragOver(wxCoord x, wxCoord y, wxDragResult def) {
-    SetDragPosition(SelectionPosition(PositionFromLocation(Point(x, y))));
+    SetDragPosition(PositionFromLocation(Point(x, y)));
 
     // Send an event to allow the drag result to be changed
-    wxScintillaEvent evt(wxEVT_SCI_DRAG_OVER, stc->GetId());
-    evt.SetEventObject(stc);
+    wxScintillaEvent evt(wxEVT_SCI_DRAG_OVER, sci->GetId());
+    evt.SetEventObject(sci);
     evt.SetDragResult(def);
     evt.SetX(x);
     evt.SetY(y);
     evt.SetPosition(PositionFromLocation(Point(x,y)));
-    stc->GetEventHandler()->ProcessEvent(evt);
+    sci->GetEventHandler()->ProcessEvent(evt);
 
     dragResult = evt.GetDragResult();
     return dragResult;
@@ -1317,10 +1021,19 @@ wxDragResult ScintillaWX::DoDragOver(wxCoord x, wxCoord y, wxDragResult def) {
 
 
 void ScintillaWX::DoDragLeave() {
-    SetDragPosition(SelectionPosition(Sci::invalidPosition));
+    SetDragPosition(invalidPosition);
 }
-#endif // wxUSE_DRAG_AND_DROP
+#endif
 //----------------------------------------------------------------------
+
+// Force the whole window to be repainted
+void ScintillaWX::FullPaint() {
+#ifndef __WXMAC__
+    sci->Refresh(false);
+#endif
+    sci->Update();
+}
+
 
 void ScintillaWX::DoScrollToLine(int line) {
     ScrollTo(line);
@@ -1328,28 +1041,34 @@ void ScintillaWX::DoScrollToLine(int line) {
 
 
 void ScintillaWX::DoScrollToColumn(int column) {
-    HorizontalScrollTo(wxRound(column * vs.spaceWidth));
+    HorizontalScrollTo(column * vs.spaceWidth);
 }
 
-// wxGTK doesn't appear to need this explicit clipping code any longer, but I
-// will leave it here commented out for a while just in case...
-void ScintillaWX::ClipChildren(wxDC& WXUNUSED(dc), PRectangle WXUNUSED(rect))
-{
-//     wxRegion rgn(wxRectFromPRectangle(rect));
-//     if (ac.Active()) {
-//         wxRect childRect = ((wxWindow*)ac.lb->GetID())->GetRect();
-//         rgn.Subtract(childRect);
-//     }
-//     if (ct.inCallTipMode) {
-//         wxSCICallTip* tip = (wxSCICallTip*)ct.wCallTip.GetID();
-//         wxRect childRect = tip->GetRect();
-// #if wxUSE_POPUPWIN
-//         childRect.SetPosition(tip->GetMyPosition());
-// #endif
-//         rgn.Subtract(childRect);
-//     }
-//     dc.SetClippingRegion(rgn);
+#ifdef __WXGTK__
+void ScintillaWX::ClipChildren(wxDC& dc, PRectangle rect) {
+// wxGTK > 2.5 doesn't appear to need this explicit clipping code any longer
+#if !wxCHECK_VERSION(2, 5, 0)
+    wxRegion rgn(wxRectFromPRectangle(rect));
+    if (ac.Active()) {
+        wxRect childRect = ((wxWindow*)ac.lb->GetID())->GetRect();
+        rgn.Subtract(childRect);
+    }
+    if (ct.inCallTipMode) {
+        wxSCICallTip* tip = (wxSCICallTip*)ct.wCallTip.GetID();
+        wxRect childRect = tip->GetRect();
+#if wxUSE_POPUPWIN && wxSCI_USE_POPUP
+        childRect.SetPosition(tip->GetMyPosition());
+#endif
+        rgn.Subtract(childRect);
+    }
+
+    dc.SetClippingRegion(rgn);
+#endif
 }
+#else
+void ScintillaWX::ClipChildren(wxDC& WXUNUSED(dc), PRectangle WXUNUSED(rect)) {
+}
+#endif
 
 
 void ScintillaWX::SetUseAntiAliasing(bool useAA) {
@@ -1358,12 +1077,7 @@ void ScintillaWX::SetUseAntiAliasing(bool useAA) {
 }
 
 bool ScintillaWX::GetUseAntiAliasing() {
-    return vs.extraFontFlag != 0;
-}
-
-sptr_t ScintillaWX::DirectFunction(
-    ScintillaWX* swx, unsigned int iMessage, uptr_t wParam, sptr_t lParam) {
-    return swx->WndProc(iMessage, wParam, lParam);
+    return vs.extraFontFlag;
 }
 
 //----------------------------------------------------------------------

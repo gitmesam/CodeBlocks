@@ -25,12 +25,12 @@ class ProgressDialog : public wxProgressDialog
         ProgressDialog()
             : wxProgressDialog(_("Progress"),
                                 _("Please wait while operation is in progress..."),
-                                100, nullptr,
+                                100, 0,
                                 wxPD_AUTO_HIDE | wxPD_APP_MODAL | wxPD_CAN_ABORT)
         {
         }
 
-        ~ProgressDialog() override
+        ~ProgressDialog()
         {
         }
 
@@ -39,9 +39,9 @@ class ProgressDialog : public wxProgressDialog
             cbThrow(_T("ProgressDialog copy constructor should never be called!"));
         }
 
-        bool DoUpdate(int value, const wxString& newmsg)
+        bool Update(int val, const wxString& msg)
         {
-            return wxProgressDialog::Update(value, newmsg, nullptr);
+            return wxProgressDialog::Update(val, msg, 0);
         }
 };
 
@@ -53,6 +53,6 @@ namespace ScriptBindings
     {
         SqPlus::SQClassDef<ProgressDialog>("ProgressDialog").
                 emptyCtor().
-                func(&ProgressDialog::DoUpdate, "DoUpdate");
+                func(&ProgressDialog::Update, "Update");
     }
 } // namespace ScriptBindings

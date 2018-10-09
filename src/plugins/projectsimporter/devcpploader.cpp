@@ -113,11 +113,11 @@ bool DevCppLoader::Open(const wxString& filename)
     // read resource files
     dev->Read(_T("Resources"), &tmp, _T(""));
     array = GetArrayFromString(tmp, _T(",")); // make sure that this is comma-separated
-    for (unsigned int j = 0; j < array.GetCount(); ++j)
+    for (unsigned int i = 0; i < array.GetCount(); ++i)
     {
-        if (array[j].IsEmpty())
+        if (array[i].IsEmpty())
             continue;
-        tmp = array[j];
+        tmp = array[i];
         m_pProject->AddFile(0, tmp, true, true);
     }
 
@@ -174,7 +174,7 @@ bool DevCppLoader::Open(const wxString& filename)
     return true;
 }
 
-bool DevCppLoader::Save(cb_unused const wxString& filename)
+bool DevCppLoader::Save(const wxString& filename)
 {
     // no support to save DevCpp projects
     return false;

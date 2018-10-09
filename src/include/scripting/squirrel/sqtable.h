@@ -41,7 +41,6 @@ private:
 	void AllocNodes(SQInteger nSize);
 	void Rehash(bool force);
 	SQTable(SQSharedState *ss, SQInteger nInitialSize);
-	void _ClearNodes();
 public:
 	static SQTable* Create(SQSharedState *ss,SQInteger nInitialSize)
 	{
@@ -80,7 +79,6 @@ public:
 	SQInteger Next(bool getweakrefs,const SQObjectPtr &refpos, SQObjectPtr &outkey, SQObjectPtr &outval);
 	
 	SQInteger CountUsed(){ return _usednodes;}
-	void Clear();
 	void Release()
 	{
 		sq_delete(this, SQTable);

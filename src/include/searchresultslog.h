@@ -3,8 +3,8 @@
  * http://www.gnu.org/licenses/lgpl-3.0.html
  */
 
-#ifndef CB_SEARCHRESULTSLOG_H
-#define CB_SEARCHRESULTSLOG_H
+#ifndef SEARCHRESULTSLOG_H
+#define SEARCHRESULTSLOG_H
 
 #include <wx/string.h>
 #include "loggers.h"
@@ -12,15 +12,15 @@
 class wxArrayString;
 class wxCommandEvent;
 
-class DLLIMPORT cbSearchResultsLog : public ListCtrlLogger, public wxEvtHandler
+class SearchResultsLog : public ListCtrlLogger, public wxEvtHandler
 {
 	public:
-		cbSearchResultsLog(const wxArrayString& titles, wxArrayInt& widths);
-		~cbSearchResultsLog() override;
+		SearchResultsLog(const wxArrayString& titles, wxArrayInt& widths);
+		virtual ~SearchResultsLog();
 		void FocusEntry(size_t index);
 		void SetBasePath(const wxString base){ m_Base = base; }
 
-		wxWindow* CreateControl(wxWindow* parent) override;
+		virtual wxWindow* CreateControl(wxWindow* parent);
 	protected:
         void OnDoubleClick(wxCommandEvent& event);
         void SyncEditor(int selIndex);
@@ -30,4 +30,4 @@ class DLLIMPORT cbSearchResultsLog : public ListCtrlLogger, public wxEvtHandler
         DECLARE_EVENT_TABLE()
 };
 
-#endif // CB_SEARCHRESULTSLOG_H
+#endif // SEARCHRESULTSLOG_H

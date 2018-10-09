@@ -18,6 +18,7 @@
 #include "globals.h"
 #endif
 #include <wx/filedlg.h>
+#include <wx/textdlg.h>
 #include "filefilters.h"
 #include "editmimetypesdlg.h"
 
@@ -107,13 +108,13 @@ void EditMimeTypesDlg::UpdateDisplay()
     m_LastSelection = m_Selection;
 }
 
-void EditMimeTypesDlg::OnSelectionChanged(cb_unused wxCommandEvent& event)
+void EditMimeTypesDlg::OnSelectionChanged(wxCommandEvent& event)
 {
     m_Selection = XRCCTRL(*this, "lstWild", wxListBox)->GetSelection();
     UpdateDisplay();
 }
 
-void EditMimeTypesDlg::OnActionChanged(cb_unused wxCommandEvent& event)
+void EditMimeTypesDlg::OnActionChanged(wxCommandEvent& event)
 {
     bool useEd = XRCCTRL(*this, "rbOpen", wxRadioBox)->GetSelection() == 2;
     bool useAssoc = XRCCTRL(*this, "rbOpen", wxRadioBox)->GetSelection() == 1;
@@ -122,9 +123,9 @@ void EditMimeTypesDlg::OnActionChanged(cb_unused wxCommandEvent& event)
     XRCCTRL(*this, "chkModal", wxCheckBox)->Enable(!useEd && !useAssoc);
 }
 
-void EditMimeTypesDlg::OnNew(cb_unused wxCommandEvent& event)
+void EditMimeTypesDlg::OnNew(wxCommandEvent& event)
 {
-    wxString wild = cbGetTextFromUser(_("Enter the new wildcard to add:"));
+    wxString wild = wxGetTextFromUser(_("Enter the new wildcard to add:"));
     if (wild.IsEmpty())
         return;
 
@@ -144,7 +145,7 @@ void EditMimeTypesDlg::OnNew(cb_unused wxCommandEvent& event)
     UpdateDisplay();
 }
 
-void EditMimeTypesDlg::OnDelete(cb_unused wxCommandEvent& event)
+void EditMimeTypesDlg::OnDelete(wxCommandEvent& event)
 {
     if (m_Selection == -1)
         return;
@@ -158,17 +159,17 @@ void EditMimeTypesDlg::OnDelete(cb_unused wxCommandEvent& event)
     UpdateDisplay();
 }
 
-void EditMimeTypesDlg::OnBrowseProgram(cb_unused wxCommandEvent& event)
+void EditMimeTypesDlg::OnBrowseProgram(wxCommandEvent& event)
 {
-    wxFileDialog dlg(0,
-                     _("Select program"),
-                     wxEmptyString,
-                     XRCCTRL(*this, "txtProgram", wxTextCtrl)->GetValue(),
-                     FileFilters::GetFilterAll(),
-                     wxFD_OPEN | compatibility::wxHideReadonly);
-    PlaceWindow(&dlg);
-    if (dlg.ShowModal() == wxID_OK)
-        XRCCTRL(*this, "txtProgram", wxTextCtrl)->SetValue(dlg.GetPath());
+    wxFileDialog* dlg = new wxFileDialog(0,
+                            _("Select program"),
+                            wxEmptyString,
+                            XRCCTRL(*this, "txtProgram", wxTextCtrl)->GetValue(),
+                            FileFilters::GetFilterAll(),
+                            wxOPEN | compatibility::wxHideReadonly);
+    PlaceWindow(dlg);
+    if (dlg->ShowModal() == wxID_OK)
+        XRCCTRL(*this, "txtProgram", wxTextCtrl)->SetValue(dlg->GetPath());
 }
 
 void EditMimeTypesDlg::OnApply()

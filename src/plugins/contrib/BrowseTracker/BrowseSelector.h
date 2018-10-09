@@ -14,23 +14,23 @@
 
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
-	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+	Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
-// RCS-ID: $Id$
+// RCS-ID: $Id: browseselector.h 9 2007-11-27 18:28:01Z Pecan $
 
 #ifndef BROWSE_SELECTOR_H
 #define BROWSE_SELECTOR_H
 
-#include "scrollingdialog.h"
+#include <wx/dialog.h>
 #include <map>
 #include <wx/bitmap.h>
 
 class wxListBox;
-class wxAuiNotebook;
+class wxFlatNotebook;
 class wxPanel;
 
 // ----------------------------------------------------------------------------
-class BrowseSelector : public wxScrollingDialog
+class BrowseSelector : public wxDialog
 // ----------------------------------------------------------------------------
 {
     protected:
@@ -67,7 +67,7 @@ class BrowseSelector : public wxScrollingDialog
         void OnItemSelected(wxCommandEvent &event);
         void OnPanelPaint(wxPaintEvent &event);
         void OnPanelEraseBg(wxEraseEvent &event);
-        int  PopulateListControl(EditorBase* pEditor);
+        void PopulateListControl(EditorBase* pEditor);
 
     private:
         /**

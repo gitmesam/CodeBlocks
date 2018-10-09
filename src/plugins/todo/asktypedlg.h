@@ -6,19 +6,19 @@
 #ifndef ASKTYPEDLG_H
 #define ASKTYPEDLG_H
 
-#include "scrollingdialog.h"
+#include <wx/dialog.h>
 
 enum TypeCorrection
 {
-    tcMove = 0, // keep style and move to end of line
-    tcStay,     // keep style and use the current position
-    tcSwitch,   // switch to stream style
+    tcCppMove = 0, // keep C++ style and move to end of line
+    tcCppStay, // keep C++ style and use the current position
+    tcCpp2C, // switch to c style
 };
 
-class AskTypeDlg : public wxScrollingDialog
+class AskTypeDlg : public wxDialog
 {
     public:
-        AskTypeDlg(wxWindow* parent, const wxString StreamStart = _T(""), const wxString StreamEnd = _T("") );
+        AskTypeDlg(wxWindow* parent);
         virtual ~AskTypeDlg();
 
         TypeCorrection GetTypeCorrection() const;

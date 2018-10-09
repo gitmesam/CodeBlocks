@@ -1,5 +1,4 @@
-/** \file wxscolourdialog.cpp
-*
+/*
 * This file is part of wxSmith plugin for Code::Blocks Studio
 * Copyright (C) 2007  Bartlomiej Swiecki
 *
@@ -16,9 +15,9 @@
 * You should have received a copy of the GNU General Public License
 * along with wxSmith. If not, see <http://www.gnu.org/licenses/>.
 *
-* $Revision$
-* $Id$
-* $HeadURL$
+* $Revision: 4504 $
+* $Id: wxsColourDialog.cpp 4504 2007-10-02 21:52:30Z byo $
+* $HeadURL: svn+ssh://byo@svn.berlios.de/svnroot/repos/codeblocks/trunk/src/plugins/contrib/wxSmith/wxwidgets/defitems/wxsColourDialog.cpp $
 */
 
 #include "wxscolourdialog.h"
@@ -27,7 +26,7 @@
 
 namespace
 {
-    wxsRegisterItem<wxsColourDialog> Reg(_T("ColourDialog"),wxsTTool,_T("Dialogs"),200,false);
+    wxsRegisterItem<wxsColourDialog> Reg(_T("ColourDialog"),wxsTTool,_T("Dialogs"),50,false);
 }
 
 wxsColourDialog::wxsColourDialog(wxsItemResData* Data):
@@ -52,19 +51,19 @@ void wxsColourDialog::OnBuildCreatingCode()
             {
                 wxString ColourDataName = GetCoderContext()->GetUniqueName(_T("__ColourData"));
 
-                Codef(_T("wxColourData %v;\n"),ColourDataName.wx_str());
+                Codef(_T("wxColourData %v;\n"),ColourDataName.c_str());
 
                 if ( !m_ChooseFull )
                 {
-                    Codef(_T("%v.SetChooseFull(%b);\n"),ColourDataName.wx_str(),m_ChooseFull);
+                    Codef(_T("%v.SetChooseFull(%b);\n"),ColourDataName.c_str(),m_ChooseFull);
                 }
 
                 if ( m_Colour.m_type != wxsCOLOUR_DEFAULT )
                 {
-                    Codef(_T("%v.SetColour(%l);\n"),ColourDataName.wx_str(),&m_Colour);
+                    Codef(_T("%v.SetColour(%l);\n"),ColourDataName.c_str(),&m_Colour);
                 }
 
-                Codef(_T("%C(%W, &%v);\n"),ColourDataName.wx_str());
+                Codef(_T("%C(%W, &%v);\n"),ColourDataName.c_str());
             }
             else
             {
@@ -74,7 +73,6 @@ void wxsColourDialog::OnBuildCreatingCode()
             return;
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsColourDialog::OnBuildCreatingCode"),GetLanguage());
@@ -82,7 +80,7 @@ void wxsColourDialog::OnBuildCreatingCode()
     }
 }
 
-void wxsColourDialog::OnEnumToolProperties(cb_unused long Flags)
+void wxsColourDialog::OnEnumToolProperties(long Flags)
 {
     WXS_BOOL(wxsColourDialog,m_ChooseFull,_("Full dialog"),_T("choosefull"),true);
     WXS_COLOUR(wxsColourDialog,m_Colour,_("Colour"),_T("colour"));

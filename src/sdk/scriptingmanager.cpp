@@ -11,15 +11,15 @@
 
 #ifndef CB_PRECOMP
     #include "scriptingmanager.h"
-    #include "cbeditor.h"
     #include "cbexception.h"
-    #include "configmanager.h"
-    #include "editormanager.h"
-    #include "globals.h"
-    #include "logmanager.h"
     #include "manager.h"
-
+    #include "editormanager.h"
+    #include "logmanager.h"
+    #include "configmanager.h"
+    #include "cbeditor.h"
     #include <settings.h>
+    #include "globals.h"
+
     #include <wx/msgdlg.h>
     #include <wx/file.h>
     #include <wx/filename.h>
@@ -28,58 +28,38 @@
 
 #include "crc32.h"
 #include "menuitemsmanager.h"
-#include "genericmultilinenotesdlg.h"
-#include "sqplus.h"
-#include "scriptbindings.h"
-#include "sc_plugin.h"
-#include "sqstdstring.h"
+#include "scripting/sqplus/sqplus.h"
+#include "scripting/bindings/scriptbindings.h"
+#include "scripting/bindings/sc_plugin.h"
 
-template<> ScriptingManager* Mgr<ScriptingManager>::instance = nullptr;
+template<> ScriptingManager* Mgr<ScriptingManager>::instance = 0;
 template<> bool  Mgr<ScriptingManager>::isShutdown = false;
 
 static wxString s_ScriptErrors;
 static wxString capture;
 
-void PrintSquirrelToWxString(wxString& msg, const SQChar* s, va_list& vl)
+static void ScriptsPrintFunc(HSQUIRRELVM v, const SQChar * s, ...)
 {
-    int buffer_size = 2048;
-    SQChar* tmp_buffer;
-    for (;;buffer_size*=2)
-    {
-        tmp_buffer = new SQChar [buffer_size];
-        int retvalue = vsnprintf(tmp_buffer, buffer_size, s, vl);
-        if (retvalue < buffer_size)
-        {
-            // Buffersize was large enough
-            msg = cbC2U(tmp_buffer);
-            delete[] tmp_buffer;
-            break;
-        }
-        // Buffer size was not enough
-        delete[] tmp_buffer;
-    }
-}
-
-static void ScriptsPrintFunc(HSQUIRRELVM /*v*/, const SQChar * s, ...)
-{
+    static SQChar temp[2048];
     va_list vl;
     va_start(vl,s);
-    wxString msg;
-    PrintSquirrelToWxString(msg,s,vl);
+    scvsprintf( temp,s,vl);
+    wxString msg = cbC2U(temp);
+    Manager::Get()->GetLogManager()->DebugLog(msg);
     va_end(vl);
 
     s_ScriptErrors << msg;
 }
 
-static void CaptureScriptOutput(HSQUIRRELVM /*v*/, const SQChar * s, ...)
+static void CaptureScriptOutput(HSQUIRRELVM v, const SQChar * s, ...)
 {
+    static SQChar temp[2048];
     va_list vl;
     va_start(vl,s);
-    wxString msg;
-    PrintSquirrelToWxString(msg,s,vl);
-    ::capture.append(msg);
+    scvsprintf(temp,s,vl);
+    ::capture.append(cbC2U(temp));
     va_end(vl);
-}
+};
 
 BEGIN_EVENT_TABLE(ScriptingManager, wxEvtHandler)
 //
@@ -98,7 +78,6 @@ ScriptingManager::ScriptingManager()
         cbThrow(_T("Can't create scripting engine!"));
 
     sq_setprintfunc(SquirrelVM::GetVMPtr(), ScriptsPrintFunc);
-    sqstd_register_stringlib(SquirrelVM::GetVMPtr());
 
     RefreshTrusts();
 
@@ -135,33 +114,33 @@ bool ScriptingManager::LoadScript(const wxString& filename)
 {
 //    wxCriticalSectionLocker c(cs);
 
-    wxLogNull ln; // own error checking implemented -> avoid debug warnings
-
-    wxString fname(filename);
-    wxFile f(fname); // try to open
+    wxString fname = filename;
+    wxFile f;
+    // try open
+    f.Open(fname);
     if (!f.IsOpened())
     {
-        bool found = false;
+    	bool found = false;
 
-        // check in same dir as currently running script (if any)
-        if (!m_CurrentlyRunningScriptFile.IsEmpty())
-        {
-            fname = wxFileName(m_CurrentlyRunningScriptFile).GetPath() + _T('/') + filename;
-            f.Open(fname);
-            found = f.IsOpened();
-        }
+    	// check in same dir as currently running script (if any)
+    	if (!m_CurrentlyRunningScriptFile.IsEmpty())
+    	{
+    		fname = wxFileName(m_CurrentlyRunningScriptFile).GetPath() + _T('/') + filename;
+			f.Open(fname);
+			found = f.IsOpened();
+    	}
 
-        if (!found)
-        {
-            // check in standard script dirs
-            fname = ConfigManager::LocateDataFile(filename, sdScriptsUser | sdScriptsGlobal);
-            f.Open(fname);
-            if (!f.IsOpened())
-            {
-                Manager::Get()->GetLogManager()->DebugLog(_T("Can't open script ") + filename);
-                return false;
-            }
-        }
+		if (!found)
+		{
+			// check in standard script dirs
+			fname = ConfigManager::LocateDataFile(filename, sdScriptsUser | sdScriptsGlobal);
+			f.Open(fname);
+			if (!f.IsOpened())
+			{
+				Manager::Get()->GetLogManager()->DebugLog(_T("Can't open script ") + filename);
+				return false;
+			}
+		}
     }
     // read file
     wxString contents = cbReadFileContents(f);
@@ -177,7 +156,7 @@ bool ScriptingManager::LoadBuffer(const wxString& buffer, const wxString& debugN
     wxString incName = UnixFilename(debugName);
     if (m_IncludeSet.find(incName) != m_IncludeSet.end())
     {
-        Manager::Get()->GetLogManager()->LogWarning(F(_T("Ignoring Include(\"%s\") because it would cause recursion..."), incName.wx_str()));
+        Manager::Get()->GetLogManager()->LogWarning(F(_T("Ignoring Include(\"%s\") because it would cause recursion..."), incName.c_str()));
         return true;
     }
     m_IncludeSet.insert(incName);
@@ -246,18 +225,7 @@ void ScriptingManager::DisplayErrors(SquirrelError* exception, bool clearErrors)
 {
     wxString msg = GetErrorString(exception, clearErrors);
     if (!msg.IsEmpty())
-    {
-        if (cbMessageBox(_("Script errors have occured...\nPress 'Yes' to see the exact errors."),
-                            _("Script errors"),
-                            wxICON_ERROR | wxYES_NO | wxNO_DEFAULT) == wxID_YES)
-        {
-            GenericMultiLineNotesDlg dlg(Manager::Get()->GetAppWindow(),
-                                        _("Script errors"),
-                                        msg,
-                                        true);
-            dlg.ShowModal();
-        }
-    }
+        cbMessageBox(msg, _("Script errors"), wxICON_ERROR);
 }
 
 void ScriptingManager::InjectScriptOutput(const wxString& output)
@@ -270,7 +238,7 @@ int ScriptingManager::Configure()
     return -1;
 }
 
-bool ScriptingManager::RegisterScriptPlugin(const wxString& /*name*/, const wxArrayInt& ids)
+bool ScriptingManager::RegisterScriptPlugin(const wxString& name, const wxArrayInt& ids)
 {
     // attach this event handler in the main window (one-time run)
     if (!m_AttachedToMainWindow)
@@ -298,8 +266,7 @@ bool ScriptingManager::RegisterScriptMenu(const wxString& menuPath, const wxStri
     }
 
     int id = wxNewId();
-    id = m_MenuItemsManager.CreateFromString(menuPath, id);
-    wxMenuItem* item = Manager::Get()->GetAppFrame()->GetMenuBar()->FindItem(id);
+    wxMenuItem* item = m_MenuItemsManager.CreateFromString(menuPath, id);
     if (item)
     {
         if (!isFunction)
@@ -313,11 +280,7 @@ bool ScriptingManager::RegisterScriptMenu(const wxString& menuPath, const wxStri
         mbs.scriptOrFunc = scriptOrFunc;
         mbs.isFunc = isFunction;
         m_MenuIDToScript.insert(m_MenuIDToScript.end(), std::make_pair(id, mbs));
-        #if wxCHECK_VERSION(3, 0, 0)
-        Manager::Get()->GetLogManager()->Log(F(_("Script/function '%s' registered under menu '%s'"), scriptOrFunc.wx_str(), menuPath.wx_str()));
-        #else
         Manager::Get()->GetLogManager()->Log(F(_("Script/function '%s' registered under menu '%s'"), scriptOrFunc.c_str(), menuPath.c_str()));
-        #endif
 
         return true;
     }
@@ -326,7 +289,7 @@ bool ScriptingManager::RegisterScriptMenu(const wxString& menuPath, const wxStri
     return false;
 }
 
-bool ScriptingManager::UnRegisterScriptMenu(cb_unused const wxString& menuPath)
+bool ScriptingManager::UnRegisterScriptMenu(const wxString& menuPath)
 {
     // TODO: not implemented
     Manager::Get()->GetLogManager()->DebugLog(_T("ScriptingManager::UnRegisterScriptMenu() not implemented"));

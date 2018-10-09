@@ -16,9 +16,9 @@
 * along with wxSmith; if not, write to the Free Software
 * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
 *
-* $Revision$
-* $Id$
-* $HeadURL$
+* $Revision: 4504 $
+* $Id: wxsmithpluginregistrants.cpp 4504 2007-10-02 21:52:30Z byo $
+* $HeadURL: svn+ssh://byo@svn.berlios.de/svnroot/repos/codeblocks/trunk/src/plugins/contrib/wxSmith/plugin/wxsmithpluginregistrants.cpp $
 */
 
 #ifndef LIBRARYRESULT_H
@@ -61,13 +61,6 @@ struct LibraryResult
     wxArrayString CFlags;
     wxArrayString LFlags;
     wxArrayString Compilers;
-    wxArrayString Headers;
-    wxArrayString Require;
-
-    bool operator == ( const LibraryResult& compareWith ) const;
-    void SetGlobalVar() const;
-
-    void DebugDump(const wxString& Prefix = wxEmptyString);
 };
 
 #endif

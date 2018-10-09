@@ -54,10 +54,12 @@ class DLLIMPORT cbEditor : public EditorBase
           * <em>Note: you cannot create a cbEditor object directly. Instead
           * use EditorManager's methods to do it...</em>
           */
-        cbEditor(wxWindow* parent, const wxString& filename, EditorColourSet* theme);
-        cbEditor(wxWindow* parent, LoaderBase* fileLdr, const wxString& filename, EditorColourSet* theme);
+        cbEditor(wxWindow* parent, const wxString& filename, EditorColourSet* theme = 0L);
+        cbEditor(wxWindow* parent, LoaderBase* fileLdr, const wxString& filename, EditorColourSet* theme = 0L);
+        /** Don't use this. It throws an exception if you do. */
+        cbEditor(const cbEditor& rhs) : EditorBase(rhs) { cbThrow(_T("Can't call cbEditor's copy ctor!!!")); }
         /** cbEditor destructor. */
-        ~cbEditor() override;
+        ~cbEditor();
     public:
         enum SplitType
         {
@@ -67,7 +69,7 @@ class DLLIMPORT cbEditor : public EditorBase
         };
 
         /** Don't use this. It throws an exception if you do. */
-        void operator=(cb_unused const cbEditor& rhs){ cbThrow(_T("Can't assign an cbEditor* !!!")); }
+        virtual void operator=(const cbEditor& rhs){ cbThrow(_T("Can't assign an cbEditor* !!!")); }
 
         // properties
 
@@ -95,7 +97,7 @@ class DLLIMPORT cbEditor : public EditorBase
         SplitType GetSplitType() const { return m_SplitType; }
 
         /** Returns true if editor is OK, i.e. constructor was called with a filename
-          * parameter and file was opened successfully. If it returns false, you
+          * parameter and file was opened succesfully. If it returns false, you
           * should delete the editor...
           */
         bool IsOK() const { return m_IsOK; }
@@ -106,10 +108,10 @@ class DLLIMPORT cbEditor : public EditorBase
         void SetEditorTitle(const wxString& title);
 
         /** Returns true if editor is modified, false otherwise */
-        bool GetModified() const override;
+        bool GetModified() const;
 
         /** Set the editor's modification state to \c modified. */
-        void SetModified(bool modified = true) override;
+        void SetModified(bool modified = true);
 
         /** Set the ProjectFile pointer associated with this editor. All editors
           * which belong to a project file, should have this set. All others should return NULL.
@@ -131,10 +133,10 @@ class DLLIMPORT cbEditor : public EditorBase
         void UpdateProjectFile();
 
         /** Save editor contents. Returns true on success, false otherwise. */
-        bool Save() override;
+        bool Save();
 
         /** Save editor contents under a different filename. Returns true on success, false otherwise. */
-        bool SaveAs() override;
+        bool SaveAs();
 
         /** Save fold states within a new cbStyledTextCtrl. This saves the whole document, thus saving the fold states before the Fold Options Change*/
         bool SaveFoldState();
@@ -197,19 +199,24 @@ class DLLIMPORT cbEditor : public EditorBase
           */
         void Print(bool selectionOnly, PrintColourMode pcm, bool line_numbers);
 
-        /** This method is obsolete, use the abbreviations plugin instead. */
+        /** Try to auto-complete the current word.
+          *
+          * This has nothing to do with code-completion plugins. Editor auto-completion
+          * is a feature that saves typing common blocks of code, e.g.
+          *
+          * If you have typed "forb" (no quotes) and select auto-complete, then
+          * it will convert "forb" to "for ( ; ; ){ }".
+          * If the word up to the caret position is an unknown keyword, nothing happens.
+          *
+          * These keywords/code pairs can be edited in the editor configuration
+          * dialog.
+          */
         void AutoComplete();
 
         /** Move the caret at the specified line.
           * @param line Line to move caret to.
           * @param centerOnScreen If true (default), tries to bring the specified line to the centre of the editor.*/
-        void GotoLine(int line, bool centerOnScreen = true) override;
-
-        /** Move the caret at the specified line.
-          * @param line      Line to move caret to (where the token is).
-          * @param tokenName Token name (string) to highlight, if found
-          * @return Editor found, position set and token highlighted? */
-        bool GotoTokenPosition(int line, const wxString& tokenName);
+        void GotoLine(int line, bool centerOnScreen = true);
 
         /** Add debugger breakpoint at specified line. If @c line is -1, use current line. */
         bool AddBreakpoint(int line = -1, bool notifyDebugger = true);
@@ -218,40 +225,34 @@ class DLLIMPORT cbEditor : public EditorBase
         bool RemoveBreakpoint(int line = -1, bool notifyDebugger = true);
 
         /** Toggle debugger breakpoint at specified line. If @c line is -1, use current line. */
-        virtual void ToggleBreakpoint(int line = -1, bool notifyDebugger = true);
+        void ToggleBreakpoint(int line = -1, bool notifyDebugger = true);
 
         /** Does @c line has debugger breakpoint? If @c line is -1, use current line. */
-        virtual bool HasBreakpoint(int line) const;
+        bool HasBreakpoint(int line) const;
 
         /** Go to next debugger breakpoint. */
-        virtual void GotoNextBreakpoint();
+        void GotoNextBreakpoint();
 
         /** Go to previous debugger breakpoint. */
-        virtual void GotoPreviousBreakpoint();
-
-        /** Refresh all markers for the breakpoints (only the markers for the current debugger will be shown) */
-        virtual void RefreshBreakpointMarkers();
-
-        /** Clear all bookmarks. */
-        virtual void ClearAllBookmarks();
+        void GotoPreviousBreakpoint();
 
         /** Toggle bookmark at specified line. If @c line is -1, use current line. */
-        virtual void ToggleBookmark(int line = -1);
+        void ToggleBookmark(int line = -1);
 
         /** Does @c line has bookmark? */
-        virtual bool HasBookmark(int line) const;
+        bool HasBookmark(int line) const;
 
         /** Go to next bookmark. */
-        virtual void GotoNextBookmark();
+        void GotoNextBookmark();
 
         /** Go to previous bookmark. */
-        virtual void GotoPreviousBookmark();
+        void GotoPreviousBookmark();
 
         /** Highlight the line the debugger will execute next. */
-        virtual void SetDebugLine(int line);
+        void SetDebugLine(int line);
 
         /** Highlight the specified line as error. */
-        virtual void SetErrorLine(int line);
+        void SetErrorLine(int line);
 
         /** Split the editor window.
           * @param split The type of split: horizontal or vertical. */
@@ -262,40 +263,27 @@ class DLLIMPORT cbEditor : public EditorBase
 
         // the following functions, although self-explanatory, are documented
         // in EditorBase.
-        void Undo() override;
-        void Redo() override;
-        void ClearHistory() override;
-        void GotoNextChanged() override;
-        void GotoPreviousChanged() override;
-        void SetChangeCollection(bool collectChange) override;
-        void Cut() override;
-        void Copy() override;
-        void Paste() override;
-        bool CanUndo() const override;
-        bool CanRedo() const override;
-        bool HasSelection() const override;
-        bool CanPaste() const override;
-        bool IsReadOnly() const override;
-        void SetReadOnly(bool readonly = true) override;
-
-        bool CanSelectAll() const override;
-        void SelectAll() override;
+        void Undo();
+        void Redo();
+        void Cut();
+        void Copy();
+        void Paste();
+        bool CanUndo() const;
+        bool CanRedo() const;
+        bool HasSelection() const;
+        bool CanPaste() const;
+        bool IsReadOnly() const;
 
         // Workaround for shift-tab bug in wx2.4.2
-        void DoIndent();   //!< Indents current line/block
-        void DoUnIndent(); //!< UnIndents current line/block
+        void DoIndent(); /// Indents current line/block
+        void DoUnIndent(); /// UnIndents current line/block
 
         // misc. functions
-        wxMenu* CreateContextSubMenu(long id) override;
-        void AddToContextMenu(wxMenu* popup,ModuleType type,bool pluginsdone) override;  //pecan 2006/03/22
+        virtual wxMenu* CreateContextSubMenu(long id);
+        virtual void AddToContextMenu(wxMenu* popup,ModuleType type,bool pluginsdone);  //pecan 2006/03/22
 
         HighlightLanguage GetLanguage( ) const { return m_lang; }
-        /// Sets the language for this editor.
-        /// @param lang The language for the editor. If you pass HL_AUTO the language would be
-        /// autodetected.
-        /// @param colourise Pass true if you want to apply the style. If you intend to do more
-        /// operations which would affect styling pass false.
-        void SetLanguage(HighlightLanguage lang, bool colourise);
+        void SetLanguage( HighlightLanguage lang = HL_AUTO );
 
         wxFontEncoding GetEncoding( ) const;
         wxString GetEncodingName( ) const;
@@ -304,19 +292,9 @@ class DLLIMPORT cbEditor : public EditorBase
         bool GetUseBom() const;
         void SetUseBom( bool bom );
 
-        void SetZoom(int zoom, bool both = true);
-
         /// Apply the editor defaults to any (possibly foreign) cbStyledTextCtrl.
         static void ApplyStyles(cbStyledTextCtrl* control);
-
-        void AutoIndentDone();
-
-        /// Applies the styles that match the filename of the editor.
-        /// Should be called after new file is created. Calling SaveAs does the same thing.
-        void SetEditorStyle();
     private:
-        cbEditor(cb_unused const cbEditor& rhs); // prevent copy construction
-
         // functions
         bool LineHasMarker(int marker, int line = -1) const;
         void MarkerToggle(int marker, int line = -1);
@@ -324,31 +302,21 @@ class DLLIMPORT cbEditor : public EditorBase
         void MarkerPrevious(int marker);
         void MarkLine(int marker, int line);
 
-        enum class FoldMode : int
-        {
-            contract = 0, // wxSCI_FOLDACTION_CONTRACT
-            expand = 1, // wxSCI_FOLDACTION_EXPAND,
-            toggle = 2, //wxSCI_FOLDACTION_TOGGLE
-        };
-        enum FoldFlags : unsigned
-        {
-            none = 0x0,
-            ensureVisible = 0x2,
-        };
-
-        void DoFoldAll(FoldMode fold);
-        void DoFoldBlockFromLine(int line, FoldMode fold, unsigned foldFlags);
+        void DoFoldAll(int fold); // 0=unfold, 1=fold, 2=toggle
+        void DoFoldBlockFromLine(int line, int fold); // 0=unfold, 1=fold, 2=toggle
+        bool DoFoldLine(int line, int fold); // 0=unfold, 1=fold, 2=toggle
         void SetMarkerStyle(int marker, int markerType, wxColor fore, wxColor back);
         void UnderlineFoldedLines(bool underline);
         cbStyledTextCtrl* CreateEditor();
-        void ConnectEvents(cbStyledTextCtrl* stc);
+        void SetEditorStyle();
         void SetEditorStyleBeforeFileOpen();
         void SetEditorStyleAfterFileOpen();
         static void InternalSetEditorStyleBeforeFileOpen(cbStyledTextCtrl* control);
         static void InternalSetEditorStyleAfterFileOpen(cbStyledTextCtrl* control);
+        void DetectEncoding();
         bool Open(bool detectEncoding = true);
         void DoAskForCodeCompletion(); // relevant to code-completion plugins
-        void SetLanguageDependentColours(cbStyledTextCtrl &control);
+        static wxColour GetOptionColour(const wxString& option, const wxColour _default);
         void NotifyPlugins(wxEventType type, int intArg = 0, const wxString& strArg = wxEmptyString, int xArg = 0, int yArg = 0);
 
         // events
@@ -361,24 +329,17 @@ class DLLIMPORT cbEditor : public EditorBase
         void OnEditorModified(wxScintillaEvent& event);
         void OnUserListSelection(wxScintillaEvent& event);
         void OnZoom(wxScintillaEvent& event);
-        /** notify all the registered EditorHook functions
-         * @param event indicates which event is received by the cbEditor
-         * You should bind OnScintillaEvent to every wxScintillaEvent events, either directly or
-         * indirectly, see cbEditor::ConnectEvents() for more details.
-         */
         void OnScintillaEvent(wxScintillaEvent& event);
         void OnClose(wxCloseEvent& event);
 
         // one event handler for all popup menu entries
         void OnContextMenuEntry(wxCommandEvent& event);
-        bool OnBeforeBuildContextMenu(const wxPoint& position, ModuleType type) override;    //pecan 2006/03/22
-        void OnAfterBuildContextMenu(ModuleType type) override;                              //pecan 2006/03/22
+        bool OnBeforeBuildContextMenu(const wxPoint& position, ModuleType type);    //pecan 2006/03/22
+        void OnAfterBuildContextMenu(ModuleType type);                              //pecan 2006/03/22
 
         void DestroySplitView();
 
-        void DoInitializations(const wxString& filename, LoaderBase* fileLdr = nullptr);
-
-        void BreakpointMarkerToggle(int line);
+        void DoInitializations(const wxString& filename, LoaderBase* fileLdr = 0);
 
         // variables
         bool m_IsOK;
@@ -388,6 +349,7 @@ class DLLIMPORT cbEditor : public EditorBase
         cbStyledTextCtrl* m_pControl2;
         cbStyledTextCtrl* m_foldBackup;
         SplitType m_SplitType;
+        int m_ID;
         bool m_Modified;
         int m_Index;
         wxTimer m_timerWait;
@@ -395,7 +357,6 @@ class DLLIMPORT cbEditor : public EditorBase
         EditorColourSet* m_pTheme;
         HighlightLanguage m_lang;
         wxDateTime m_LastModified; // to check if the file was modified outside the editor
-        bool m_autoIndentDone;
 
         // DO NOT ADD ANY MORE VARIABLES HERE!
         // ADD THEM IN cbEditorInternalData INSTEAD!

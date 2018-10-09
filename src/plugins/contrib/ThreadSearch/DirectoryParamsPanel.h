@@ -27,36 +27,29 @@
 class wxWindow;
 class wxButton;
 class wxCheckBox;
-class wxComboBox;
+class wxTextCtrl;
 class wxCommandEvent;
-class ThreadSearchFindData;
+
 
 class DirectoryParamsPanel: public wxPanel {
 public:
     // begin wxGlade: DirectoryParamsPanel::ids
     // end wxGlade
 
-    /** Constructor. */
-    DirectoryParamsPanel(ThreadSearchFindData *findData, wxWindow* parent, int id, const wxPoint& pos=wxDefaultPosition,
-                         const wxSize& size=wxDefaultSize, long style=0);
+	/** Constructor. */
+    DirectoryParamsPanel(wxWindow* parent, int id, const wxPoint& pos=wxDefaultPosition, const wxSize& size=wxDefaultSize, long style=0);
 
-    // Getters
+	// Getters
     wxString GetSearchDirPath()        const;
     bool     GetSearchDirRecursively() const;
     bool     GetSearchDirHidden()      const;
     wxString GetSearchMask()           const;
 
-    // Setters
+	// Setters
     void     SetSearchDirPath(const wxString& sDirPath);
     void     SetSearchDirRecursively(bool bRecurse);
     void     SetSearchDirHidden(bool bSearchHidden);
     void     SetSearchMask(const wxString& sMask);
-
-    void SetSearchHistory(const wxArrayString& searchDirs, const wxArrayString& searchMasks);
-    wxArrayString GetSearchDirsHistory() const;
-    wxArrayString GetSearchMasksHistory() const;
-
-    void AddExpressionToCombos(const wxString& path, const wxString& mask);
 
 private:
     // begin wxGlade: DirectoryParamsPanel::methods
@@ -66,27 +59,27 @@ private:
 
 protected:
     // begin wxGlade: DirectoryParamsPanel::attributes
-    wxComboBox* m_pSearchDirPath;
+    wxTextCtrl* m_pTxtSearchDirPath;
     wxButton* m_pBtnSelectDir;
     wxCheckBox* m_pChkSearchDirRecursively;
     wxCheckBox* m_pChkSearchDirHiddenFiles;
-    wxComboBox* m_pMask;
+    wxTextCtrl* m_pTxtMask;
     // end wxGlade
-    ThreadSearchFindData *m_pFindData;
 
     DECLARE_EVENT_TABLE();
 
-private:
-    void OnSearchDirTextEvent(wxCommandEvent &event);
-    void OnSearchDirComboChange(wxCommandEvent &event);
-    void OnSearchMaskTextEvent(wxCommandEvent &event);
+public:
+	/** Gets all text events to forward them to the parent window.
+	  */
+    void OnTxtTextEvent(wxCommandEvent &event); // wxGlade: <event_handler>
 
-    /** Runs a dialog to set directory path.
-      */
+	/** Runs a dialog to set directory path.
+	  */
     void OnBtnDirSelectClick(wxCommandEvent &event); // wxGlade: <event_handler>
 
-    void OnChkSearchDirRecurse(wxCommandEvent &event);
-    void OnChkSearchDirHidden(wxCommandEvent &event);
+	/** Gets all checkboxes click events to forward them to the parent window.
+	  */
+    void OnChkClickEvent(wxCommandEvent &event); // wxGlade: <event_handler>
 }; // wxGlade: end class
 
 

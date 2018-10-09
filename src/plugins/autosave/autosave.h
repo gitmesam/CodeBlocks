@@ -23,14 +23,17 @@ class Autosave : public cbPlugin
 	public:
 		Autosave();
 		~Autosave();
+		int Configure();
 		int GetConfigurationPriority() const{ return  50; }
 		int GetConfigurationGroup() const{ return  cgUnknown; }
+		void BuildMenu(wxMenuBar* menuBar){ return ; }
+		void BuildModuleMenu(const ModuleType type, wxMenu* menu, const FileTreeData* data = 0){ return ; }
+		bool BuildToolBar(wxToolBar* toolBar){ return false; }
 		void OnAttach(); // fires when the plugin is attached to the application
 		void Start();
 		void OnRelease(bool appShutDown); // fires when the plugin is released from the application
 		virtual cbConfigurationPanel* GetConfigurationPanel(wxWindow* parent);
         void OnTimer(wxTimerEvent& event);
-        void SaveProject(cbProject *p, int method);
     DECLARE_EVENT_TABLE()
 };
 
@@ -43,17 +46,13 @@ class AutosaveConfigDlg : public cbConfigurationPanel
 		AutosaveConfigDlg(wxWindow* parent, Autosave* plug);
 		virtual ~AutosaveConfigDlg(){};
 
-        virtual wxString GetTitle() const { return _("Autosave"); }
+        virtual wxString GetTitle() const { return _T("Autosave"); }
         virtual wxString GetBitmapBaseName() const { return _T("autosave"); }
         virtual void OnApply(){ SaveSettings(); }
         virtual void OnCancel(){}
 	private:
-	    void OnProjectsChecked(wxCommandEvent &event);
-	    void OnSourceChecked(wxCommandEvent &event);
-	private:
         void LoadSettings();
         void SaveSettings();
-    DECLARE_EVENT_TABLE();
 };
 
 #endif // AUTOSAVE_H

@@ -34,36 +34,15 @@
 #include <wx/propgrid/propgrid.h>
 #include <wx/propgrid/manager.h>
 
-#include <tinyxml.h>
-#include <prep.h>
-
+#include <tinyxml/tinyxml.h>
 #include "wxspropertystream.h"
 
 class wxsPropertyContainer;
 
-#if wxCHECK_VERSION(3, 0, 0)
-#define wxCHECK_PROPGRID_VERSION(major,minor,release) (0)
-#endif
-
-#if wxCHECK_VERSION(3, 0, 0) || wxCHECK_PROPGRID_VERSION(1, 4, 0)
-#define wxPGVariant                     wxVariant
-#define wxPGId                          wxPGProperty*
-#define wxParentProperty                wxPGProperty
-#define wxCustomPropertyClass           wxPGProperty
-#define wxEnumPropertyClass             wxEnumProperty
-#define wxPG_VALUETYPE(T)               wxT(#T)
-#define wxPGVariantToWxObjectPtr(A,B)   wxDynamicCast(A.GetWxObjectPtr(),B)
-#define wxPG_PROP_UNSPECIFIED           wxPG_EX_AUTO_UNSPECIFIED_VALUES
-#define NEW_IN_WXPG14X                  new
-#else
-#define NEW_IN_WXPG14X
-#endif
-
-
 /** \brief Class representing one property
  *
  * Property is object around real variable(s) which is responsible
- * for streaming it. Currently there are three streamings supported:
+ * for streaming it. Currently there are thre streamings supported:
  * - Streaming to/from PropertyGrid - this will be used in
  *   property editor
  * - Streaming to/from Xml structure - this kind of streaming will be
@@ -94,7 +73,7 @@ class wxsProperty
          *  \param DataName name used in data operations (including Xml/Xrc)
          *  \param Priority priority of this property used when arranging properties in property grid
          */
-        wxsProperty(const wxString& PGName, const wxString& DataName, int Priority);
+        wxsProperty(const wxString& PGName, const wxString& DataName,int Priority);
 
         /** \brief Dctor */
         virtual ~wxsProperty() {}
@@ -111,9 +90,7 @@ class wxsProperty
          * \param Grid grid where properties must be added
          * \param Parent id of parent property which MUST be passed to AppendIn function
          */
-        virtual void PGCreate(cb_unused wxsPropertyContainer*  Object,
-                              cb_unused wxPropertyGridManager* Grid,
-                              cb_unused wxPGId                 Parent) {}
+        virtual void PGCreate(wxsPropertyContainer* Object,wxPropertyGridManager* Grid,wxPGId Parent) {}
 
         /** \brief Function reading value from property grid.
          *
@@ -122,9 +99,7 @@ class wxsProperty
          * \param Id id of changed property
          * \param Index index of variable - value returned from PGRegister function, usually set to variable offset
          */
-        virtual bool PGRead(cb_unused wxsPropertyContainer*  Object,
-                            cb_unused wxPropertyGridManager* Grid,
-                            cb_unused wxPGId                 Id, cb_unused long Index) { return false; }
+        virtual bool PGRead(wxsPropertyContainer* Object,wxPropertyGridManager* Grid, wxPGId Id,long Index) { return false; }
 
         /** \brief Function writing value to property grid.
          *
@@ -133,19 +108,16 @@ class wxsProperty
          * \param Id id of property
          * \param Index index returned from PGRegister(), usually set to variable offset
          */
-        virtual bool PGWrite(cb_unused wxsPropertyContainer*  Object,
-                             cb_unused wxPropertyGridManager* Grid,
-                             cb_unused wxPGId                 Id, cb_unused long Index) { return false; }
+        virtual bool PGWrite(wxsPropertyContainer* Object,wxPropertyGridManager* Grid, wxPGId Id,long Index) { return false; }
 
-        /** \brief Function reading value from xml element
+        /** \brief Fuunction reading value from xml element
          *
          * \param Object class where data should be stored
          * \param Element Xml element for this property, may be 0 - in such case,
          *        default value should be applied
          * \return true on read success, false when applied default value
          */
-        virtual bool XmlRead(cb_unused wxsPropertyContainer* Object,
-                             cb_unused TiXmlElement*         Element) { return false; }
+        virtual bool XmlRead(wxsPropertyContainer* Object,TiXmlElement* Element) { return false; }
 
         /** \brief Function writing value to xml element
          *
@@ -156,8 +128,7 @@ class wxsProperty
          * \param Element Xml element for this property, is not 0
          * \return True of write success, false when this element should not be stored
          */
-        virtual bool XmlWrite(cb_unused wxsPropertyContainer* Object,
-                              cb_unused TiXmlElement*         Element) { return false; }
+        virtual bool XmlWrite(wxsPropertyContainer* Object,TiXmlElement* Element) { return false; }
 
         /** \brief Function reading value from property stream
          *
@@ -165,8 +136,7 @@ class wxsProperty
          *
          *  \return True on read success (when all Stream->GetXXX functions returned true), false otherwise
          */
-        virtual bool PropStreamRead(cb_unused wxsPropertyContainer* Object,
-                                    cb_unused wxsPropertyStream*    Stream) { return false; }
+        virtual bool PropStreamRead(wxsPropertyContainer* Object,wxsPropertyStream* Stream) { return false; }
 
         /** \brief Function writing value to property stream (or checking it)
          *
@@ -174,8 +144,7 @@ class wxsProperty
          *
          *  \return True on write success (when all stream->PutXXX functions returned true), false otherwise
          */
-        virtual bool PropStreamWrite(cb_unused wxsPropertyContainer* Object,
-                                     cb_unused wxsPropertyStream*    Stream) { return false; }
+        virtual bool PropStreamWrite(wxsPropertyContainer* Object,wxsPropertyStream* Stream) { return false; }
 
         /** \brief Getting name of PropertyGrid entry */
         inline const wxString& GetPGName()   { return m_PGName; }
@@ -256,9 +225,9 @@ class wxsProperty
          *  \param Value - value
          *  \param SubChild - value of sub node, if empty, Elem will be used
          */
-        static void XmlSetLong(TiXmlElement* Elem, long Value, const wxString& SubChild = wxEmptyString)
+        static void XmlSetLong(TiXmlElement* Elem,long Value,const wxString& SubChild = wxEmptyString)
         {
-            XmlSetString(Elem,wxString::Format(_T("%ld"),Value),SubChild);
+            XmlSetString(Elem,wxString::Format(_T("%d"),Value),SubChild);
         }
 
         /** \brief Helper function for fetching bool value from xml element
@@ -287,9 +256,9 @@ class wxsProperty
 
     private:
 
-        wxString m_PGName;   ///< \brief Name used inside property grid
-        wxString m_DataName; ///< \brief Name of data element (xml element)
-        int      m_Priority; ///< \brief Priority of this property
+        wxString m_PGName;        ///< \brief Name used inside property grid
+        wxString m_DataName;      ///< \brief Name of data element (xml element)
+        int      m_Priority;      ///< \brief Priority of this property
 };
 
 /** \brief Macro fetching offset of variable from given object
@@ -298,8 +267,8 @@ class wxsProperty
  * \param Variable name of variable inside class
  */
 #define wxsOFFSET(Class,Variable) \
-    ( (intptr_t)(((char*)(&(((Class*)1)->Variable)))) - \
-      (intptr_t)(((char*)((wxsPropertyContainer*)((Class*)1)))) )
+    ( (long)(((char*)(&(((Class*)1)->Variable)))) - \
+      (long)(((char*)((wxsPropertyContainer*)((Class*)1)))) )
 
 /** \brief Macro converting variable offset to value
  *

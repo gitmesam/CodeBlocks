@@ -10,8 +10,6 @@
 #include "sdk_precomp.h"
 
 #ifndef CB_PRECOMP
-    #include <wx/dc.h>
-
     #include "manager.h"
     #include "logmanager.h"
     #include "cbeditor.h"
@@ -41,7 +39,7 @@ cbEditorPrintout::~cbEditorPrintout()
 {
     // dtor
     delete m_pPageSelStart;
-    m_pPageSelStart = nullptr;
+    m_pPageSelStart = 0;
 }
 
 bool cbEditorPrintout::OnPrintPage(int page)
@@ -70,7 +68,7 @@ bool cbEditorPrintout::OnPrintPage(int page)
     return false;
 }
 
-bool cbEditorPrintout::HasPage(cb_unused int page)
+bool cbEditorPrintout::HasPage(int page)
 {
     return (m_printed < m_SelEnd);
 }

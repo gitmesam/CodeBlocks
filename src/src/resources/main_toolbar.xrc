@@ -1,5 +1,5 @@
-<?xml version="1.0" encoding="utf-8" ?>
-<resource xmlns="http://www.wxwidgets.org/wxxrc" version="2.5.3.0">
+<?xml version="1.0" ?>
+<resource>
 <object class="wxToolBarAddOn" name="main_toolbar">
 <bitmapsize platform="mac">32,32</bitmapsize>
 <bitmapsize platform="win,unix">22,22</bitmapsize>
@@ -19,9 +19,9 @@
   <longhelp>Save current file</longhelp>
   <bitmap>images/filesave.png</bitmap>
  </object>
- <object class="tool" name="idFileSaveAll">
-  <tooltip>Save everything</tooltip>
-  <longhelp>Save all source files, projects and the workspace, if there are changes to them. Save the configuration</longhelp>
+ <object class="tool" name="idFileSaveAllFiles">
+  <tooltip>Save all files</tooltip>
+  <longhelp>Save all modified files</longhelp>
   <bitmap>images/filesaveall.png</bitmap>
  </object>
  <object class="separator"/>

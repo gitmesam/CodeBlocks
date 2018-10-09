@@ -7,6 +7,8 @@
  * $HeadURL$
  */
 
+#ifdef __WXMSW__ // For Windows Only
+
 #include <sdk.h>
 #ifndef CB_PRECOMP
 #   include "compiler.h"
@@ -22,7 +24,6 @@
 CompilerOWGenerator::CompilerOWGenerator()
 {
     //ctor
-    m_DebuggerType = wxEmptyString;
 }
 
 CompilerOWGenerator::~CompilerOWGenerator()
@@ -123,11 +124,6 @@ wxString CompilerOWGenerator::SetupLinkerOptions(Compiler* compiler, ProjectBuil
                 {
                     LinkerOptions = LinkerOptions + MapDebugOptions(Temp);
                 }
-                // Debugger Type: -hw (Watcom), -hd (Dwarf), -hc (CodeView)
-                else if (Temp.Matches(_T("-h?")))
-                {
-                    MapDebuggerOptions(Temp);
-                }
                 else if (Temp.StartsWith(_T("-l=")))
                 {
                     Temp = Temp.AfterFirst(_T('='));
@@ -157,7 +153,7 @@ wxString CompilerOWGenerator::SetupLinkerOptions(Compiler* compiler, ProjectBuil
         */
         if (!OtherLinkerOptions.IsEmpty())
         {
-            Count = OtherLinkerOptions.GetCount();
+            int Count = OtherLinkerOptions.GetCount();
             for (i = 0; i < Count; ++i)
             {
                 Temp = OtherLinkerOptions[i];
@@ -241,37 +237,13 @@ wxString CompilerOWGenerator::MapTargetType(const wxString& Opt, int target_type
 wxString CompilerOWGenerator::MapDebugOptions(const wxString& Opt)
 {
     if (Opt.IsSameAs(_T("-d0"))) // No Debug
-    {
         return wxEmptyString;
-    }
     if (Opt.IsSameAs(_T("-d1")))
-    {
-        return wxString(_T("debug ") + m_DebuggerType + _T("lines "));
-    }
-    if (Opt.IsSameAs(_T("-d2")) || Opt.IsSameAs(_T("-d3")))
-    {
-        return wxString(_T("debug ") + m_DebuggerType + _T("all "));
-    }
+        return _T("debug watcom lines ");
+    if (Opt.IsSameAs(_T("-d2")))
+        return _T("debug watcom all ");
     // Nothing Matched
     return wxEmptyString;
 }
 
-void CompilerOWGenerator::MapDebuggerOptions(const wxString& Opt)
-{
-  if (Opt.IsSameAs(_T("-hw")))
-  {
-      m_DebuggerType = _T("watcom ");
-  }
-  else if (Opt.IsSameAs(_T("-hd")))
-  {
-      m_DebuggerType = _T("dwarf ");
-  }
-  else if (Opt.IsSameAs(_T("-hc")))
-  {
-      m_DebuggerType = _T("codeview ");
-  }
-  else
-  {
-      m_DebuggerType = wxEmptyString;
-  }
-}
+#endif // __WXMSW__

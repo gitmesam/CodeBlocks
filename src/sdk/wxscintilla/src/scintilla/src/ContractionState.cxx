@@ -1,314 +1,283 @@
 // Scintilla source code edit control
 /** @file ContractionState.cxx
- ** Manages visibility of lines for folding and wrapping.
+ ** Manages visibility of lines for folding.
  **/
-// Copyright 1998-2007 by Neil Hodgson <neilh@scintilla.org>
+// Copyright 1998-2001 by Neil Hodgson <neilh@scintilla.org>
 // The License.txt file describes the conditions under which this software may be distributed.
-
-#include <cstddef>
-#include <cassert>
-#include <cstring>
-
-#include <stdexcept>
-#include <vector>
-#include <algorithm>
-#include <memory>
 
 #include "Platform.h"
 
-#include "Position.h"
-#include "UniqueString.h"
-#include "SplitVector.h"
-#include "Partitioning.h"
-#include "RunStyles.h"
-#include "SparseVector.h"
 #include "ContractionState.h"
 
-#ifdef SCI_NAMESPACE
-using namespace Scintilla;
-#endif
+OneLine::OneLine() {
+	displayLine = 0;
+	//docLine = 0;
+	visible = true;
+	height = 1;
+	expanded = true;
+}
 
-ContractionState::ContractionState() : linesInDocument(1) {
+ContractionState::ContractionState() {
+	lines = 0;
+	size = 0;
+	linesInDoc = 1;
+	linesInDisplay = 1;
+	valid = false;
+	docLines = 0;
+	sizeDocLines = 0;
 }
 
 ContractionState::~ContractionState() {
 	Clear();
 }
 
-void ContractionState::EnsureData() {
-	if (OneToOne()) {
-		visible.reset(new RunStyles());
-		expanded.reset(new RunStyles());
-		heights.reset(new RunStyles());
-		foldDisplayTexts.reset(new SparseVector<UniqueString>());
-		displayLines.reset(new Partitioning(4));
-		InsertLines(0, linesInDocument);
+void ContractionState::MakeValid() const {
+	if (!valid) {
+		// Could be cleverer by keeping the index of the last still valid entry
+		// rather than invalidating all.
+		linesInDisplay = 0;
+		for (int lineInDoc=0; lineInDoc<linesInDoc; lineInDoc++) {
+			lines[lineInDoc].displayLine = linesInDisplay;
+			if (lines[lineInDoc].visible) {
+				linesInDisplay += lines[lineInDoc].height;
+			}
+		}
+		if (sizeDocLines < linesInDisplay) {
+			delete []docLines;
+			int *docLinesNew = new int[linesInDisplay + growSize];
+			if (!docLinesNew) {
+				docLines = 0;
+				sizeDocLines = 0;
+				return;
+			}
+			docLines = docLinesNew;
+			sizeDocLines = linesInDisplay + growSize;
+		}
+
+		int lineInDisplay=0;
+		for (int line=0; line<linesInDoc; line++) {
+			if (lines[line].visible) {
+				for (int linePiece=0; linePiece<lines[line].height; linePiece++) {
+					docLines[lineInDisplay] = line;
+					lineInDisplay++;
+				}
+			}
+		}
+		valid = true;
 	}
 }
 
 void ContractionState::Clear() {
-	visible.reset();
-	expanded.reset();
-	heights.reset();
-	foldDisplayTexts.reset();
-	displayLines.reset();
-	linesInDocument = 1;
+	delete []lines;
+	lines = 0;
+	size = 0;
+	linesInDoc = 1;
+	linesInDisplay = 1;
+	delete []docLines;
+	docLines = 0;
+	sizeDocLines = 0;
 }
 
-Sci::Line ContractionState::LinesInDoc() const {
-	if (OneToOne()) {
-		return linesInDocument;
-	} else {
-		return displayLines->Partitions() - 1;
+int ContractionState::LinesInDoc() const {
+	return linesInDoc;
+}
+
+int ContractionState::LinesDisplayed() const {
+	if (size != 0) {
+		MakeValid();
 	}
+	return linesInDisplay;
 }
 
-Sci::Line ContractionState::LinesDisplayed() const {
-	if (OneToOne()) {
-		return linesInDocument;
-	} else {
-		return displayLines->PositionFromPartition(LinesInDoc());
-	}
-}
-
-Sci::Line ContractionState::DisplayFromDoc(Sci::Line lineDoc) const {
-	if (OneToOne()) {
-		return (lineDoc <= linesInDocument) ? lineDoc : linesInDocument;
-	} else {
-		if (lineDoc > displayLines->Partitions())
-			lineDoc = displayLines->Partitions();
-		return displayLines->PositionFromPartition(lineDoc);
-	}
-}
-
-Sci::Line ContractionState::DisplayLastFromDoc(Sci::Line lineDoc) const {
-	return DisplayFromDoc(lineDoc) + GetHeight(lineDoc) - 1;
-}
-
-Sci::Line ContractionState::DocFromDisplay(Sci::Line lineDisplay) const {
-	if (OneToOne()) {
-		return lineDisplay;
-	} else {
-		if (lineDisplay <= 0) {
-			return 0;
-		}
-		if (lineDisplay > LinesDisplayed()) {
-			return displayLines->PartitionFromPosition(LinesDisplayed());
-		}
-		Sci::Line lineDoc = displayLines->PartitionFromPosition(lineDisplay);
-		PLATFORM_ASSERT(GetVisible(lineDoc));
+int ContractionState::DisplayFromDoc(int lineDoc) const {
+	if (size == 0) {
 		return lineDoc;
 	}
+	MakeValid();
+	if ((lineDoc >= 0) && (lineDoc < linesInDoc)) {
+		return lines[lineDoc].displayLine;
+	}
+	return -1;
 }
 
-void ContractionState::InsertLine(Sci::Line lineDoc) {
-	if (OneToOne()) {
-		linesInDocument++;
+int ContractionState::DocFromDisplay(int lineDisplay) const {
+	if (lineDisplay <= 0)
+		return 0;
+	if (lineDisplay >= linesInDisplay)
+		return linesInDoc;
+	if (size == 0)
+		return lineDisplay;
+	MakeValid();
+	if (docLines) {	// Valid allocation
+		return docLines[lineDisplay];
 	} else {
-		visible->InsertSpace(lineDoc, 1);
-		visible->SetValueAt(lineDoc, 1);
-		expanded->InsertSpace(lineDoc, 1);
-		expanded->SetValueAt(lineDoc, 1);
-		heights->InsertSpace(lineDoc, 1);
-		heights->SetValueAt(lineDoc, 1);
-		foldDisplayTexts->InsertSpace(lineDoc, 1);
-		foldDisplayTexts->SetValueAt(lineDoc, nullptr);
-		Sci::Line lineDisplay = DisplayFromDoc(lineDoc);
-		displayLines->InsertPartition(lineDoc, lineDisplay);
-		displayLines->InsertText(lineDoc, 1);
+		return 0;
 	}
 }
 
-void ContractionState::InsertLines(Sci::Line lineDoc, Sci::Line lineCount) {
-	for (int l = 0; l < lineCount; l++) {
-		InsertLine(lineDoc + l);
-	}
-	Check();
-}
-
-void ContractionState::DeleteLine(Sci::Line lineDoc) {
-	if (OneToOne()) {
-		linesInDocument--;
-	} else {
-		if (GetVisible(lineDoc)) {
-			displayLines->InsertText(lineDoc, -heights->ValueAt(lineDoc));
+void ContractionState::Grow(int sizeNew) {
+	OneLine *linesNew = new OneLine[sizeNew];
+	if (linesNew) {
+		int i = 0;
+		for (; i < size; i++) {
+			linesNew[i] = lines[i];
 		}
-		displayLines->RemovePartition(lineDoc);
-		visible->DeleteRange(lineDoc, 1);
-		expanded->DeleteRange(lineDoc, 1);
-		heights->DeleteRange(lineDoc, 1);
-		foldDisplayTexts->DeletePosition(lineDoc);
+		for (; i < sizeNew; i++) {
+			linesNew[i].displayLine = i;
+		}
+		delete []lines;
+		lines = linesNew;
+		size = sizeNew;
+		valid = false;
+	} else {
+		Platform::DebugPrintf("No memory available\n");
+		// TODO: Blow up
 	}
 }
 
-void ContractionState::DeleteLines(Sci::Line lineDoc, Sci::Line lineCount) {
-	for (Sci::Line l = 0; l < lineCount; l++) {
-		DeleteLine(lineDoc);
+void ContractionState::InsertLines(int lineDoc, int lineCount) {
+	if (size == 0) {
+		linesInDoc += lineCount;
+		linesInDisplay += lineCount;
+		return;
 	}
-	Check();
+	//Platform::DebugPrintf("InsertLine[%d] = %d\n", lineDoc);
+	if ((linesInDoc + lineCount + 2) >= size) {
+		Grow(linesInDoc + lineCount + growSize);
+	}
+	linesInDoc += lineCount;
+	for (int i = linesInDoc; i >= lineDoc + lineCount; i--) {
+		lines[i].visible = lines[i - lineCount].visible;
+		lines[i].height = lines[i - lineCount].height;
+		linesInDisplay += lines[i].height;
+		lines[i].expanded = lines[i - lineCount].expanded;
+	}
+	for (int d=0;d<lineCount;d++) {
+		lines[lineDoc+d].visible = true;	// Should inherit visibility from context ?
+		lines[lineDoc+d].height = 1;
+		lines[lineDoc+d].expanded = true;
+	}
+	valid = false;
 }
 
-bool ContractionState::GetVisible(Sci::Line lineDoc) const {
-	if (OneToOne()) {
+void ContractionState::DeleteLines(int lineDoc, int lineCount) {
+	if (size == 0) {
+		linesInDoc -= lineCount;
+		linesInDisplay -= lineCount;
+		return;
+	}
+	int deltaDisplayed = 0;
+	for (int d=0;d<lineCount;d++) {
+		if (lines[lineDoc+d].visible)
+			deltaDisplayed -= lines[lineDoc+d].height;
+	}
+	for (int i = lineDoc; i < linesInDoc-lineCount; i++) {
+		if (i != 0) // Line zero is always visible
+			lines[i].visible = lines[i + lineCount].visible;
+		lines[i].expanded = lines[i + lineCount].expanded;
+		lines[i].height = lines[i + lineCount].height;
+	}
+	linesInDoc -= lineCount;
+	linesInDisplay += deltaDisplayed;
+	valid = false;
+}
+
+bool ContractionState::GetVisible(int lineDoc) const {
+	if (size == 0)
 		return true;
+	if ((lineDoc >= 0) && (lineDoc < linesInDoc)) {
+		return lines[lineDoc].visible;
 	} else {
-		if (lineDoc >= visible->Length())
-			return true;
-		return visible->ValueAt(lineDoc) == 1;
+		return false;
 	}
 }
 
-bool ContractionState::SetVisible(Sci::Line lineDocStart, Sci::Line lineDocEnd, bool isVisible) {
-	if (OneToOne() && isVisible) {
+bool ContractionState::SetVisible(int lineDocStart, int lineDocEnd, bool visible) {
+	if (lineDocStart == 0)
+		lineDocStart++;
+	if (lineDocStart > lineDocEnd)
 		return false;
-	} else {
-		EnsureData();
-		Sci::Line delta = 0;
-		Check();
-		if ((lineDocStart <= lineDocEnd) && (lineDocStart >= 0) && (lineDocEnd < LinesInDoc())) {
-			for (Sci::Line line = lineDocStart; line <= lineDocEnd; line++) {
-				if (GetVisible(line) != isVisible) {
-					int difference = isVisible ? heights->ValueAt(line) : -heights->ValueAt(line);
-					visible->SetValueAt(line, isVisible ? 1 : 0);
-					displayLines->InsertText(line, difference);
-					delta += difference;
-				}
+	if (size == 0) {
+		Grow(linesInDoc + growSize);
+	}
+	// TODO: modify docLine members to mirror displayLine
+	int delta = 0;
+	// Change lineDocs
+	if ((lineDocStart <= lineDocEnd) && (lineDocStart >= 0) && (lineDocEnd < linesInDoc)) {
+		for (int line=lineDocStart; line <= lineDocEnd; line++) {
+			if (lines[line].visible != visible) {
+				delta += visible ? lines[line].height : -lines[line].height;
+				lines[line].visible = visible;
 			}
-		} else {
+		}
+	}
+	linesInDisplay += delta;
+	valid = false;
+	return delta != 0;
+}
+
+bool ContractionState::GetExpanded(int lineDoc) const {
+	if (size == 0)
+		return true;
+	if ((lineDoc >= 0) && (lineDoc < linesInDoc)) {
+		return lines[lineDoc].expanded;
+	} else {
+		return false;
+	}
+}
+
+bool ContractionState::SetExpanded(int lineDoc, bool expanded) {
+	if (size == 0) {
+		if (expanded) {
+			// If in completely expanded state then setting
+			// one line to expanded has no effect.
 			return false;
 		}
-		Check();
-		return delta != 0;
+		Grow(linesInDoc + growSize);
 	}
-}
-
-bool ContractionState::HiddenLines() const {
-	if (OneToOne()) {
-		return false;
-	} else {
-		return !visible->AllSameAs(1);
-	}
-}
-
-const char *ContractionState::GetFoldDisplayText(Sci::Line lineDoc) const {
-	Check();
-	return foldDisplayTexts->ValueAt(lineDoc).get();
-}
-
-bool ContractionState::SetFoldDisplayText(Sci::Line lineDoc, const char *text) {
-	EnsureData();
-	const char *foldText = foldDisplayTexts->ValueAt(lineDoc).get();
-	if (!foldText || !text || 0 != strcmp(text, foldText)) {
-		foldDisplayTexts->SetValueAt(lineDoc, UniqueStringCopy(text));
-		Check();
-		return true;
-	} else {
-		Check();
-		return false;
-	}
-}
-
-bool ContractionState::GetExpanded(Sci::Line lineDoc) const {
-	if (OneToOne()) {
-		return true;
-	} else {
-		Check();
-		return expanded->ValueAt(lineDoc) == 1;
-	}
-}
-
-bool ContractionState::SetExpanded(Sci::Line lineDoc, bool isExpanded) {
-	if (OneToOne() && isExpanded) {
-		return false;
-	} else {
-		EnsureData();
-		if (isExpanded != (expanded->ValueAt(lineDoc) == 1)) {
-			expanded->SetValueAt(lineDoc, isExpanded ? 1 : 0);
-			Check();
+	if ((lineDoc >= 0) && (lineDoc < linesInDoc)) {
+		if (lines[lineDoc].expanded != expanded) {
+			lines[lineDoc].expanded = expanded;
 			return true;
-		} else {
-			Check();
-			return false;
 		}
 	}
+	return false;
 }
 
-bool ContractionState::GetFoldDisplayTextShown(Sci::Line lineDoc) const {
-	return !GetExpanded(lineDoc) && GetFoldDisplayText(lineDoc);
-}
-
-Sci::Line ContractionState::ContractedNext(Sci::Line lineDocStart) const {
-	if (OneToOne()) {
-		return -1;
-	} else {
-		Check();
-		if (!expanded->ValueAt(lineDocStart)) {
-			return lineDocStart;
-		} else {
-			Sci::Line lineDocNextChange = expanded->EndRun(lineDocStart);
-			if (lineDocNextChange < LinesInDoc())
-				return lineDocNextChange;
-			else
-				return -1;
-		}
-	}
-}
-
-int ContractionState::GetHeight(Sci::Line lineDoc) const {
-	if (OneToOne()) {
+int ContractionState::GetHeight(int lineDoc) const {
+	if (size == 0)
 		return 1;
+	if ((lineDoc >= 0) && (lineDoc < linesInDoc)) {
+		return lines[lineDoc].height;
 	} else {
-		return heights->ValueAt(lineDoc);
+		return 1;
 	}
 }
 
 // Set the number of display lines needed for this line.
 // Return true if this is a change.
-bool ContractionState::SetHeight(Sci::Line lineDoc, int height) {
-	if (OneToOne() && (height == 1)) {
+bool ContractionState::SetHeight(int lineDoc, int height) {
+	if (lineDoc > linesInDoc)
 		return false;
-	} else if (lineDoc < LinesInDoc()) {
-		EnsureData();
-		if (GetHeight(lineDoc) != height) {
-			if (GetVisible(lineDoc)) {
-				displayLines->InsertText(lineDoc, height - GetHeight(lineDoc));
-			}
-			heights->SetValueAt(lineDoc, height);
-			Check();
-			return true;
-		} else {
-			Check();
+	if (size == 0) {
+		if (height == 1) {
+			// If in completely expanded state then all lines
+			// assumed to have height of one so no effect here.
 			return false;
 		}
+		Grow(linesInDoc + growSize);
+	}
+	if (lines[lineDoc].height != height) {
+		lines[lineDoc].height = height;
+		valid = false;
+		return true;
 	} else {
 		return false;
 	}
 }
 
 void ContractionState::ShowAll() {
-	Sci::Line lines = LinesInDoc();
-	Clear();
-	linesInDocument = lines;
-}
-
-// Debugging checks
-
-void ContractionState::Check() const {
-#ifdef CHECK_CORRECTNESS
-	for (Sci::Line vline = 0; vline < LinesDisplayed(); vline++) {
-		const Sci::Line lineDoc = DocFromDisplay(vline);
-		PLATFORM_ASSERT(GetVisible(lineDoc));
-	}
-	for (Sci::Line lineDoc = 0; lineDoc < LinesInDoc(); lineDoc++) {
-		const Sci::Line displayThis = DisplayFromDoc(lineDoc);
-		const Sci::Line displayNext = DisplayFromDoc(lineDoc + 1);
-		const Sci::Line height = displayNext - displayThis;
-		PLATFORM_ASSERT(height >= 0);
-		if (GetVisible(lineDoc)) {
-			PLATFORM_ASSERT(GetHeight(lineDoc) == height);
-		} else {
-			PLATFORM_ASSERT(0 == height);
-		}
-	}
-#endif
+	delete []lines;
+	lines = 0;
+	size = 0;
 }

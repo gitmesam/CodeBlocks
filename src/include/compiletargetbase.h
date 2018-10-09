@@ -34,10 +34,10 @@ enum TargetType
 {
     ttExecutable    = 0, /**< Target produces an executable */
     ttConsoleOnly   = 1, /**< Target produces a console executable (without GUI) (distinction between ttExecutable and ttConsoleOnly happens only under Win32) */
-    ttStaticLib     = 2, /**< Target produces a static library */
+    ttStaticLib        = 2, /**< Target produces a static library */
     ttDynamicLib    = 3, /**< Target produces a dynamic library */
     ttCommandsOnly  = 4, /**< Target only runs commands in pre-build and/or post-build steps */
-    ttNative        = 5  /**< Target produces a native binary */
+    ttNative        = 5, /**< Target produces a native binary */
 };
 
 enum MakeCommand
@@ -46,8 +46,6 @@ enum MakeCommand
     mcDistClean,
     mcBuild,
     mcCompileFile,
-    mcAskRebuildNeeded,
-    mcSilentBuild,
 
     /// *Don't* use this. It's only used internally for enumerations...
     mcLast
@@ -78,7 +76,7 @@ class DLLIMPORT CompileTargetBase : public CompileOptionsBase
 {
     public:
         CompileTargetBase();
-        ~CompileTargetBase() override;
+        virtual ~CompileTargetBase();
 
         /** A target's filename can either be auto-generated based on the running platform,
           * or completely specified by the user. Calling this function sets the
@@ -114,8 +112,6 @@ class DLLIMPORT CompileTargetBase : public CompileOptionsBase
         virtual const wxString& GetTitle() const; ///< Read the target's title
         virtual void SetTitle(const wxString& title); ///< Set the target's title
         virtual void SetOutputFilename(const wxString& filename); ///< Set the target's output filename
-        virtual void SetImportLibraryFilename(const wxString& filename); ///< Set the target's import library filename
-        virtual void SetDefinitionFileFilename(const wxString& filename); ///< Set the target's definition file filename
         virtual void SetWorkingDir(const wxString& dirname); ///< Set the target's working dir on execution (valid only for executable targets)
         virtual void SetObjectOutput(const wxString& dirname); ///< Set the target's objects output dir
         virtual void SetDepsOutput(const wxString& dirname); ///< Set the target's dependencies output dir
@@ -124,11 +120,10 @@ class DLLIMPORT CompileTargetBase : public CompileOptionsBase
         virtual wxString GetWorkingDir(); ///< Read the target's working dir for execution (valid only for executable targets)
         virtual wxString GetObjectOutput() const; ///< Read the target's objects output dir
         virtual wxString GetDepsOutput() const; ///< Read the target's dependencies output dir
-        virtual wxString GetOutputFilename(); ///< Read the target's output filename
+        virtual wxString GetOutputFilename() ; ///< Read the target's output filename
         virtual wxString SuggestOutputFilename(); ///< Suggest a filename based on the target's type
         virtual wxString GetExecutableFilename() const; ///< Read the target's executable filename (produced if target type is ttExecutable)
         virtual wxString GetDynamicLibFilename(); ///< Read the target's dynamic library filename (produced if target type is ttDynamicLib)
-        virtual wxString GetDynamicLibImportFilename(); ///< Read the target's dynamic library import filename (produced if target type is ttDynamicLib)
         virtual wxString GetDynamicLibDefFilename(); ///< Read the target's dynamic library definition file filename (produced if target type is ttDynamicLib)
         virtual wxString GetStaticLibFilename(); ///< Read the target's static library filename (produced if target type is ttStaticLib)
         virtual wxString GetNativeFilename(); ///< Read the target's native filename (produced if target type is ttNative)
@@ -139,8 +134,6 @@ class DLLIMPORT CompileTargetBase : public CompileOptionsBase
         virtual void SetExecutionParameters(const wxString& params); ///< Set the target's execution parameters to \c params
         virtual const wxString& GetHostApplication() const; ///< Read the target's host application
         virtual void SetHostApplication(const wxString& app); ///< Set the target's host application to \c app
-        virtual bool GetRunHostApplicationInTerminal() const; ///< Get the flag if the host app should be run in terminal
-        virtual void SetRunHostApplicationInTerminal(bool in_terminal); ///! Set the flag if the host app should be run in terminal
         virtual void SetCompilerID(const wxString& id); ///< Set the target's compiler
         virtual const wxString& GetCompilerID() const { return m_CompilerId; } ///< Read the target's compiler
         virtual wxString GetMakeCommandFor(MakeCommand cmd) const { return m_MakeCommands[cmd]; } ///< Get the "make" command used for @c cmd
@@ -151,9 +144,7 @@ class DLLIMPORT CompileTargetBase : public CompileOptionsBase
 
         wxString m_Filename;
         wxString m_Title;
-        mutable wxString m_OutputFilename;
-        wxString m_ImportLibraryFilename;
-        wxString m_DefinitionFileFilename;
+        wxString m_OutputFilename;
         wxString m_WorkingDir;
         wxString m_ObjectOutput;
         wxString m_DepsOutput;
@@ -164,7 +155,6 @@ class DLLIMPORT CompileTargetBase : public CompileOptionsBase
         wxString m_CompilerId;
         wxString m_MakeCommands[mcLast];
         bool m_MakeCommandsModified;
-        bool m_RunHostApplicationInTerminal;
         TargetFilenameGenerationPolicy m_PrefixGenerationPolicy;
         TargetFilenameGenerationPolicy m_ExtensionGenerationPolicy;
     private:

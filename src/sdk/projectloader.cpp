@@ -26,17 +26,12 @@
     #include "globals.h"
 #endif
 
-#include <wx/dir.h>
-#include <string>
-
-#include <algorithm>
 #include "filefilters.h"
 #include "projectloader.h"
 #include "projectloader_hooks.h"
 #include "annoyingdialog.h"
 #include "configmanager.h"
-#include "tinywxuni.h"
-#include "filegroupsandmasks.h"
+#include "tinyxml/tinywxuni.h"
 
 ProjectLoader::ProjectLoader(cbProject* project)
     : m_pProject(project),
@@ -55,7 +50,7 @@ ProjectLoader::~ProjectLoader()
 
 bool ProjectLoader::Open(const wxString& filename)
 {
-    return Open(filename, nullptr);
+    return Open(filename, 0);
 }
 
 bool ProjectLoader::Open(const wxString& filename, TiXmlElement** ppExtensions)
@@ -118,7 +113,8 @@ bool ProjectLoader::Open(const wxString& filename, TiXmlElement** ppExtensions)
                                 _("This project file was saved with a newer version of Code::Blocks.\n"
                                 "Will try to load, but you should make sure all the settings were loaded correctly..."),
                                 wxART_WARNING,
-                                AnnoyingDialog::OK);
+                                AnnoyingDialog::OK,
+                                wxID_OK);
             dlg.ShowModal();
         }
         else
@@ -177,7 +173,8 @@ bool ProjectLoader::Open(const wxString& filename, TiXmlElement** ppExtensions)
                 AnnoyingDialog dlg(_("Project file format changed"),
                                     msg,
                                     wxART_INFORMATION,
-                                    AnnoyingDialog::OK);
+                                    AnnoyingDialog::OK,
+                                    wxID_OK);
                 dlg.ShowModal();
             }
 
@@ -187,7 +184,8 @@ bool ProjectLoader::Open(const wxString& filename, TiXmlElement** ppExtensions)
                 AnnoyingDialog dlg(_("Project file upgrade warning"),
                                     warn_msg,
                                     wxART_WARNING,
-                                    AnnoyingDialog::OK);
+                                    AnnoyingDialog::OK,
+                                    wxID_OK);
                 dlg.ShowModal();
             }
         }
@@ -230,7 +228,7 @@ bool ProjectLoader::Open(const wxString& filename, TiXmlElement** ppExtensions)
     }
 
     if (ppExtensions)
-        *ppExtensions = nullptr;
+        *ppExtensions = 0;
 
     // as a last step, run all hooked callbacks
     TiXmlElement* node = proj->FirstChildElement("Extensions");
@@ -292,8 +290,6 @@ void ProjectLoader::ConvertLibraries(CompileTargetBase* object)
 
     wxString compilerId = object->GetCompilerID();
     Compiler* compiler = CompilerFactory::GetCompiler(compilerId);
-    if (!compiler)
-        return;
     wxString linkLib = compiler->GetSwitches().linkLibs;
     wxString libExt = compiler->GetSwitches().libExtension;
     size_t libExtLen = libExt.Length();
@@ -346,14 +342,6 @@ void ProjectLoader::DoMakeCommands(TiXmlElement* parentNode, CompileTargetBase* 
     node = parentNode->FirstChildElement("DistClean");
     if (node && node->Attribute("command"))
         target->SetMakeCommandFor(mcDistClean, cbC2U(node->Attribute("command")));
-
-    node = parentNode->FirstChildElement("AskRebuildNeeded");
-    if (node && node->Attribute("command"))
-        target->SetMakeCommandFor(mcAskRebuildNeeded, cbC2U(node->Attribute("command")));
-
-    node = parentNode->FirstChildElement("SilentBuild");
-    if (node && node->Attribute("command"))
-        target->SetMakeCommandFor(mcSilentBuild, cbC2U(node->Attribute("command")));
 }
 
 void ProjectLoader::DoVirtualTargets(TiXmlElement* parentNode)
@@ -389,7 +377,6 @@ void ProjectLoader::DoProjectOptions(TiXmlElement* parentNode)
     wxString title;
     wxString makefile;
     bool makefile_custom = false;
-    wxString execution_dir;
     wxString defaultTarget;
     wxString compilerId = _T("gcc");
     bool extendedObjectNames = false;
@@ -397,7 +384,6 @@ void ProjectLoader::DoProjectOptions(TiXmlElement* parentNode)
     int platformsFinal = spAll;
     PCHMode pch_mode = m_IsPre_1_2 ? pchSourceDir : pchObjectDir;
     bool showNotes = false;
-    bool checkFiles = true;
     wxString notes;
 
     // loop through all options
@@ -414,13 +400,10 @@ void ProjectLoader::DoProjectOptions(TiXmlElement* parentNode)
             platformsFinal = GetPlatformsFromString(cbC2U(node->Attribute("platforms")));
 
         else if (node->Attribute("makefile")) // there is only one attribute per option, so "else" is a safe optimisation
-            makefile = UnixFilename(cbC2U(node->Attribute("makefile")));
+            makefile = cbC2U(node->Attribute("makefile"));
 
         else if (node->Attribute("makefile_is_custom"))
             makefile_custom = strncmp(node->Attribute("makefile_is_custom"), "1", 1) == 0;
-
-        else if (node->Attribute("execution_dir"))
-            execution_dir = UnixFilename(cbC2U(node->Attribute("execution_dir")));
 
         // old default_target (int) node
         else if (node->QueryIntAttribute("default_target", &m_1_4_to_1_5_deftarget) == TIXML_SUCCESS)
@@ -451,8 +434,6 @@ void ProjectLoader::DoProjectOptions(TiXmlElement* parentNode)
                 notes = cbC2U(t->Value());
             showNotes = !notes.IsEmpty() && strncmp(node->Attribute("show_notes"), "1", 1) == 0;
         }
-        else if (node->Attribute("check_files"))
-            checkFiles = strncmp(node->Attribute("check_files"), "0", 1) != 0;
 
         node = node->NextSiblingElement("Option");
     }
@@ -461,7 +442,6 @@ void ProjectLoader::DoProjectOptions(TiXmlElement* parentNode)
     m_pProject->SetPlatforms(platformsFinal);
     m_pProject->SetMakefile(makefile);
     m_pProject->SetMakefileCustom(makefile_custom);
-    m_pProject->SetMakefileExecutionDir(execution_dir);
     m_pProject->SetDefaultExecuteTarget(defaultTarget);
     m_pProject->SetCompilerID(compilerId);
     m_pProject->SetExtendedObjectNamesGeneration(extendedObjectNames);
@@ -469,7 +449,6 @@ void ProjectLoader::DoProjectOptions(TiXmlElement* parentNode)
     m_pProject->SetVirtualFolders(vfolders);
     m_pProject->SetNotes(notes);
     m_pProject->SetShowNotesOnLoad(showNotes);
-    m_pProject->SetCheckForExternallyModifiedFiles(checkFiles);
 
     DoMakeCommands(parentNode->FirstChildElement("MakeCommands"), m_pProject);
     DoVirtualTargets(parentNode->FirstChildElement("VirtualTargets"));
@@ -503,7 +482,7 @@ void ProjectLoader::DoBuildTarget(TiXmlElement* parentNode)
 
     while (node)
     {
-        ProjectBuildTarget* target = nullptr;
+        ProjectBuildTarget* target = 0L;
         wxString title = cbC2U(node->Attribute("title"));
         if (!title.IsEmpty())
             target = m_pProject->AddBuildTarget(title);
@@ -533,8 +512,6 @@ void ProjectLoader::DoBuildTargetOptions(TiXmlElement* parentNode, ProjectBuildT
 
     bool use_console_runner = true;
     wxString output;
-    wxString imp_lib;
-    wxString def_file;
     wxString working_dir;
     wxString obj_output;
     wxString deps_output;
@@ -545,7 +522,6 @@ void ProjectLoader::DoBuildTargetOptions(TiXmlElement* parentNode, ProjectBuildT
     wxString compilerId = m_pProject->GetCompilerID();
     wxString parameters;
     wxString hostApplication;
-    bool runHostApplicationInTerminal = false;
     bool includeInTargetAll = m_IsPre_1_2 ? true : false;
     bool createStaticLib = false;
     bool createDefFile = false;
@@ -567,12 +543,6 @@ void ProjectLoader::DoBuildTargetOptions(TiXmlElement* parentNode, ProjectBuildT
 
         if (node->Attribute("output"))
             output = UnixFilename(cbC2U(node->Attribute("output")));
-
-        if (node->Attribute("imp_lib"))
-            imp_lib = UnixFilename(cbC2U(node->Attribute("imp_lib")));
-
-        if (node->Attribute("def_file"))
-            def_file = UnixFilename(cbC2U(node->Attribute("def_file")));
 
         if (node->Attribute("prefix_auto"))
             prefixPolicy = atoi(node->Attribute("prefix_auto")) == 1 ? tgfpPlatformDefault : tgfpNone;
@@ -606,12 +576,6 @@ void ProjectLoader::DoBuildTargetOptions(TiXmlElement* parentNode, ProjectBuildT
 
         if (node->Attribute("host_application"))
             hostApplication = UnixFilename(cbC2U(node->Attribute("host_application")));
-
-        if (node->Attribute("run_host_application_in_terminal"))
-        {
-            wxString runInTerminal = cbC2U(node->Attribute("run_host_application_in_terminal"));
-            runHostApplicationInTerminal = (runInTerminal == wxT("1"));
-        }
 
         // used in versions prior to 1.5
         if (node->Attribute("includeInTargetAll"))
@@ -663,8 +627,6 @@ void ProjectLoader::DoBuildTargetOptions(TiXmlElement* parentNode, ProjectBuildT
         target->SetTargetFilenameGenerationPolicy(prefixPolicy, extensionPolicy);
         target->SetTargetType((TargetType)type); // type *must* come before output filename!
         target->SetOutputFilename(output); // because if no filename defined, one will be suggested based on target type...
-        target->SetImportLibraryFilename(imp_lib);
-        target->SetDefinitionFileFilename(def_file);
         target->SetUseConsoleRunner(use_console_runner);
         if (!working_dir.IsEmpty())
             target->SetWorkingDir(working_dir);
@@ -676,7 +638,6 @@ void ProjectLoader::DoBuildTargetOptions(TiXmlElement* parentNode, ProjectBuildT
         target->SetAdditionalOutputFiles(added);
         target->SetExecutionParameters(parameters);
         target->SetHostApplication(hostApplication);
-        target->SetRunHostApplicationInTerminal(runHostApplicationInTerminal);
         target->SetIncludeInTargetAll(includeInTargetAll); // used in versions prior to 1.5
         target->SetCreateDefFile(createDefFile);
         target->SetCreateStaticLib(createStaticLib);
@@ -700,7 +661,7 @@ void ProjectLoader::DoCompilerOptions(TiXmlElement* parentNode, ProjectBuildTarg
     while (child)
     {
         wxString option = cbC2U(child->Attribute("option"));
-        wxString dir = UnixFilename(cbC2U(child->Attribute("directory")));
+        wxString dir = cbC2U(child->Attribute("directory"));
         if (!option.IsEmpty())
         {
             if (target)
@@ -729,15 +690,7 @@ void ProjectLoader::DoResourceCompilerOptions(TiXmlElement* parentNode, ProjectB
     TiXmlElement* child = node->FirstChildElement("Add");
     while (child)
     {
-        wxString option = cbC2U(child->Attribute("option"));
-        wxString dir = UnixFilename(cbC2U(child->Attribute("directory")));
-        if (!option.IsEmpty())
-        {
-            if (target)
-                target->AddResourceCompilerOption(option);
-            else
-                m_pProject->AddResourceCompilerOption(option);
-        }
+        wxString dir = cbC2U(child->Attribute("directory"));
         if (!dir.IsEmpty())
         {
             if (target)
@@ -819,7 +772,7 @@ void ProjectLoader::DoLibsOptions(TiXmlElement* parentNode, ProjectBuildTarget* 
     TiXmlElement* child = node->FirstChildElement("Add");
     while (child)
     {
-        wxString option = UnixFilename(cbC2U(child->Attribute("option")));
+        wxString option = cbC2U(child->Attribute("option"));
         if (!option.IsEmpty())
         {
             if (target)
@@ -874,14 +827,13 @@ void ProjectLoader::DoEnvironment(TiXmlElement* parentNode, CompileOptionsBase* 
 {
     if (!base)
         return;
-
     TiXmlElement* node = parentNode->FirstChildElement("Environment");
     while (node)
     {
         TiXmlElement* child = node->FirstChildElement("Variable");
         while (child)
         {
-            wxString name  = cbC2U(child->Attribute("name"));
+            wxString name = cbC2U(child->Attribute("name"));
             wxString value = cbC2U(child->Attribute("value"));
             if (!name.IsEmpty())
                 base->SetVar(name, UnixFilename(value));
@@ -892,141 +844,15 @@ void ProjectLoader::DoEnvironment(TiXmlElement* parentNode, CompileOptionsBase* 
     }
 }
 
-namespace
-{
-wxString makePathAbsoluteIfNeeded(const wxString& path, const wxString& basePath)
-{
-    wxString absolute = path;
-    wxFileName fname = path;
-    if (!fname.IsAbsolute())
-    {
-        fname.MakeAbsolute(basePath);
-        absolute = fname.GetFullPath();
-    }
-    return absolute;
-}
-
-wxString makePathRelativeIfNeeded(const wxString& path, const wxString& basePath)
-{
-    wxString relative = path;
-    wxFileName fname = path;
-    if (fname.IsAbsolute())
-    {
-        fname.MakeRelativeTo(basePath);
-        relative = fname.GetFullPath();
-    }
-    return relative;
-}
-
-wxArrayString makePathsRelativeIfNeeded(const wxArrayString& paths, const wxString& basePath)
-{
-    wxArrayString relatives = paths;
-    for(std::size_t index = 0U; index < paths.Count(); ++index)
-    {
-        wxString& path = relatives[index];
-        path = makePathRelativeIfNeeded(path, basePath);
-    }
-    return relatives;
-}
-
-std::vector<wxString> filterOnWildcards(const wxArrayString& files, const wxString& wildCard)
-{
-    wxString wild = wildCard;
-    if(wild.IsEmpty())
-    {
-        FilesGroupsAndMasks fgm;
-        for (unsigned i = 0; i < fgm.GetGroupsCount(); ++i)
-        {
-            wild += fgm.GetFileMasks(i);
-        }
-    }
-
-    const wxArrayString wilds = GetArrayFromString(wild, _T(";"));
-    std::vector<wxString> finalFiles;
-    for(std::size_t file = 0; file < files.Count(); ++file)
-    {
-        const wxString& fileName = files[file];
-        bool MatchesWildCard = false;
-        for (std::size_t x = 0; x < wilds.GetCount(); ++x)
-        {
-            if (fileName.Matches(wilds[x].Lower()))
-            {
-                MatchesWildCard = true;
-                break;
-            }
-        }
-        if(MatchesWildCard)
-        {
-            finalFiles.push_back(fileName);
-        }
-    }
-    return finalFiles;
-}
-
-std::vector<wxString> filesInDir(const wxString& directory, const wxString& wildCard, bool recursive, const wxString& basePath)
-{
-    const wxString directoryPath = makePathAbsoluteIfNeeded(directory, basePath);
-    std::vector<wxString> files;
-
-    int flags = wxDIR_FILES;
-    if(recursive)
-    {
-        flags = flags | wxDIR_DIRS;
-    }
-    wxArrayString filesUnfiltered;
-    wxDir::GetAllFiles(directoryPath, &filesUnfiltered, wxEmptyString, flags);
-    filesUnfiltered = makePathsRelativeIfNeeded(filesUnfiltered, basePath);
-    return filterOnWildcards(filesUnfiltered, wildCard);
-}
-} // namespace
-
-void ProjectLoader::DoUnits(const TiXmlElement* parentNode)
+void ProjectLoader::DoUnits(TiXmlElement* parentNode)
 {
     Manager::Get()->GetLogManager()->DebugLog(_T("Loading project files..."));
     m_pProject->BeginAddFiles();
-
     int count = 0;
-
-    // TODO : we need to store all the globs, so that at save time we can filter files out, globs derived ones should not be stored as <Unit ... >
-    std::vector<cbProject::Glob> unitsGlobs;
-
-    const std::string UnitsGlobLabel("UnitsGlob");
-    const TiXmlElement* unitsGlob = parentNode->FirstChildElement(UnitsGlobLabel.c_str());
-    while (unitsGlob)
-    {
-        const wxString directory = cbC2U(unitsGlob->Attribute("directory"));
-        const wxString wildCard = cbC2U(unitsGlob->Attribute("wildcard"));
-
-        int recursive = 1;
-        unitsGlob->QueryIntAttribute("recursive", &recursive);
-
-        if (!directory.IsEmpty())
-        {
-            const bool isRecursive = (recursive)?true:false;
-            unitsGlobs.push_back(cbProject::Glob(directory, wildCard, isRecursive));
-            std::vector<wxString> files = filesInDir(directory, wildCard, isRecursive, m_pProject->GetBasePath());
-            for (std::size_t index = 0; index < files.size(); ++index)
-            {
-                const wxString filename = files[index];
-                ProjectFile* file = m_pProject->AddFile(-1, UnixFilename(filename));
-                if (!file)
-                    Manager::Get()->GetLogManager()->DebugLog(_T("Can't load file ") + filename);
-                else
-                {
-                    ++count;
-                    const TiXmlElement dummyUnitWithoutOptions("Unit");
-                    DoUnitOptions(&dummyUnitWithoutOptions, file);
-                }
-            }
-        }
-        unitsGlob = unitsGlob->NextSiblingElement(UnitsGlobLabel.c_str());
-    }
-    m_pProject->SetGlobs(unitsGlobs);
-
-    const TiXmlElement* unit = parentNode->FirstChildElement("Unit");
+    TiXmlElement* unit = parentNode->FirstChildElement("Unit");
     while (unit)
     {
-        const wxString filename = cbC2U(unit->Attribute("filename"));
+        wxString filename = cbC2U(unit->Attribute("filename"));
         if (!filename.IsEmpty())
         {
             ProjectFile* file = m_pProject->AddFile(-1, UnixFilename(filename));
@@ -1045,7 +871,7 @@ void ProjectLoader::DoUnits(const TiXmlElement* parentNode)
     Manager::Get()->GetLogManager()->DebugLog(F(_T("%d files loaded"), count));
 }
 
-void ProjectLoader::DoUnitOptions(const TiXmlElement* parentNode, ProjectFile* file)
+void ProjectLoader::DoUnitOptions(TiXmlElement* parentNode, ProjectFile* file)
 {
     int tempval = 0;
     bool foundCompile = false;
@@ -1056,7 +882,7 @@ void ProjectLoader::DoUnitOptions(const TiXmlElement* parentNode, ProjectFile* f
 
 //    Compiler* compiler = CompilerFactory::GetCompiler(m_pProject->GetCompilerID());
 
-    const TiXmlElement* node = parentNode->FirstChildElement("Option");
+    TiXmlElement* node = parentNode->FirstChildElement("Option");
     while (node)
     {
         if (node->Attribute("compilerVar"))
@@ -1081,11 +907,13 @@ void ProjectLoader::DoUnitOptions(const TiXmlElement* parentNode, ProjectFile* f
             file->weight = tempval;
         //
         if (node->Attribute("virtualFolder"))
+        {
             file->virtual_path = UnixFilename(cbC2U(node->Attribute("virtualFolder")));
+        }
         //
         if (node->Attribute("buildCommand") && node->Attribute("compiler"))
         {
-            const wxString cmp = cbC2U(node->Attribute("compiler"));
+            wxString cmp = cbC2U(node->Attribute("compiler"));
             wxString tmp = cbC2U(node->Attribute("buildCommand"));
             if (!cmp.IsEmpty() && !tmp.IsEmpty())
             {
@@ -1148,7 +976,9 @@ TiXmlElement* ProjectLoader::AddElement(TiXmlElement* parent, const char* name, 
     TiXmlElement elem(name);
 
     if (attr)
+    {
         elem.SetAttribute(attr, cbU2C(attribute));
+    }
 
     return parent->InsertEndChild(elem)->ToElement();
 }
@@ -1159,22 +989,23 @@ TiXmlElement* ProjectLoader::AddElement(TiXmlElement* parent, const char* name, 
     TiXmlElement elem(name);
 
     if (attr)
+    {
         elem.SetAttribute(attr, attribute);
+    }
 
     return parent->InsertEndChild(elem)->ToElement();
 }
 
 // convenience function, used in Save()
-void ProjectLoader::AddArrayOfElements(TiXmlElement* parent, const char* name, const char* attr, const wxArrayString& array, bool isPath)
+void ProjectLoader::AddArrayOfElements(TiXmlElement* parent, const char* name, const char* attr, const wxArrayString& array)
 {
     if (!array.GetCount())
         return;
-
     for (unsigned int i = 0; i < array.GetCount(); ++i)
     {
         if (array[i].IsEmpty())
             continue;
-        AddElement(parent, name, attr, (isPath ? UnixFilename(array[i], wxPATH_UNIX) : array[i]));
+        AddElement(parent, name, attr, array[i]);
     }
 }
 
@@ -1186,15 +1017,8 @@ void ProjectLoader::SaveEnvironment(TiXmlElement* parent, CompileOptionsBase* ba
     const StringHash& v = base->GetAllVars();
     if (v.empty())
         return;
-
-    // explicitly sort the keys
-    typedef std::map<wxString, wxString> SortedMap;
-    SortedMap map;
-    for (StringHash::const_iterator it = v.begin(); it != v.end(); ++it)
-        map[it->first] = it->second;
-
     TiXmlElement* node = AddElement(parent, "Environment");
-    for (SortedMap::const_iterator it = map.begin(); it != map.end(); ++it)
+    for (StringHash::const_iterator it = v.begin(); it != v.end(); ++it)
     {
         TiXmlElement* elem = AddElement(node, "Variable", "name", it->first);
         elem->SetAttribute("value", cbU2C(it->second));
@@ -1203,7 +1027,7 @@ void ProjectLoader::SaveEnvironment(TiXmlElement* parent, CompileOptionsBase* ba
 
 bool ProjectLoader::Save(const wxString& filename)
 {
-    return Save(filename, nullptr);
+    return Save(filename, 0);
 }
 
 bool ProjectLoader::Save(const wxString& filename, TiXmlElement* pExtensions)
@@ -1243,31 +1067,16 @@ bool ProjectLoader::ExportTargetAsProject(const wxString& filename, const wxStri
         AddElement(prjnode, "Option", "platforms", platforms);
     }
     if (m_pProject->GetMakefile() != _T("Makefile"))
-        AddElement(prjnode, "Option", "makefile", UnixFilename(m_pProject->GetMakefile(), wxPATH_UNIX));
+        AddElement(prjnode, "Option", "makefile", m_pProject->GetMakefile());
     if (m_pProject->IsMakefileCustom())
         AddElement(prjnode, "Option", "makefile_is_custom", 1);
-    if (m_pProject->GetMakefileExecutionDir() != m_pProject->GetBasePath())
-        AddElement(prjnode, "Option", "execution_dir", UnixFilename(m_pProject->GetMakefileExecutionDir(), wxPATH_UNIX));
     if (m_pProject->GetModeForPCH() != pchObjectDir)
         AddElement(prjnode, "Option", "pch_mode", (int)m_pProject->GetModeForPCH());
     if (!m_pProject->GetDefaultExecuteTarget().IsEmpty() && m_pProject->GetDefaultExecuteTarget() != m_pProject->GetFirstValidBuildTargetName())
         AddElement(prjnode, "Option", "default_target", m_pProject->GetDefaultExecuteTarget());
     AddElement(prjnode, "Option", "compiler", m_pProject->GetCompilerID());
-
-    wxArrayString virtualFolders = m_pProject->GetVirtualFolders();
-    if (virtualFolders.GetCount() > 0)
-    {
-        wxString result; // the concatenated string
-        for (size_t i = 0; i < virtualFolders.GetCount(); i++)
-        {
-            if (!result.IsEmpty())
-                result << wxT(";"); // add the delimiter
-
-            result << UnixFilename(virtualFolders[i], wxPATH_UNIX); // append Unix format folder name
-        }
-        AddElement(prjnode, "Option", "virtualFolders", result);
-    }
-
+    if (m_pProject->GetVirtualFolders().GetCount() > 0)
+        AddElement(prjnode, "Option", "virtualFolders", GetStringFromArray(m_pProject->GetVirtualFolders(), _T(";")));
     if (m_pProject->GetExtendedObjectNamesGeneration())
         AddElement(prjnode, "Option", "extended_obj_names", 1);
     if (m_pProject->GetShowNotesOnLoad() || !m_pProject->GetNotes().IsEmpty())
@@ -1281,27 +1090,25 @@ bool ProjectLoader::ExportTargetAsProject(const wxString& filename, const wxStri
             notes->InsertEndChild(t);
         }
     }
-    if (!m_pProject->GetCheckForExternallyModifiedFiles())
-        AddElement(prjnode, "Option", "check_files", 0);
 
     if (m_pProject->MakeCommandsModified())
     {
         TiXmlElement* makenode = AddElement(prjnode, "MakeCommands");
-        AddElement(makenode, "Build",            "command", m_pProject->GetMakeCommandFor(mcBuild));
-        AddElement(makenode, "CompileFile",      "command", m_pProject->GetMakeCommandFor(mcCompileFile));
-        AddElement(makenode, "Clean",            "command", m_pProject->GetMakeCommandFor(mcClean));
-        AddElement(makenode, "DistClean",        "command", m_pProject->GetMakeCommandFor(mcDistClean));
-        AddElement(makenode, "AskRebuildNeeded", "command", m_pProject->GetMakeCommandFor(mcAskRebuildNeeded));
-        AddElement(makenode, "SilentBuild",      "command", m_pProject->GetMakeCommandFor(mcSilentBuild));
+        AddElement(makenode, "Build", "command", m_pProject->GetMakeCommandFor(mcBuild));
+        AddElement(makenode, "CompileFile", "command", m_pProject->GetMakeCommandFor(mcCompileFile));
+        AddElement(makenode, "Clean", "command", m_pProject->GetMakeCommandFor(mcClean));
+        AddElement(makenode, "DistClean", "command", m_pProject->GetMakeCommandFor(mcDistClean));
     }
 
     prjnode->InsertEndChild(TiXmlElement("Build"));
     TiXmlElement* buildnode = prjnode->FirstChildElement("Build");
 
     for (size_t x = 0; x < m_pProject->GetBuildScripts().GetCount(); ++x)
-        AddElement(buildnode, "Script", "file", UnixFilename(m_pProject->GetBuildScripts().Item(x), wxPATH_UNIX));
+    {
+        AddElement(buildnode, "Script", "file", m_pProject->GetBuildScripts().Item(x));
+    }
 
-    // now decide which target we're exporting.
+    // now decide which target we 're exporting.
     // remember that if onlyTarget is empty, we export all targets (i.e. normal save).
     ProjectBuildTarget* onlytgt = m_pProject->GetBuildTarget(onlyTarget);
 
@@ -1334,54 +1141,21 @@ bool ProjectLoader::ExportTargetAsProject(const wxString& filename, const wxStri
                 fname.ClearExt();
                 outputFileName = fname.GetFullPath();
             }
-
-            if (   (prefixPolicy == tgfpPlatformDefault)
-                && (   (!platform::windows && target->GetTargetType() == ttDynamicLib)
-                    || (target->GetTargetType() == ttStaticLib) ) )
-            {
-                wxString compilerId = target->GetCompilerID();
-                Compiler* compiler = CompilerFactory::GetCompiler(compilerId);
-                if (compiler)
-                {
-                    wxFileName fname(outputFileName);
-                    wxString outputFileNameFile(fname.GetFullName());
-
-                    wxString compilerLibPrefix(compiler->GetSwitches().libPrefix);
-                    wxString outputFileNameWOPrefix;
-                    if (outputFileNameFile.StartsWith(compilerLibPrefix))
-                    {
-                        outputFileNameWOPrefix = outputFileNameFile.Mid(compilerLibPrefix.Len());
-                        if (!outputFileNameWOPrefix.IsEmpty())
-                        {
-                            fname.SetFullName(outputFileNameWOPrefix);
-                            outputFileName = fname.GetFullPath();
-                        }
-                    }
-                }
-            }
-
-            TiXmlElement* outnode = AddElement(tgtnode, "Option", "output", UnixFilename(outputFileName, wxPATH_UNIX));
-            if (target->GetTargetType() == ttDynamicLib)
-            {
-                if (target->GetDynamicLibImportFilename() != _T("$(TARGET_OUTPUT_DIR)$(TARGET_OUTPUT_BASENAME)"))
-                  outnode->SetAttribute("imp_lib",  cbU2C(UnixFilename(target->GetDynamicLibImportFilename(), wxPATH_UNIX)));
-                if (target->GetDynamicLibImportFilename() != _T("$(TARGET_OUTPUT_DIR)$(TARGET_OUTPUT_BASENAME)"))
-                  outnode->SetAttribute("def_file", cbU2C(UnixFilename(target->GetDynamicLibDefFilename(), wxPATH_UNIX)));
-            }
-            outnode->SetAttribute("prefix_auto",    prefixPolicy    == tgfpPlatformDefault ? "1" : "0");
+            TiXmlElement* outnode = AddElement(tgtnode, "Option", "output", outputFileName);
+            outnode->SetAttribute("prefix_auto", prefixPolicy == tgfpPlatformDefault ? "1" : "0");
             outnode->SetAttribute("extension_auto", extensionPolicy == tgfpPlatformDefault ? "1" : "0");
 
             if (target->GetWorkingDir() != _T("."))
-                AddElement(tgtnode, "Option", "working_dir",   UnixFilename(target->GetWorkingDir(), wxPATH_UNIX));
+                AddElement(tgtnode, "Option", "working_dir", target->GetWorkingDir());
             if (target->GetObjectOutput() != _T(".objs"))
-                AddElement(tgtnode, "Option", "object_output", UnixFilename(target->GetObjectOutput(), wxPATH_UNIX));
+                AddElement(tgtnode, "Option", "object_output", target->GetObjectOutput());
             if (target->GetDepsOutput() != _T(".deps"))
-                AddElement(tgtnode, "Option", "deps_output",   UnixFilename(target->GetDepsOutput(), wxPATH_UNIX));
+                AddElement(tgtnode, "Option", "deps_output", target->GetDepsOutput());
         }
         if (!target->GetExternalDeps().IsEmpty())
-            AddElement(tgtnode, "Option", "external_deps",     UnixFilename(target->GetExternalDeps(), wxPATH_UNIX));
+            AddElement(tgtnode, "Option", "external_deps", target->GetExternalDeps());
         if (!target->GetAdditionalOutputFiles().IsEmpty())
-            AddElement(tgtnode, "Option", "additional_output", UnixFilename(target->GetAdditionalOutputFiles(), wxPATH_UNIX));
+            AddElement(tgtnode, "Option", "additional_output", target->GetAdditionalOutputFiles());
         AddElement(tgtnode, "Option", "type", target->GetTargetType());
         AddElement(tgtnode, "Option", "compiler", target->GetCompilerID());
         if (target->GetTargetType() == ttConsoleOnly && !target->GetUseConsoleRunner())
@@ -1389,14 +1163,7 @@ bool ProjectLoader::ExportTargetAsProject(const wxString& filename, const wxStri
         if (!target->GetExecutionParameters().IsEmpty())
             AddElement(tgtnode, "Option", "parameters", target->GetExecutionParameters());
         if (!target->GetHostApplication().IsEmpty())
-        {
-            AddElement(tgtnode, "Option", "host_application", UnixFilename(target->GetHostApplication(), wxPATH_UNIX));
-            if (target->GetRunHostApplicationInTerminal())
-                AddElement(tgtnode, "Option", "run_host_application_in_terminal", 1);
-            else
-                AddElement(tgtnode, "Option", "run_host_application_in_terminal", 0);
-        }
-
+            AddElement(tgtnode, "Option", "host_application", target->GetHostApplication());
         // used in versions prior to 1.5
 //        if (target->GetIncludeInTargetAll())
 //            AddElement(tgtnode, "Option", "includeInTargetAll", 1);
@@ -1405,41 +1172,42 @@ bool ProjectLoader::ExportTargetAsProject(const wxString& filename, const wxStri
         if (target->GetTargetType() == ttDynamicLib && target->GetCreateStaticLib())
             AddElement(tgtnode, "Option", "createStaticLib", 1);
         if (target->GetOptionRelation(ortCompilerOptions) != 3) // 3 is the default
-            AddElement(tgtnode, "Option", "projectCompilerOptionsRelation",     target->GetOptionRelation(ortCompilerOptions));
+            AddElement(tgtnode, "Option", "projectCompilerOptionsRelation", target->GetOptionRelation(ortCompilerOptions));
         if (target->GetOptionRelation(ortLinkerOptions) != 3) // 3 is the default
-            AddElement(tgtnode, "Option", "projectLinkerOptionsRelation",       target->GetOptionRelation(ortLinkerOptions));
+            AddElement(tgtnode, "Option", "projectLinkerOptionsRelation", target->GetOptionRelation(ortLinkerOptions));
         if (target->GetOptionRelation(ortIncludeDirs) != 3) // 3 is the default
-            AddElement(tgtnode, "Option", "projectIncludeDirsRelation",         target->GetOptionRelation(ortIncludeDirs));
+            AddElement(tgtnode, "Option", "projectIncludeDirsRelation", target->GetOptionRelation(ortIncludeDirs));
         if (target->GetOptionRelation(ortResDirs) != 3) // 3 is the default
             AddElement(tgtnode, "Option", "projectResourceIncludeDirsRelation", target->GetOptionRelation(ortResDirs));
         if (target->GetOptionRelation(ortLibDirs) != 3) // 3 is the default
-            AddElement(tgtnode, "Option", "projectLibDirsRelation",             target->GetOptionRelation(ortLibDirs));
+            AddElement(tgtnode, "Option", "projectLibDirsRelation", target->GetOptionRelation(ortLibDirs));
 
         for (size_t x = 0; x < target->GetBuildScripts().GetCount(); ++x)
+        {
             AddElement(tgtnode, "Script", "file", target->GetBuildScripts().Item(x));
+        }
 
         TiXmlElement* node = AddElement(tgtnode, "Compiler");
-        AddArrayOfElements(node, "Add", "option",    target->GetCompilerOptions());
-        AddArrayOfElements(node, "Add", "directory", target->GetIncludeDirs(), true);
+        AddArrayOfElements(node, "Add", "option", target->GetCompilerOptions());
+        AddArrayOfElements(node, "Add", "directory", target->GetIncludeDirs());
         if (node->NoChildren())
             tgtnode->RemoveChild(node);
 
         node = AddElement(tgtnode, "ResourceCompiler");
-        AddArrayOfElements(node, "Add", "option",    target->GetResourceCompilerOptions());
-        AddArrayOfElements(node, "Add", "directory", target->GetResourceIncludeDirs(), true);
+        AddArrayOfElements(node, "Add", "directory", target->GetResourceIncludeDirs());
         if (node->NoChildren())
             tgtnode->RemoveChild(node);
 
         node = AddElement(tgtnode, "Linker");
-        AddArrayOfElements(node, "Add", "option",    target->GetLinkerOptions());
-        AddArrayOfElements(node, "Add", "library",   target->GetLinkLibs(), true);
-        AddArrayOfElements(node, "Add", "directory", target->GetLibDirs(), true);
+        AddArrayOfElements(node, "Add", "option", target->GetLinkerOptions());
+        AddArrayOfElements(node, "Add", "library", target->GetLinkLibs());
+        AddArrayOfElements(node, "Add", "directory", target->GetLibDirs());
         if (node->NoChildren())
             tgtnode->RemoveChild(node);
 
         node = AddElement(tgtnode, "ExtraCommands");
         AddArrayOfElements(node, "Add", "before", target->GetCommandsBeforeBuild());
-        AddArrayOfElements(node, "Add", "after",  target->GetCommandsAfterBuild());
+        AddArrayOfElements(node, "Add", "after", target->GetCommandsAfterBuild());
         if (node->NoChildren())
             tgtnode->RemoveChild(node);
         else
@@ -1453,12 +1221,10 @@ bool ProjectLoader::ExportTargetAsProject(const wxString& filename, const wxStri
         if (target->MakeCommandsModified())
         {
             TiXmlElement* makenode = AddElement(tgtnode, "MakeCommands");
-            AddElement(makenode, "Build",            "command", target->GetMakeCommandFor(mcBuild));
-            AddElement(makenode, "CompileFile",      "command", target->GetMakeCommandFor(mcCompileFile));
-            AddElement(makenode, "Clean",            "command", target->GetMakeCommandFor(mcClean));
-            AddElement(makenode, "DistClean",        "command", target->GetMakeCommandFor(mcDistClean));
-            AddElement(makenode, "AskRebuildNeeded", "command", target->GetMakeCommandFor(mcAskRebuildNeeded));
-            AddElement(makenode, "SilentBuild",      "command", target->GetMakeCommandFor(mcSilentBuild));
+            AddElement(makenode, "Build", "command", target->GetMakeCommandFor(mcBuild));
+            AddElement(makenode, "CompileFile", "command", target->GetMakeCommandFor(mcCompileFile));
+            AddElement(makenode, "Clean", "command", target->GetMakeCommandFor(mcClean));
+            AddElement(makenode, "DistClean", "command", target->GetMakeCommandFor(mcDistClean));
         }
     }
 
@@ -1484,27 +1250,26 @@ bool ProjectLoader::ExportTargetAsProject(const wxString& filename, const wxStri
     SaveEnvironment(buildnode, m_pProject);
 
     TiXmlElement* node = AddElement(prjnode, "Compiler");
-    AddArrayOfElements(node, "Add", "option",    m_pProject->GetCompilerOptions());
-    AddArrayOfElements(node, "Add", "directory", m_pProject->GetIncludeDirs(), true);
+    AddArrayOfElements(node, "Add", "option", m_pProject->GetCompilerOptions());
+    AddArrayOfElements(node, "Add", "directory", m_pProject->GetIncludeDirs());
     if (node->NoChildren())
         prjnode->RemoveChild(node);
 
     node = AddElement(prjnode, "ResourceCompiler");
-    AddArrayOfElements(node, "Add", "option",    m_pProject->GetResourceCompilerOptions());
-    AddArrayOfElements(node, "Add", "directory", m_pProject->GetResourceIncludeDirs(), true);
+    AddArrayOfElements(node, "Add", "directory", m_pProject->GetResourceIncludeDirs());
     if (node->NoChildren())
         prjnode->RemoveChild(node);
 
     node = AddElement(prjnode, "Linker");
-    AddArrayOfElements(node, "Add", "option",    m_pProject->GetLinkerOptions());
-    AddArrayOfElements(node, "Add", "library",   m_pProject->GetLinkLibs(), true);
-    AddArrayOfElements(node, "Add", "directory", m_pProject->GetLibDirs(), true);
+    AddArrayOfElements(node, "Add", "option", m_pProject->GetLinkerOptions());
+    AddArrayOfElements(node, "Add", "library", m_pProject->GetLinkLibs());
+    AddArrayOfElements(node, "Add", "directory", m_pProject->GetLibDirs());
     if (node->NoChildren())
         prjnode->RemoveChild(node);
 
     node = AddElement(prjnode, "ExtraCommands");
     AddArrayOfElements(node, "Add", "before", m_pProject->GetCommandsBeforeBuild());
-    AddArrayOfElements(node, "Add", "after",  m_pProject->GetCommandsAfterBuild());
+    AddArrayOfElements(node, "Add", "after", m_pProject->GetCommandsAfterBuild());
     if (node->NoChildren())
         prjnode->RemoveChild(node);
     else
@@ -1513,48 +1278,25 @@ bool ProjectLoader::ExportTargetAsProject(const wxString& filename, const wxStri
             AddElement(node, "Mode", "after", wxString(_T("always")));
     }
 
-    std::vector<wxString> filesThrougGlobs;
-    const std::vector<cbProject::Glob>& unitGlobs = m_pProject->GetGlobs();
-    for (std::size_t index = 0; index < unitGlobs.size(); ++index)
+    int count = m_pProject->GetFilesCount();
+    for (int i = 0; i < count; ++i)
     {
-        const cbProject::Glob& glob = unitGlobs[index];
-        if (TiXmlElement* unitsGlobNode = AddElement(prjnode, "UnitsGlob", "directory", glob.m_Path))
-        {
-            unitsGlobNode->SetAttribute("recursive", glob.m_Recursive ? "1" : "0");
-            unitsGlobNode->SetAttribute("wildcard", cbU2C(glob.m_WildCard));
-        }
-        std::vector<wxString> files = filesInDir(glob.m_Path, glob.m_WildCard, glob.m_Recursive, m_pProject->GetBasePath());
-        std::copy(files.begin(), files.end(), std::back_inserter(filesThrougGlobs));
-    }
-
-    ProjectFileArray pfa(ProjectFile::CompareProjectFiles);
-
-    for (FilesList::iterator it = m_pProject->GetFilesList().begin(); it != m_pProject->GetFilesList().end(); ++it)
-    {
-        ProjectFile* f = *it;
+        ProjectFile* f = m_pProject->GetFile(i);
 
         // do not save auto-generated files
-        if (f->AutoGeneratedBy())
-            continue;
-
-        if (std::find(filesThrougGlobs.begin(), filesThrougGlobs.end(), f->relativeFilename) != filesThrougGlobs.end())
+        if (f->autoGeneratedBy)
             continue;
 
         // do not save project files that do not belong in the target we 're exporting
-        if (onlytgt && (onlytgt->GetFilesList().find(f) == onlytgt->GetFilesList().end()))
+        if (onlytgt && !onlytgt->GetFilesList().Find(f))
             continue;
 
-        pfa.Add(f);
-    }
-    for (size_t i=0; i<pfa.GetCount(); ++i)
-    {
-        ProjectFile* f = pfa[i];
         FileType ft = FileTypeOf(f->relativeFilename);
 
-        TiXmlElement* unitnode = AddElement(prjnode, "Unit", "filename", UnixFilename(f->relativeFilename, wxPATH_UNIX));
+        TiXmlElement* unitnode = AddElement(prjnode, "Unit", "filename", f->relativeFilename);
         if (!f->compilerVar.IsEmpty())
         {
-            const wxString ext = f->relativeFilename.AfterLast(_T('.')).Lower();
+            wxString ext = f->relativeFilename.AfterLast(_T('.')).Lower();
             if (f->compilerVar != _T("CC") && (ext.IsSameAs(FileFilters::C_EXT)))
                 AddElement(unitnode, "Option", "compilerVar", f->compilerVar);
 #ifdef __WXMSW__
@@ -1566,19 +1308,22 @@ bool ProjectLoader::ExportTargetAsProject(const wxString& filename, const wxStri
         }
 
         if (f->compile != (ft == ftSource || ft == ftResource))
+        {
             AddElement(unitnode, "Option", "compile", f->compile ? 1 : 0);
-
-        if (f->link != (   ft == ftSource || ft == ftResource
-                        || ft == ftObject || ft == ftResourceBin
-                        || ft == ftStaticLib ) )
+        }
+        if (f->link !=
+                (ft == ftSource ||
+                ft == ftResource ||
+                ft == ftObject ||
+                ft == ftResourceBin ||
+                ft == ftStaticLib))
         {
             AddElement(unitnode, "Option", "link", f->link ? 1 : 0);
         }
         if (f->weight != 50)
             AddElement(unitnode, "Option", "weight", f->weight);
-
         if (!f->virtual_path.IsEmpty())
-            AddElement(unitnode, "Option", "virtualFolder", UnixFilename(f->virtual_path, wxPATH_UNIX));
+            AddElement(unitnode, "Option", "virtualFolder", f->virtual_path);
 
         // loop and save custom build commands
         for (pfCustomBuildMap::iterator it = f->customBuild.begin(); it != f->customBuild.end(); ++it)
@@ -1603,7 +1348,9 @@ bool ProjectLoader::ExportTargetAsProject(const wxString& filename, const wxStri
         /* Add a target with a weird name if no targets are present. *
          * This will help us detecting a file with no targets.       */
         if ((int)f->buildTargets.GetCount() == 0)
+        {
             AddElement(unitnode, "Option", "target", _T("<{~None~}>"));
+        }
     }
 
     // as a last step, run all hooked callbacks
@@ -1611,7 +1358,9 @@ bool ProjectLoader::ExportTargetAsProject(const wxString& filename, const wxStri
                             ? prjnode->InsertEndChild(*pExtensions)->ToElement()
                             : AddElement(prjnode, "Extensions");
     if (ProjectLoaderHooks::HasRegisteredHooks() && extnode)
+    {
         ProjectLoaderHooks::CallHooks(m_pProject, extnode, false);
+    }
 
     return cbSaveTinyXMLDocument(&doc, filename);
 }
@@ -1626,7 +1375,7 @@ wxString ProjectLoader::GetValidCompilerID(const wxString& proposal, const wxStr
     if (it != m_CompilerSubstitutes.end())
         return it->second;
 
-    Compiler* compiler = nullptr;
+    Compiler* compiler = 0;
 
     // if compiler is a number, then this is an older version of the project file
     // propose the same compiler by index
@@ -1639,7 +1388,7 @@ wxString ProjectLoader::GetValidCompilerID(const wxString& proposal, const wxStr
 
     if (!compiler)
     {
-        if(!(Manager::Get()->GetConfigManager(_T("app"))->ReadBool(_T("/environment/ignore_invalid_targets"), true)))
+        if(!(Manager::Get()->GetConfigManager(_T("app"))->ReadBool(_T("/environment/ignore_invalid_targets"), false)))
         {
             wxString msg;
             msg.Printf(_("The defined compiler for %s cannot be located (ID: %s).\n"

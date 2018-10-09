@@ -31,9 +31,5 @@
 #include "properties/wxspositionsizeproperty.h"
 #include "properties/wxssizerflagsproperty.h"
 #include "properties/wxsstyleproperty.h"
-#include "properties/wxsimageproperty.h"
-#include "properties/wxsimagelistproperty.h"
-#include "properties/wxsimagecomboproperty.h"
-#include "properties/wxsimagetreeproperty.h"
 
 #endif

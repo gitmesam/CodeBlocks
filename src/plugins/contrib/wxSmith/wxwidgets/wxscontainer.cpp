@@ -209,20 +209,13 @@ void wxsContainer::AddChildrenCode()
                 wxsItem* Child = GetChild(i);
                 if ( Child->GetType() == wxsTSizer )
                 {
+                    wxString ChildAccessPrefix = Child->GetAccessPrefix(GetLanguage());
                     if ( GetBaseProps()->m_Size.IsDefault )
                     {
-                        wxString ChildAccessPrefix = Child->GetAccessPrefix(GetLanguage());
-                        Codef(_T("%sFit(%O);\n"),ChildAccessPrefix.wx_str());
-
-                        Codef(_T("%sSetSizeHints(%O);\n"),ChildAccessPrefix.wx_str());
+                        Codef(_T("%sFit(%O);\n"),ChildAccessPrefix.c_str());
                     }
-                    else
-                    {
-                        wxString ChildVarName = Child->GetVarName();
-                        Codef(_T("SetSizer(%s);\n"), ChildVarName.wx_str());
 
-                        Codef(_T("Layout();\n"));
-                    }
+                    Codef(_T("%sSetSizeHints(%O);\n"),ChildAccessPrefix.c_str());
                 }
             }
 
@@ -230,7 +223,6 @@ void wxsContainer::AddChildrenCode()
             return;
         }
 
-        case wxsUnknownLanguage:
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsContainer::AddChildrenCode"),GetLanguage());

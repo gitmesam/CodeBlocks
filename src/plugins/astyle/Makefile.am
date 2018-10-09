@@ -1,59 +1,38 @@
 SUBDIRS = resources
 
-AM_CPPFLAGS = $(WX_CXXFLAGS) \
-           -I$(top_srcdir)/src/include \
-           -I$(top_srcdir)/src/sdk/wxscintilla/include
+INCLUDES = $(WX_CXXFLAGS) \
+		-I$(top_srcdir)/src/plugins/astyle/astyle \
+		-I$(top_srcdir)/src/include \
+		-I$(top_srcdir)/src/include/wxscintilla/include
 
-pluginlibdir = $(pkglibdir)/plugins
+libdir = $(pkgdatadir)/plugins
 
-pluginlib_LTLIBRARIES = libAstyle.la
+lib_LTLIBRARIES = libastyle.la
 
-libAstyle_la_LDFLAGS = @MODULE_SHARED_LDFLAGS@ -version-info 0:1:0 -no-undefined -avoid-version
+libastyle_la_LDFLAGS = -module -version-info 0:1:0 -shared -no-undefined -avoid-version
 
-libAstyle_la_LIBADD = ../../sdk/libcodeblocks.la $(WX_LIBS)
+libastyle_la_LIBADD = $(PLUGIN_WX_LIBS) ../../sdk/libcodeblocks.la
 
-libAstyle_la_SOURCES = asstreamiterator.cpp \
-                       astyleconfigdlg.cpp \
-                       astyleplugin.cpp \
-                       dlgformattersettings.cpp \
-                       formattersettings.cpp
+libastyle_la_SOURCES = asstreamiterator.cpp \
+      astyleconfigdlg.cpp \
+			astyleplugin.cpp \
+			dlgformattersettings.cpp \
+			formattersettings.cpp \
+			astyle/ASBeautifier.cpp \
+			astyle/ASFormatter.cpp \
+			astyle/ASEnhancer.cpp \
+			astyle/ASResource.cpp
 
 noinst_HEADERS = asstreamiterator.h \
-                 astyleconfigdlg.h \
-                 astyleplugin.h \
-                 astylepredefinedstyles.h \
-                 dlgformattersettings.h \
-                 formattersettings.h
+      astyleconfigdlg.h \
+			astyleplugin.h \
+			formattersettings.h \
+			dlgformattersettings.h \
+			astyle/astyle.h
 
-EXTRA_DIST = astyle/ASLocalizer.cpp \
-             astyle/ASLocalizer.h \
-             astyle/astyle.html \
-             astyle/astyle_main.cpp \
-             astyle/astyle_main.h \
-             astyle/index.html \
-             astyle/install.html \
-             astyle/links.html \
-             astyle/news.html \
-             astyle/newsArchives.html \
-             astyle/notes.html \
-             astyle/notesArchives.html \
-             astyle/scripts.html \
-             astyle/styles.css \
-             astyle/subversion.html \
-             astyle/vsinstall.html
-
-if HAVE_ASTYLE
-libAstyle_la_LIBADD += -lastyle
-EXTRA_DIST += astyle/ASBeautifier.cpp \
-		astyle/ASEnhancer.cpp \
-		astyle/ASFormatter.cpp \
-		astyle/ASResource.cpp \
-                astyle/astyle.h
-else
-AM_CPPFLAGS += -I$(top_srcdir)/src/plugins/astyle/astyle
-libAstyle_la_SOURCES += astyle/ASBeautifier.cpp \
-                       astyle/ASEnhancer.cpp \
-                       astyle/ASFormatter.cpp \
-                       astyle/ASResource.cpp
-noinst_HEADERS += astyle/astyle.h
-endif
+EXTRA_DIST = astyle/astyle.html \
+			astyle/astyle_main.cpp \
+			astyle/astyle_notes.html \
+      		astyle/astyleX.html \
+			astyle/install.html \
+			astyle/license.html

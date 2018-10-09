@@ -51,11 +51,10 @@ wxString wxsPositionSizeData::GetPositionCode(wxsCoderContext* Context)
             return IsDefault ?
                 _T("wxDefaultPosition") :
                 DialogUnits ?
-                    wxString::Format(_T("wxDLG_UNIT(%s,wxPoint(%ld,%ld))"),Context->m_WindowParent.c_str(),X,Y) :
-                    wxString::Format(_T("wxPoint(%ld,%ld)"),X,Y);
+                    wxString::Format(_T("wxDLG_UNIT(%s,wxPoint(%d,%d))"),Context->m_WindowParent.c_str(),X,Y) :
+                    wxString::Format(_T("wxPoint(%d,%d)"),X,Y);
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsPositionSizeData::GetPositionCode"),Context->m_Language);
@@ -74,11 +73,10 @@ wxString wxsPositionSizeData::GetSizeCode(wxsCoderContext* Context)
             return IsDefault ?
                 _T("wxDefaultSize") :
                 DialogUnits ?
-                    wxString::Format(_T("wxDLG_UNIT(%s,wxSize(%ld,%ld))"),Context->m_WindowParent.c_str(),X,Y) :
-                    wxString::Format(_T("wxSize(%ld,%ld)"),X,Y);
+                    wxString::Format(_T("wxDLG_UNIT(%s,wxSize(%d,%d))"),Context->m_WindowParent.c_str(),X,Y) :
+                    wxString::Format(_T("wxSize(%d,%d)"),X,Y);
         }
 
-        case wxsUnknownLanguage: // fall-through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsPositionSizeData::GetSizeCode"),Context->m_Language);
@@ -94,10 +92,10 @@ wxsPositionSizeProperty::wxsPositionSizeProperty(
     const wxString& _PGXName,
     const wxString& _PGYName,
     const wxString& _PGDUName,
-    const wxString& _DataName,
+    const wxString& DataName,
     long _Offset,
-    int _Priority):
-        wxsProperty(PGUseDefName,_DataName,_Priority),
+    int Priority):
+        wxsProperty(PGUseDefName,DataName,Priority),
         PGXName(_PGXName),
         PGYName(_PGYName),
         PGDUName(_PGDUName),
@@ -107,10 +105,10 @@ wxsPositionSizeProperty::wxsPositionSizeProperty(
 
 void wxsPositionSizeProperty::PGCreate(wxsPropertyContainer* Object,wxPropertyGridManager* Grid,wxPGId Parent)
 {
-    wxPGId DefId = Grid->AppendIn(Parent,NEW_IN_WXPG14X wxBoolProperty(GetPGName(),wxPG_LABEL,DEFVALUE));
-    wxPGId XId = Grid->AppendIn(Parent,NEW_IN_WXPG14X wxIntProperty(PGXName,wxPG_LABEL,XVALUE));
-    wxPGId YId = Grid->AppendIn(Parent,NEW_IN_WXPG14X wxIntProperty(PGYName,wxPG_LABEL,YVALUE));
-    wxPGId DUId = Grid->AppendIn(Parent,NEW_IN_WXPG14X wxBoolProperty(PGDUName,wxPG_LABEL,DUVALUE));
+    wxPGId DefId = Grid->AppendIn(Parent,wxBoolProperty(GetPGName(),wxPG_LABEL,DEFVALUE));
+    wxPGId XId = Grid->AppendIn(Parent,wxIntProperty(PGXName,wxPG_LABEL,XVALUE));
+    wxPGId YId = Grid->AppendIn(Parent,wxIntProperty(PGYName,wxPG_LABEL,YVALUE));
+    wxPGId DUId = Grid->AppendIn(Parent,wxBoolProperty(PGDUName,wxPG_LABEL,DUVALUE));
 
     Grid->SetPropertyAttribute(DefId,wxPG_BOOL_USE_CHECKBOX,1L,wxPG_RECURSE);
     Grid->SetPropertyAttribute(DUId,wxPG_BOOL_USE_CHECKBOX,1L,wxPG_RECURSE);
@@ -146,9 +144,6 @@ bool wxsPositionSizeProperty::PGRead(wxsPropertyContainer* Object,wxPropertyGrid
 
         case DUIND:
             DUVALUE = Grid->GetPropertyValue(Id).GetBool();
-            break;
-
-        default:
             break;
     }
 
@@ -197,9 +192,6 @@ bool wxsPositionSizeProperty::PGWrite(wxsPropertyContainer* Object,wxPropertyGri
                 Grid->EnableProperty(Id);
             }
             Grid->SetPropertyValue(Id,DUVALUE);
-            break;
-
-        default:
             break;
     }
     return true;
@@ -258,7 +250,7 @@ bool wxsPositionSizeProperty::XmlWrite(wxsPropertyContainer* Object,TiXmlElement
     if ( !DEFVALUE )
     {
         wxString Str;
-        Str.Printf(_T("%ld,%ld%s"),XVALUE,YVALUE,DUVALUE ? _T("d") : wxEmptyString);
+        Str.Printf(_T("%d,%d%s"),XVALUE,YVALUE,DUVALUE ? _T("d") : wxEmptyString);
         Element->InsertEndChild(TiXmlText(cbU2C(Str)));
         return true;
     }

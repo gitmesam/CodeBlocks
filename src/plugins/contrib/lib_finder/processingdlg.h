@@ -16,9 +16,9 @@
 * along with wxSmith; if not, write to the Free Software
 * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
 *
-* $Revision$
-* $Id$
-* $HeadURL$
+* $Revision: 4504 $
+* $Id: wxsmithpluginregistrants.cpp 4504 2007-10-02 21:52:30Z byo $
+* $HeadURL: svn+ssh://byo@svn.berlios.de/svnroot/repos/codeblocks/trunk/src/plugins/contrib/wxSmith/plugin/wxsmithpluginregistrants.cpp $
 */
 
 #ifndef PROCESSINGDLG_H
@@ -27,34 +27,28 @@
 #include <wx/string.h>
 #include <wx/hashmap.h>
 #include <wx/arrstr.h>
-#ifdef __WXMSW__
-    #include <wx/gauge.h>
-#endif
-
-
 
 //(*Headers(ProcessingDlg)
-#include "scrollingdialog.h"
-class wxStaticBoxSizer;
-class wxFlexGridSizer;
-class wxGauge;
-class wxButton;
-class wxStaticText;
+#include <wx/sizer.h>
+#include <wx/stattext.h>
+#include <wx/button.h>
+#include <wx/dialog.h>
+#include <wx/gauge.h>
 //*)
 
-#include "librarydetectionconfig.h"
-#include "librarydetectionmanager.h"
+#include "libraryconfig.h"
+#include "libraryconfigmanager.h"
 #include "resultmap.h"
 #include "pkgconfigmanager.h"
 
 WX_DECLARE_STRING_HASH_MAP(wxArrayString,FileNamesMap);
 WX_DECLARE_STRING_HASH_MAP(wxString,wxStringStringMap);
 
-class ProcessingDlg: public wxScrollingDialog
+class ProcessingDlg: public wxDialog
 {
 	public:
 
-		ProcessingDlg(wxWindow* parent, LibraryDetectionManager& Manager, TypedResults& KnownResults, wxWindowID id = -1);
+		ProcessingDlg(wxWindow* parent,LibraryConfigManager& Manager,TypedResults& KnownResults,ResultMap& FoundResults,wxWindowID id = -1);
 		virtual ~ProcessingDlg();
 
 		//(*Identifiers(ProcessingDlg)
@@ -67,10 +61,6 @@ class ProcessingDlg: public wxScrollingDialog
 
 		bool ProcessLibs();
 
-		bool ProcessLibs(const wxArrayString& Shortcuts);
-
-		void ApplyResults(bool addOnly);
-
 	protected:
 
 		//(*Handlers(ProcessingDlg)
@@ -78,29 +68,29 @@ class ProcessingDlg: public wxScrollingDialog
 		//*)
 
 		//(*Declarations(ProcessingDlg)
-		wxFlexGridSizer* FlexGridSizer1;
 		wxStaticText* Status;
 		wxButton* StopBtn;
 		wxGauge* Gauge1;
 		wxStaticBoxSizer* StaticBoxSizer1;
+		wxFlexGridSizer* FlexGridSizer1;
 		//*)
 
 	private:
 
         void ReadDir(const wxString& DirName);
-        void ProcessLibrary(const LibraryDetectionConfig* Config, const LibraryDetectionConfigSet* Set);
+        void ProcessLibrary(const LibraryConfig* Config);
         void SplitPath(const wxString& FileName,wxArrayString& Split);
         bool IsVariable(const wxString& NamePart) const;
-        void CheckFilter(const wxString& BasePath,const wxStringStringMap& Vars,const wxArrayString& CompilerList,const LibraryDetectionConfig *Config,const LibraryDetectionConfigSet* Set,int WhichFilter);
-        void FoundLibrary(const wxString& BasePath,const wxStringStringMap& Vars,const wxArrayString& CompilerList,const LibraryDetectionConfig *Config,const LibraryDetectionConfigSet* Set);
+        void CheckFilter(const wxString& BasePath,const wxStringStringMap& Vars,const wxArrayString& CompilerList,const LibraryConfig *Config,int WhichFilter);
+        void FoundLibrary(const wxString& BasePath,const wxStringStringMap& Vars,const wxArrayString& CompilerList,const LibraryConfig *Config);
         wxString FixVars(wxString Original,const wxStringStringMap& Vars);
         wxString FixPath(wxString Original);
 
         bool StopFlag;
         FileNamesMap Map;
-        LibraryDetectionManager& m_Manager;
+        LibraryConfigManager& m_Manager;
         TypedResults& m_KnownResults;
-        ResultMap m_FoundResults;
+        ResultMap& m_FoundResults;
 
 		DECLARE_EVENT_TABLE()
 };

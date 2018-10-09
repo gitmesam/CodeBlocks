@@ -3,7 +3,7 @@
 // Purpose:     Find/Replace, Goto dialogs
 // Maintainer:  Otto Wyss
 // Created:     2003-01-20
-// RCS-ID:      $Id$
+// RCS-ID:      $Id: finddialogs.cpp 59 2007-04-22 19:23:46Z Pecan $
 // Copyright:   (c) 2005 wyoGuide
 // Licence:     wxWindows
 //////////////////////////////////////////////////////////////////////////////
@@ -30,7 +30,7 @@
 	along with this program; if not, write to the Free Software
 	Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
-// RCS-ID: $Id$
+// RCS-ID: $Id: finddialogs.cpp 59 2007-04-22 19:23:46Z Pecan $
 
 
 //----------------------------------------------------------------------------
@@ -91,7 +91,7 @@ static wxArrayString m_finddirHist;
 static wxArrayString m_findstrHist;
 static wxArrayString m_replacestrHist;
 
-BEGIN_EVENT_TABLE (myFindReplaceDlg, wxScrollingDialog)
+BEGIN_EVENT_TABLE (myFindReplaceDlg, wxDialog)
     EVT_BUTTON (wxID_CANCEL,     myFindReplaceDlg::OnCancel)
     EVT_BUTTON (wxID_OK,         myFindReplaceDlg::OnOkay)
     EVT_BUTTON (myID_REPLACE,    myFindReplaceDlg::OnReplace)
@@ -104,7 +104,7 @@ myFindReplaceDlg::myFindReplaceDlg (wxWindow *parent,
                                     const wxString &replacestr,
                                     wxUint32 flags,
                                     long style)
-               : wxScrollingDialog (parent, -1, _("Dialog"),
+               : wxDialog (parent, -1, _("Dialog"),
                            wxDefaultPosition, wxDefaultSize,
                            style | wxDEFAULT_DIALOG_STYLE) {
 
@@ -384,7 +384,7 @@ int myFindReplaceDlg::ShowModal (long style) {
     m_findstr->SetFocus();
     m_findstr->SetSelection (-1, -1);
     Fit ();
-    return wxScrollingDialog::ShowModal ();
+    return wxDialog::ShowModal ();
 }
 
 void myFindReplaceDlg::LoadDirHistory () {
@@ -536,13 +536,13 @@ void myFindReplaceDlg::UpdateReplaceHistory (wxString item)
 // myGotoDlg
 //----------------------------------------------------------------------------
 
-BEGIN_EVENT_TABLE (myGotoDlg, wxScrollingDialog)
+BEGIN_EVENT_TABLE (myGotoDlg, wxDialog)
     EVT_MENU   (wxID_HELP, myGotoDlg::OnHelp)
 END_EVENT_TABLE()
 
 myGotoDlg::myGotoDlg (wxWindow *parent,
                       long style)
-         : wxScrollingDialog (parent, -1, _("Goto line"),
+         : wxDialog (parent, -1, _("Goto line"),
                      wxDefaultPosition, wxDefaultSize,
                      style | wxDEFAULT_DIALOG_STYLE) {
 
@@ -605,5 +605,5 @@ void myGotoDlg::SetPosition (int position) {
 int myGotoDlg::ShowModal (long WXUNUSED(style)) {
     m_position->SetFocus();
     m_position->SetSelection (-1, -1);
-    return wxScrollingDialog::ShowModal ();
+    return wxDialog::ShowModal ();
 }

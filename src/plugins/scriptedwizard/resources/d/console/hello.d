@@ -1,9 +1,10 @@
-module main;
+version(Tango) extern (C) int printf(char *, ...);
 
-import std.stdio;
-
-int main(string[] args)
+int main(char[][] args)
 {
-    writefln("Hello World\n");
-	return 0;
+    printf("hello world\n");
+    printf("args.length = %d\n", args.length);
+    for (int i = 0; i < args.length; i++)
+	printf("args[%d] = '%s'\n", i, cast(char *)args[i]);
+    return 0;
 }

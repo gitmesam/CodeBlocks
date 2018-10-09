@@ -25,7 +25,7 @@
 
 namespace
 {
-    wxsRegisterItem<wxsCheckBox> Reg(_T("CheckBox"),wxsTWidget,_T("Standard"),330);
+    wxsRegisterItem<wxsCheckBox> Reg(_T("CheckBox"),wxsTWidget,_T("Standard"),60);
 
     WXS_ST_BEGIN(wxsCheckBoxStyles,_T(""))
         WXS_ST_CATEGORY("wxCheckBox")
@@ -59,13 +59,12 @@ void wxsCheckBox::OnBuildCreatingCode()
         case wxsCPP:
         {
             AddHeader(_T("<wx/checkbox.h>"),GetInfo().ClassName,hfInPCH);
-            Codef(_T("%C(%W, %I, %t, %P, %S, %T, %V, %N);\n"),Label.wx_str());
+            Codef(_T("%C(%W, %I, %t, %P, %S, %T, %V, %N);\n"),Label.c_str());
             Codef(_T("%ASetValue(%b);\n"),IsChecked);
             BuildSetupWindowCode();
             return;
         }
 
-        case wxsUnknownLanguage: // fall through
         default:
         {
             wxsCodeMarks::Unknown(_T("wxsCheckBox::OnBuildCreatingCode"),GetLanguage());
@@ -81,7 +80,7 @@ wxObject* wxsCheckBox::OnBuildPreview(wxWindow* Parent,long Flags)
     return SetupWindow(Preview,Flags);
 }
 
-void wxsCheckBox::OnEnumWidgetProperties(cb_unused long Flags)
+void wxsCheckBox::OnEnumWidgetProperties(long Flags)
 {
     WXS_SHORT_STRING(wxsCheckBox,Label,_("Label"),_T("label"),_T(""),false)
     WXS_BOOL(wxsCheckBox,IsChecked,_("Checked"),_T("checked"),false)

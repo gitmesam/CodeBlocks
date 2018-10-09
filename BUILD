@@ -23,36 +23,12 @@ This will adapt the project's configuration file to your environment. This only 
 
 After this, type the following:
 
-./configure --with-contrib-plugins=all
+./configure --enable-contrib
 make
 make install
 
 For the last step you must be root.
 That's it.
-
-or:
-
-./configure --prefix=/usr --with-contrib-plugins=all,-help
-make
-make install
-
-"all" compiles all contrib plugins
-"all,-help" compiles all contrib plugins except the help plugin
-By default, no contrib plugins are compiled
-Plugin names are: AutoVersioning, BrowseTracker, byogames, Cccc, CppCheck, cbkoders, codesnippets,
-		     codestat, copystrings, Cscope, DoxyBlocks, dragscroll, EditorConfig, EditorTweaks, envvars,
-		     FileManager, headerfixup, help, hexeditor, incsearch, keybinder, libfinder, MouseSap,
-		     NassiShneiderman, ProjectOptionsManipulator, profiler, regex, ReopenEditor, exporter, symtab, ThreadSearch,
-		     ToolsPlus, Valgrind, wxsmith, wxsmithcontrib,wxsmithaui
-
-If the NassiShneiderman-plugin should be build, you might see this error, when you run configure:
-
-checking whether the Boost::System library is available... yes
-configure: error: Could not find a version of the library!
-
-If this happens, you have to explicitely set the boost-libdir.
-You should try to add "--with-boost-libdir=LIB_DIR" to the configure-line.
-Depending on your system, LIB_DIR might be "/usr/lib" or "/usr/lib64".
 
 Working on Code::Blocks sources from within Code::Blocks!
 ---------------------------------------------------------

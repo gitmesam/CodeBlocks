@@ -10,7 +10,6 @@
 #include "sdk.h" // Code::Blocks SDK
 #ifndef CB_PRECOMP
   #include <wx/intl.h>
-  #include <wx/menu.h>
   #include <wx/string.h>
   #include <wx/utils.h> // wxLaunchDefaultBrowser
   #include "globals.h"
@@ -58,7 +57,7 @@ void CB_Koders::OnAttach()
 	// (see: does not need) this plugin...
 }
 
-void CB_Koders::OnRelease(bool /*appShutDown*/)
+void CB_Koders::OnRelease(bool appShutDown)
 {
 	// do de-initialization for your plugin
 	// if appShutDown is false, the plugin is unloaded because Code::Blocks is being shut down,
@@ -74,23 +73,16 @@ int CB_Koders::Execute()
     const wxString search = TheDialog->GetSearch();
     if (search.IsEmpty())
     {
-      cbMessageBox(_("Cannot search for an empty expression."), _("Error"), wxICON_ERROR);
+      cbMessageBox(_("Cannot search for an empty expession."), _("Error"), wxICON_ERROR);
     }
     else
     {
       const wxString language = TheDialog->GetLanguage();
+      const wxString license  = TheDialog->GetLicense();
 
       wxString query;
-      if ( language.IsEmpty() )
-      {
-        query.Printf(_("http://code.openhub.net/search?s=%s"), search.c_str());
-      }
-      else
-      {
-        query.Printf(_("http://code.openhub.net/search?s=%s&fl=%s"),
-                     search.c_str(), language.c_str());
-      }
-
+      query.Printf(_("http://www.koders.com/?S=%s&btnSearch=Search&la=%s&li=%s"),
+                   search.c_str(), language.c_str(), license.c_str());
       if (!wxLaunchDefaultBrowser(query))
         cbMessageBox(_("Could not launch the default browser of your system."), _("Error"), wxICON_ERROR);
     }
@@ -99,16 +91,15 @@ int CB_Koders::Execute()
 	return 0;
 }
 
-void CB_Koders::BuildModuleMenu(const ModuleType type, wxMenu* menu, const FileTreeData* /*data*/)
+void CB_Koders::BuildModuleMenu(const ModuleType type, wxMenu* menu, const FileTreeData* data)
 {
 	if (!menu || !IsAttached())
 		return;
 
 	if (type == mtEditorManager)
 	{
-		const wxString label = _("Search at BlackDuck...");
-		const int position = Manager::Get()->GetPluginManager()->FindSortedMenuItemPosition(*menu, label);
-		menu->Insert(position, idSearchKoders, label , _("Search keyword at BlackDuck webpage..."));
+		menu->AppendSeparator();
+		menu->Append(idSearchKoders, _("Search at Koders..."), _("Search keyword at Koders webpage..."));
 	}
 }
 
@@ -128,7 +119,7 @@ bool CB_Koders::IsReady()
   return false;
 }
 
-void CB_Koders::OnSearchKoders(wxCommandEvent& /*event*/)
+void CB_Koders::OnSearchKoders(wxCommandEvent& event)
 {
   if (IsReady())
   {

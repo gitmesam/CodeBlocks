@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // Name:        pdfparser.h
-// Purpose:     
+// Purpose:
 // Author:      Ulrich Telle
 // Modified by:
 // Created:     2006-05-15
@@ -10,27 +10,14 @@
 
 /// \file pdfparser.h Interface of the wxPdfParser classes
 
-#ifndef _PDF_PARSER_H_
-#define _PDF_PARSER_H_
+#ifndef _PDFPARSER_H_
+#define _PDFPARSER_H_
 
 // wxWidgets headers
 #include <wx/dynarray.h>
-#include <wx/filesys.h>
-#include <wx/mstream.h>
-#include <wx/string.h>
 
-// wxPdfDocument headers
 #include "wx/pdfdocdef.h"
-#include "wx/pdfarraydouble.h"
 #include "wx/pdfobjects.h"
-
-class WXDLLIMPEXP_FWD_PDFDOC wxPdfArray;
-class WXDLLIMPEXP_FWD_PDFDOC wxPdfDictionary;
-class WXDLLIMPEXP_FWD_PDFDOC wxPdfEncrypt;
-class WXDLLIMPEXP_FWD_PDFDOC wxPdfInfo;
-class WXDLLIMPEXP_FWD_PDFDOC wxPdfObject;
-class WXDLLIMPEXP_FWD_PDFDOC wxPdfObjectQueue;
-class WXDLLIMPEXP_FWD_PDFDOC wxPdfStream;
 
 /// Permissions required for import of a document
 // Permission bit  3: Print
@@ -98,7 +85,7 @@ public:
 
   /// Get the type of the last token
   int GetTokenType();
-    
+
   /// Get the token value as a string
   wxString GetStringValue();
 
@@ -107,13 +94,13 @@ public:
 
   /// Check whether the token is a hexadecimal string
   bool IsHexString() { return m_hexString; }
-    
+
   /// Get object reference
   int GetReference();
 
   /// Get object generation
   int GetGeneration();
-    
+
   /// Check byte whether it represents a white space character
   static bool IsWhitespace(int ch);
 
@@ -171,7 +158,7 @@ public:
   wxString GetPdfVersion() { return m_pdfVersion; }
 
   /// Get number of pages in the parsed document
-  unsigned int GetPageCount();
+  int GetPageCount();
 
   /// Get the document information dictionary
   bool GetSourceInfo(wxPdfInfo& info);
@@ -186,28 +173,25 @@ public:
   void AppendObject(int originalObjectId, int actualObjectId, wxPdfObject* obj);
 
   /// Get the resources of a specific page
-  wxPdfObject* GetPageResources(unsigned int pageno);
+  wxPdfObject* GetPageResources(int pageno);
 
   /// Get the content stream collection of a specific page
-  void GetContent(unsigned int pageno, wxArrayPtrVoid& contents);
+  void GetContent(int pageno, wxArrayPtrVoid& contents);
 
   /// Get the media box of a specific page
-  wxPdfArrayDouble* GetPageMediaBox(unsigned int pageno);
+  wxPdfArrayDouble* GetPageMediaBox(int pageno);
 
   /// Get the crop box of a specific page
-  wxPdfArrayDouble* GetPageCropBox(unsigned int pageno);
+  wxPdfArrayDouble* GetPageCropBox(int pageno);
 
   /// Get the bleed box of a specific page
-  wxPdfArrayDouble* GetPageBleedBox(unsigned int pageno);
+  wxPdfArrayDouble* GetPageBleedBox(int pageno);
 
   /// Get the trim box of a specific page
-  wxPdfArrayDouble* GetPageTrimBox(unsigned int pageno);
+  wxPdfArrayDouble* GetPageTrimBox(int pageno);
 
   /// Get the art box of a specific page
-  wxPdfArrayDouble* GetPageArtBox(unsigned int pageno);
-
-  /// Get the rotation of a specific page
-  int GetPageRotation (unsigned int pageno);
+  wxPdfArrayDouble* GetPageArtBox(int pageno);
 
   /// Resolve an object
   wxPdfObject* ResolveObject(wxPdfObject* obj);
@@ -228,13 +212,10 @@ protected:
   /// Get a page box
   wxPdfArrayDouble* GetPageBox(wxPdfDictionary* page, const wxString& boxIndex);
 
-  /// Get a page rotation
-  int GetPageRotation (wxPdfDictionary* page);
-
   /// Parse PDF document
   bool ParseDocument();
 
-  /// Setup a decryptor
+  ///
   bool SetupDecryptor();
 
   /// Parse the cross reference
@@ -321,7 +302,7 @@ private:
   wxPdfDictionary*  m_trailer;         ///< Trailer dictionary
   wxPdfDictionary*  m_root;            ///< Root object
   wxArrayPtrVoid    m_pages;           ///< Array of page objects
-  unsigned int      m_currentPage;     ///< Number of current page
+  int               m_currentPage;     ///< Number of current page
   bool              m_useRawStream;    ///< Flag whether to use raw stream data (without decoding)
 
   bool              m_encrypted;       ///< Flag whether the document is encrypted
@@ -337,6 +318,7 @@ private:
   int               m_objNum;          ///< Number of current object
   int               m_objGen;          ///< Generation of current object
 
+//  wxArrayInt        m_xref;            ///< Cross reference
   wxPdfXRef         m_xref;            ///< Cross reference
 
   static wxFileSystem* ms_fileSystem; ///< wxWidgets file system

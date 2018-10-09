@@ -23,6 +23,7 @@ class Exporter : public cbPlugin
 		Exporter();
 		~Exporter();
     void BuildMenu(wxMenuBar *menuBar);
+    void RemoveMenu(wxMenuBar *menuBar);
 //		int Configure() { return 0; }
 		void OnAttach(); // fires when the plugin is attached to the application
 		void OnRelease(bool appShutDown); // fires when the plugin is released from the application
@@ -33,9 +34,9 @@ class Exporter : public cbPlugin
     void ExportFile(BaseExporter *exp, const wxString &default_extension, const wxString &wildcard);
     void OnUpdateUI(wxUpdateUIEvent &event);
   private:
-    void BuildModuleMenu(const ModuleType /*type*/, wxMenu * /*menu*/, const FileTreeData* /*data*/ = 0) {}
-    bool BuildToolBar(wxToolBar * /*toolBar*/) { return false; }
-    void RemoveToolBar(wxToolBar * /*toolBar*/) {}
+    void BuildModuleMenu(const ModuleType type, wxMenu *menu, const FileTreeData* data = 0) {}
+    bool BuildToolBar(wxToolBar *toolBar) { return false; }
+    void RemoveToolBar(wxToolBar *toolBar) {}
 
     DECLARE_EVENT_TABLE();
 };

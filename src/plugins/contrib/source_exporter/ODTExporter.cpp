@@ -21,24 +21,6 @@ using std::size_t;
 
 namespace
 {
-  // Helper function to calculate the width of a number (ugly way)
-  inline int calcWidth(int num)
-  {
-    if (num < 0)
-    {
-      return 0;
-    }
-
-    int width = 1;
-
-    while ((num /= 10) != 0)
-    {
-      ++width;
-    }
-
-    return width;
-  }
-
   // Helper function to convert i to a string
   inline string to_string(int i)
   {
@@ -305,12 +287,10 @@ void ODTExporter::ODTCreateStylesFile(wxZipOutputStream &zout, const EditorColou
   zout.Write(ODTStylesFileEND, strlen(ODTStylesFileEND));
 }
 
-void ODTExporter::ODTCreateContentFile(wxZipOutputStream &zout, const wxMemoryBuffer &styled_text, int lineCount, int tabWidth)
+void ODTExporter::ODTCreateContentFile(wxZipOutputStream &zout, const wxMemoryBuffer &styled_text)
 {
   const char *buffer = reinterpret_cast<char *>(styled_text.GetData());
   const size_t buffer_size = styled_text.GetDataLen();
-  int lineno = 1;
-  int width = calcWidth(lineCount);
 
   zout.PutNextEntry(_T("content.xml"));
   zout.Write(ODTContentFileBEG, strlen(ODTContentFileBEG));
@@ -319,20 +299,6 @@ void ODTExporter::ODTCreateContentFile(wxZipOutputStream &zout, const wxMemoryBu
   {
     char current_style = buffer[1];
     string content("<text:h text:style-name=\"Default\">");
-
-    if (lineCount != -1)
-    {
-      int difWidth = width - calcWidth(lineno);
-
-      if (difWidth > 0)
-      {
-        content += string("<text:s text:c=\"") + to_string(difWidth) + string("\"/>");
-      }
-
-      content += to_string(lineno);
-      ++lineno;
-      content += "<text:s text:c=\"2\"/>";
-    }
 
     size_t first = 0;
 
@@ -346,9 +312,7 @@ void ODTExporter::ODTCreateContentFile(wxZipOutputStream &zout, const wxMemoryBu
       content += string("<text:span text:style-name=\"style") + to_string(current_style) + string("\">");
     }
 
-    int charLinePos = 0;
-
-    for (size_t i = first; i < buffer_size; i += 2, ++charLinePos)
+    for (size_t i = first; i < buffer_size; i += 2)
     {
       if (buffer[i + 1] != current_style)
       {
@@ -395,17 +359,10 @@ void ODTExporter::ODTCreateContentFile(wxZipOutputStream &zout, const wxMemoryBu
           break;
 
         case '\t':
-          {
-            const int extraSpaces = tabWidth - charLinePos % tabWidth;
-            size_t dummy = 0;
-            const std::string extraSpacesStr(extraSpaces * 2, ' '); // imitates buffer (char + style)
-            content += fix_spaces(extraSpacesStr.c_str(), &dummy, extraSpacesStr.size());
-            charLinePos += extraSpaces - 1; // account for auto-increment
-          }
+          content += string("<text:tab/>");
           break;
 
         case '\r':
-          --charLinePos; // account for auto-increment
           break;
 
         case '\n':
@@ -418,27 +375,12 @@ void ODTExporter::ODTCreateContentFile(wxZipOutputStream &zout, const wxMemoryBu
           content += "</text:h>\n";
           content += "<text:h text:style-name=\"Default\">";
 
-          if (lineCount != -1)
-          {
-            int difWidth = width - calcWidth(lineno);
-
-            if (difWidth > 0)
-            {
-              content += string("<text:s text:c=\"") + to_string(difWidth) + string("\"/>");
-            }
-
-            content += to_string(lineno);
-            ++lineno;
-            content += "<text:s text:c=\"2\"/>";
-          }
-
           if (i + 2 < buffer_size && buffer[i + 2] == ' ')
           {
             i += 2;
             content += fix_spaces(buffer, &i, buffer_size, true);
           }
 
-          charLinePos = -1; // account for auto-increment
           break;
 
         default:
@@ -460,7 +402,7 @@ void ODTExporter::ODTCreateContentFile(wxZipOutputStream &zout, const wxMemoryBu
   zout.Write(ODTContentFileEND, strlen(ODTContentFileEND));
 }
 
-void ODTExporter::Export(const wxString &filename, const wxString &title, const wxMemoryBuffer &styled_text, const EditorColourSet *color_set, int lineCount, int tabWidth)
+void ODTExporter::Export(const wxString &filename, const wxString &title, const wxMemoryBuffer &styled_text, const EditorColourSet *color_set)
 {
   HighlightLanguage lang = const_cast<EditorColourSet *>(color_set)->GetLanguageForFilename(title);
 
@@ -470,5 +412,5 @@ void ODTExporter::Export(const wxString &filename, const wxString &title, const 
   ODTCreateDirectoryStructure(zout);
   ODTCreateCommonFiles(zout);
   ODTCreateStylesFile(zout, color_set, lang);
-  ODTCreateContentFile(zout, styled_text, lineCount, tabWidth);
+  ODTCreateContentFile(zout, styled_text);
 }

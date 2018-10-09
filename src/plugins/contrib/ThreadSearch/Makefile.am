@@ -1,23 +1,17 @@
 SUBDIRS = resources
 
-AM_CPPFLAGS = $(WX_CXXFLAGS) \
+INCLUDES = $(WX_CXXFLAGS) \
 		-I$(top_srcdir)/src/include \
-		-I$(top_srcdir)/src/sdk/wxscintilla/include \
-		-I$(top_srcdir)/src/include/mozilla_chardet \
-		-I$(top_srcdir)/src/include/mozilla_chardet/mfbt \
-		-I$(top_srcdir)/src/include/mozilla_chardet/nsprpub/pr/include \
-		-I$(top_srcdir)/src/include/mozilla_chardet/xpcom \
-		-I$(top_srcdir)/src/include/mozilla_chardet/xpcom/base \
-		-I$(top_srcdir)/src/include/mozilla_chardet/xpcom/glue \
-		-I$(srcdir)/../wxContribItems/wxthings/include
+		-I$(top_srcdir)/src/include/wxscintilla/include \
+		-I$(top_srcdir)/src/include/wxFlatNotebook/include
 
-pluginlibdir = $(pkglibdir)/plugins
+libdir = $(pkgdatadir)/plugins
 
-pluginlib_LTLIBRARIES = libThreadSearch.la
+lib_LTLIBRARIES = libThreadSearch.la
 
-libThreadSearch_la_LDFLAGS = @MODULE_SHARED_LDFLAGS@ -version-info 0:1:0 -no-undefined -avoid-version
+libThreadSearch_la_LDFLAGS = -module -version-info 0:1:0 -shared -no-undefined -avoid-version
 
-libThreadSearch_la_LIBADD = ../../../sdk/libcodeblocks.la ../wxContribItems/wxthings/libwxcustombutton.la $(WX_LIBS)
+libThreadSearch_la_LIBADD = $(PLUGIN_WX_LIBS) ../../../sdk/libcodeblocks.la
 
 libThreadSearch_la_SOURCES = DirectoryParamsPanel.cpp \
 			InsertIndexManager.cpp \
@@ -27,7 +21,6 @@ libThreadSearch_la_SOURCES = DirectoryParamsPanel.cpp \
 			TextFileSearcherText.cpp \
 			ThreadSearch.cpp \
 			ThreadSearchConfPanel.cpp \
-			ThreadSearchControlIds.cpp \
 			ThreadSearchEvent.cpp \
 			ThreadSearchFindData.cpp \
 			ThreadSearchLoggerBase.cpp \
@@ -62,9 +55,11 @@ noinst_HEADERS =  	DirectoryParamsPanel.h \
 			ThreadSearchViewManagerLayout.h \
 			ThreadSearchViewManagerMessagesNotebook.h
 
-EXTRA_DIST = 	$(srcdir)/*.cbp \
+EXTRA_DIST = 	$(srcdir)/ThreadSearch.cbp \
+		$(srcdir)/ThreadSearch-unix.cbp \
 		$(srcdir)/ThreadSearch.wxg \
-		$(srcdir)/update* \
+		$(srcdir)/update.bat \
+		$(srcdir)/update \
 		$(srcdir)/manifest.xml
 
 pkgdata_DATA = ThreadSearch.zip

@@ -25,38 +25,38 @@
 
 //(*Headers(wxsArrayStringEditorDlg)
 #include <wx/sizer.h>
-#include "scrollingdialog.h"
 #include <wx/textctrl.h>
+#include <wx/button.h>
+#include <wx/dialog.h>
 //*)
 
-
-class wxsArrayStringEditorDlg: public wxScrollingDialog
+class wxsArrayStringEditorDlg: public wxDialog
 {
-    public:
+	public:
 
-        wxsArrayStringEditorDlg(wxWindow* parent,wxArrayString& Array,wxWindowID id = -1);
-        virtual ~wxsArrayStringEditorDlg();
+		wxsArrayStringEditorDlg(wxWindow* parent,wxArrayString& Array,wxWindowID id = -1);
+		virtual ~wxsArrayStringEditorDlg();
 
-        //(*Identifiers(wxsArrayStringEditorDlg)
-        static const long ID_TEXTCTRL1;
-        //*)
+		//(*Identifiers(wxsArrayStringEditorDlg)
+		static const long ID_TEXTCTRL1;
+		//*)
 
-    protected:
+	protected:
 
-        //(*Handlers(wxsArrayStringEditorDlg)
-        void OnOK(wxCommandEvent& event);
+		//(*Handlers(wxsArrayStringEditorDlg)
+		void OnOK(wxCommandEvent& event);
         void OnCancel(wxCommandEvent& event);
         //*)
 
-        //(*Declarations(wxsArrayStringEditorDlg)
-        wxTextCtrl* Items;
-        //*)
+		//(*Declarations(wxsArrayStringEditorDlg)
+		wxTextCtrl* Items;
+		//*)
 
-    private:
+	private:
 
         wxArrayString& Data;
 
-        DECLARE_EVENT_TABLE()
+		DECLARE_EVENT_TABLE()
 };
 
 #endif

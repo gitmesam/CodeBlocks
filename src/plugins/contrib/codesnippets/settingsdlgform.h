@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Dec 17 2007)
+// C++ code generated with wxFormBuilder (version Feb  1 2007)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO "NOT" EDIT THIS FILE!
@@ -8,18 +8,21 @@
 #ifndef __settingsdlgform__
 #define __settingsdlgform__
 
-#include <wx/string.h>
-#include <wx/stattext.h>
-#include <wx/gdicmn.h>
-#include <wx/font.h>
-#include <wx/colour.h>
-#include <wx/settings.h>
-#include <wx/sizer.h>
-#include <wx/textctrl.h>
+// Define WX_GCH in order to support precompiled headers with GCC compiler.
+// You have to create the header "wx_pch.h" and include all files needed
+// for compile your gui inside it.
+// Then, compile it and place the file "wx_pch.h.gch" into the same
+// directory that "wx_pch.h".
+#ifdef WX_GCH
+#include <wx_pch.h>
+#else
+#include <wx/wx.h>
+#endif
+
 #include <wx/button.h>
 #include <wx/radiobut.h>
-#include <wx/checkbox.h>
-#include "scrollingdialog.h"
+#include <wx/statline.h>
+#include <wx/slider.h>
 
 ///////////////////////////////////////////////////////////////////////////
 
@@ -31,10 +34,10 @@
 ///////////////////////////////////////////////////////////////////////////////
 /// Class SettingsDlgForm
 ///////////////////////////////////////////////////////////////////////////////
-class SettingsDlgForm : public wxScrollingDialog
+class SettingsDlgForm : public wxDialog 
 {
 	private:
-
+	
 	protected:
 		wxStaticText* m_staticText;
 		wxStaticText* m_staticText1;
@@ -44,24 +47,21 @@ class SettingsDlgForm : public wxScrollingDialog
 		wxTextCtrl* m_SnippetFileTextCtrl;
 		wxButton* m_SnippetFileButton;
 		wxStaticText* m_staticText7;
-////		wxRadioButton* m_RadioFloatBtn;
-////		wxRadioButton* m_RadioDockBtn;
-////		wxRadioButton* m_RadioExternalBtn;
-
-////		wxCheckBox* m_EditorsStayOnTopChkBox;
-		wxCheckBox* m_ToolTipsChkBox;
-		wxStaticText* m_CfgFolderStaticText;
-		wxStaticText* m_IniFolderStaticText;
+		wxRadioButton* m_RadioFloatBtn;
+		wxRadioButton* m_RadioDockBtn;
+		wxRadioButton* m_RadioExternalBtn;
+		wxStaticLine* m_staticline1;
+		wxStaticText* m_staticText4;
+		wxSlider* m_MouseSpeedSlider;
+		wxStaticText* m_staticText5;
+		wxSlider* m_MouseScrollSlider;
+		wxStaticText* m_staticText6;
+		wxSlider* m_MouseDelaylider;
 		wxStdDialogButtonSizer* m_sdbSizer;
-		wxButton* m_sdbSizerOK;
-		wxButton* m_sdbSizerCancel;
-
+	
 	public:
-		wxTextCtrl* m_CfgFolderTextCtrl;
-		wxTextCtrl* m_IniFolderTextCtrl;
-		SettingsDlgForm( wxWindow* parent, wxWindowID id = ID_DEFAULT, const wxString& title = wxEmptyString, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( 462,389 ), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER );
-		~SettingsDlgForm();
-
+		SettingsDlgForm( wxWindow* parent, int id = ID_DEFAULT, wxString title = wxEmptyString, wxPoint pos = wxDefaultPosition, wxSize size = wxSize( 462,492 ), int style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER );
+	
 };
 
 #endif //__settingsdlgform__
